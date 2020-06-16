@@ -1,1 +1,1 @@
-A simple and normal database object relational mapping.
+A simple and normal database object relational mapper.
