@@ -5,7 +5,7 @@ import sys
 from codecs import open
 from setuptools import setup
 
-sys.path[0:0] = ['dborm']
+sys.path[0:0] = ['snorm']
 
 from version import __version__
 
@@ -18,15 +18,15 @@ def get_readme(filename):
         pass
     return content
 
-setup(name="dborm",
+setup(name="snorm",
       version=__version__,
       author="Md. Jahidul Hamid",
       author_email="jahidulhamid@yahoo.com",
-      description="Database Object Relational Mapper",
+      description="A simple and normal database object relational mapper",
       license="BSD",
       keywords="orm, postgresql",
-      url="https://github.com/neurobin/dborm",
-      packages=["dborm"],
+      url="https://github.com/neurobin/snorm",
+      packages=["snorm"],
       long_description=get_readme("README.md"),
       long_description_content_type="text/markdown",
       classifiers=[
@@ -41,4 +41,4 @@ setup(name="dborm",
         'Programming Language :: Python :: 3',
       ],
       install_requires=[],
-test_suite="dborm.tests.test")
+test_suite="snorm.tests.test")
