@@ -1,10 +1,12 @@
 import asyncio
-import asyncpg
 import logging
 import unittest
+from async_property import async_property, async_cached_property
+
+from snorm.db import Pool, DB
 
 
-LOGGER_NAME = 'dborm-'
+LOGGER_NAME = 'snorm-'
 log = logging.getLogger(LOGGER_NAME)
 
 def get_file_content(path):
@@ -16,34 +18,31 @@ def get_file_content(path):
         log.exception("E: could not read file: " + path)
     return cont
 
-class DB(object):
-    def __init__(self, dsn, username, password, min_size=10, max_size=100):
-        self._pool = None
-        self.dsn = dsn
-        self.username = username
-        self.password = password
-        self.min_size = min_size
-        self.max_size = max_size
 
-    @property
-    async def pool(self):
-        if not self._pool:
-            self._pool = await asyncpg.create_pool(self.dsn,
-                                                  user=self.username,
-                                                  password=self.password,
-                                                  min_size=self.min_size,
-                                                  max_size=self.max_size)
-        return self._pool
+SNORM_DB_POOL = Pool(
+    dsn='postgres://',
+    host='localhost',
+    port=5432,
+    user='jahid',
+    password='jahid',
+    database='test',
+    min_size=10,
+    max_size=100,
+)
 
-    async def close(self):
-        if self._pool:
-            await self._pool.close()
 
+class Model(object):
+    pass
 
 class TestMethods(unittest.TestCase):
 
+    async def _test_default(self):
+        db = DB(SNORM_DB_POOL)
+        await db.execute('CREATE TABLE IF NOT EXISTS test_table (id SERIAL not null PRIMARY KEY, name varchar(255))')
+        # await db.execute('INSERT into test_table')
+
     def test_default(self):
-        pass
+        asyncio.get_event_loop().run_until_complete(self._test_default())
 
 if __name__ == "__main__":
     unittest.main()

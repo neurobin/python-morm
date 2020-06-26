@@ -40,5 +40,7 @@ setup(name="snorm",
         'Programming Language :: Python',
         'Programming Language :: Python :: 3',
       ],
-      install_requires=['asyncpg'],
+      install_requires=['asyncpg',
+                        'async-property>=0.2.1',
+                        ],
 test_suite="snorm.tests.test")
