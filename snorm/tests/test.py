@@ -108,9 +108,13 @@ class _Model_(metaclass=ModelMeta):
     """_table_name_ will not be inherited in subclasses"""
 
     _exclude_up_keys_ = ()
+    '''Exclude columns for these keys when saving the data to database'''
     _exclude_up_values_ = ()
+    '''Exclude columns for these values when saving the data to database'''
     _exclude_down_keys_ = ()    # TODO: implement in select
+    '''Exclude columns for these keys when retrieving data from database'''
     _exclude_down_values = ()   # TODO: implement in select
+    '''Exclude columns for these values when retrieving data from database'''
 
 
 
@@ -288,6 +292,18 @@ class Model(_Model_):
     _pk_ = 'id'
     '''If you use different primary key, you must define it accordingly'''
     id = Field('SERIAL NOT NULL PRIMARY KEY')
+    '''Default primary key'''
+
+    def __init__(self, *args, **kwargs):
+        for arg in args:
+            try:
+                for k,v in arg.items():
+                    setattr(self, k, v)
+            except AttributeError:
+                raise ValueError("Invalid argument to Model __init__ method. Expected: dictionary or keyword argument")
+        for k,v in kwargs.items():
+            setattr(self, k, v)
+
 
     def __setattr__(self, k, v):
         if not k.startswith('_') and k not in self._fields_:
@@ -334,11 +350,17 @@ class TestMethods(unittest.TestCase):
         # b1.name = 'Jahidul Hamid'
         # print(b1._get_update_query_())
         # await b1._update_()
-        b = BigUser()
-        b.name = 'John Doeee'
-        b.profession = 'Teacher'
-        await b._save_()
-        b.age = 34
+        # b = BigUser()
+        # b.name = 'John Doeee'
+        # b.profession = 'Teacher'
+        # await b._save_()
+        # b.age = 34
+        # await b._save_()
+        d = {
+            'name': 'John Doe',
+            'age': 45,
+        }
+        b = BigUser(d)
         await b._save_()
 
     def test_default(self):
