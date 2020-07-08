@@ -179,7 +179,7 @@ class _Model_(metaclass=ModelMeta):
         return await cls._get_db_instance_().fetchrow(query, *prepared_args, model_class=cls)
 
     @classmethod
-    async def _first_(cls, where='true', prepared_args=None):
+    async def _get_(cls, where='true', prepared_args=None):
         """Get the first item that matches the where condition
 
         e.g: "name like '%dummy%' and profession='teacher'"
@@ -334,7 +334,7 @@ class TestMethods(unittest.TestCase):
         dbpool = await db.pool()
         await dbpool.execute('CREATE TABLE IF NOT EXISTS "BigUser" (id SERIAL not null PRIMARY KEY, name varchar(255), profession varchar(255), age int)')
         # await db.execute('INSERT into test_table')
-        mos = await test_table._first_(where='name like $1 order by id asc', prepared_args=['%dumm%'])
+        mos = await test_table._get_(where='name like $1 order by id asc', prepared_args=['%dumm%'])
         print(mos.__dict__)
         # # print(mos[0].__dict__)
         # print(BigUser()._fields_)
@@ -346,7 +346,7 @@ class TestMethods(unittest.TestCase):
         # id = await b._insert_()
         # print(id)
 
-        # b1 = await BigUser._first_(where='id=1')
+        # b1 = await BigUser._get_(where='id=1')
         # b1.name = 'Jahidul Hamid'
         # print(b1._get_update_query_())
         # await b1._update_()
