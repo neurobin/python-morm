@@ -93,8 +93,17 @@ class DB(object):
             asyncpg.Connection: asyncpg.Connection object
         """
         if not self._con:
-            self._con = await self._pool.new_connection()
+            self._con = await self.newcon()
         return self._con
+
+    async def newcon(self):
+        """Always attempt to return a new connection from the
+        connection pool.
+
+        Returns:
+            asyncpg.Connection: Connection object.
+        """
+        return await self._pool.new_connection()
 
     async def execute(self, query: str, *args, timeout: float = None) -> str:
         """Make a query using a singleton connection retrieved from a
@@ -116,6 +125,14 @@ class DB(object):
         """
         con = await self.con()
         return await con.execute(query, *args, timeout=timeout)
+
+    @staticmethod
+    def record_to_model(record, model_class):
+        new_record = model_class()
+        for k,v in record.items():
+            setattr(new_record, k, v)
+        return new_record
+
 
     async def select(self, query: str, *args,
                     timeout: float = None,
@@ -141,9 +158,7 @@ class DB(object):
         else:
             new_records = []
             for record in records:
-                new_record = model_class()
-                for k,v in record.items():
-                    setattr(new_record, k, v)
+                new_record = self.__class__.record_to_model(record, model_class)
                 new_records.append(new_record)
             return new_records
 
@@ -171,7 +186,5 @@ class DB(object):
         else:
             if not record:
                 return record
-            new_record = model_class()
-            for k,v in record.items():
-                setattr(new_record, k, v)
+            new_record = self.__class__.record_to_model(record, model_class)
             return new_record
