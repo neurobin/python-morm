@@ -304,7 +304,7 @@ class Model(_Model_):
 
     _pk_ = 'id'
     '''If you use different primary key, you must define it accordingly'''
-    id = Field('INT primary key')
+    id = Field('SERIAL NOT NULL PRIMARY KEY')
 
 
 
