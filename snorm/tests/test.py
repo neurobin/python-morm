@@ -61,7 +61,7 @@ class Model(object):
         """
         if not prepared_args: prepared_args = []
         query = 'SELECT %s FROM %s WHERE %s' % (what, cls._get_table_name_(), where)
-        return await cls._get_dbi().select(query, *prepared_args, model_class=cls)
+        return await cls._get_dbi().fetch(query, *prepared_args, model_class=cls)
 
     @classmethod
     async def _filter(cls, where='true', prepared_args=None):
@@ -94,7 +94,7 @@ class Model(object):
         """
         if not prepared_args: prepared_args = []
         query = 'SELECT %s FROM %s WHERE %s LIMIT 1' % (what, cls._get_table_name_(), where)
-        return await cls._get_dbi().select_first(query, *prepared_args, model_class=cls)
+        return await cls._get_dbi().fetchrow(query, *prepared_args, model_class=cls)
 
     @classmethod
     async def _first(cls, where='true', prepared_args=None):
@@ -111,13 +111,18 @@ class Model(object):
         """
         return await cls._select_first(where=where, prepared_args=prepared_args)
 
+    async def _insert(self, exclude_values=None, exclude_keys=None):
+        if not exclude_values: exclude_values = []
+        if not exclude_keys: exclude_keys = []
+
 
 
 class TestMethods(unittest.TestCase):
 
     async def _test_default(self):
         db = DB(SNORM_DB_POOL)
-        await db.execute('CREATE TABLE IF NOT EXISTS test_table (id SERIAL not null PRIMARY KEY, name varchar(255))')
+        dbpool = await db.pool()
+        await dbpool.execute('CREATE TABLE IF NOT EXISTS test_table (id SERIAL not null PRIMARY KEY, name varchar(255))')
         # await db.execute('INSERT into test_table')
         mos = await Model._first(where='name like $1 order by id asc', prepared_args=['%dumm%'])
         print(mos.__dict__)

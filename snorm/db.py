@@ -4,7 +4,7 @@
 __author__ = 'Md Jahidul Hamid <jahidulhamid@yahoo.com>'
 __copyright__ = 'Copyright © Md Jahidul Hamid <https://github.com/neurobin/>'
 __license__ = '[BSD](http://www.opensource.org/licenses/bsd-license.php)'
-__version__ = '0.0.1'
+__version__ = '0.1.0'
 
 
 import asyncpg
@@ -55,17 +55,6 @@ class Pool(object):
                                         **self.connect_kwargs)
         return self._pool
 
-    async def new_connection(self):
-        """Get a new connection from the pool.
-
-        Multiple call may or may not return the same connection.
-
-        Returns:
-            asyncpg.Connection: asyncpg.Connection object
-        """
-        pool = await self.pool()
-        return await pool.acquire()
-
     async def close(self):
         if self._pool:
             await self._pool.close()
@@ -83,48 +72,16 @@ class DB(object):
             pool (Pool): A connection pool
         """
         self._pool = pool
-        self._con = None
 
 
-    async def con(self):
-        """Return the singleton connection of this db object.
-
-        Returns:
-            asyncpg.Connection: asyncpg.Connection object
-        """
-        if not self._con:
-            self._con = await self.newcon()
-        return self._con
-
-    async def newcon(self):
-        """Always attempt to return a new connection from the
-        connection pool.
+    async def pool(self):
+        """Return the active connection pool
 
         Returns:
-            asyncpg.Connection: Connection object.
+            asyncpg.Pool: asyncpg.Pool object
         """
-        return await self._pool.new_connection()
+        return await self._pool.pool()
 
-    async def execute(self, query: str, *args, timeout: float = None) -> str:
-        """Make a query using a singleton connection retrieved from a
-        pool of connection.
-
-        This makes a prepared query. Example:
-
-        ```python
-        await con.execute('INSERT INTO mytab (a) VALUES ($1), ($2), 10, 20)
-        ```
-
-        Args:
-            query (str): Query string
-            args (tuple): Query arguments
-            timeout (float, optional): Timeout value. Defaults to None.
-
-        Returns:
-            str: 	Status of the last SQL command
-        """
-        con = await self.con()
-        return await con.execute(query, *args, timeout=timeout)
 
     @staticmethod
     def record_to_model(record, model_class):
@@ -134,11 +91,11 @@ class DB(object):
         return new_record
 
 
-    async def select(self, query: str, *args,
+    async def fetch(self, query: str, *args,
                     timeout: float = None,
                     model_class=None,
                     ):
-        """Make a select query and get the results.
+        """Make a query and get the results.
 
         Resultant records can be mapped to model_class objects.
 
@@ -151,8 +108,8 @@ class DB(object):
         Returns:
             list : List of records
         """
-        con = await self.con()
-        records = await con.fetch(query, *args, timeout=timeout)
+        pool = await self.pool()
+        records = await pool.fetch(query, *args, timeout=timeout)
         if not model_class:
             return records
         else:
@@ -162,11 +119,11 @@ class DB(object):
                 new_records.append(new_record)
             return new_records
 
-    async def select_first(self, query: str, *args,
+    async def fetchrow(self, query: str, *args,
                         timeout: float = None,
                         model_class=None,
                         ):
-        """Make a select query and get the first row.
+        """Make a query and get the first row.
 
         Resultant record can be mapped to model_class objects.
 
@@ -179,8 +136,8 @@ class DB(object):
         Returns:
             Record or model_clas object or None if no rows were selected.
         """
-        con = await self.con()
-        record = await con.fetchrow(query, *args, timeout=timeout)
+        pool = await self.pool()
+        record = await pool.fetchrow(query, *args, timeout=timeout)
         if not model_class:
             return record
         else:
@@ -188,3 +145,19 @@ class DB(object):
                 return record
             new_record = self.__class__.record_to_model(record, model_class)
             return new_record
+
+    async def fetchval(self, query: str, *args,
+                        column: int = 0,
+                        timeout: float = None):
+        """Run a query and return a column value in the first row.
+
+        Args:
+            query (str): Query to run.
+            column (int, optional): Column index. Defaults to 0.
+            timeout (float, optional): Timeout. Defaults to None.
+
+        Returns:
+            Any: Coulmn (indentified by index) value of first row.
+        """
+        pool = await self.pool()
+        return await pool.fetchval(query, *args, column=column, timeout=timeout)
