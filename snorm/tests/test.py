@@ -53,6 +53,12 @@ class Field(object):
             raise ValueError("Value did not pass validation check for '%s'" % (self.name,))
         return value
 
+    def get_default(self):
+        if callable(self.default):
+            return self.default()
+        else:
+            return self.default
+
 from abc import ABCMeta
 from collections import OrderedDict
 
@@ -63,7 +69,11 @@ class ModelMeta(ABCMeta):
         _class_ = super().__new__(mcs, 'x_' + class_name, new_bases, attrs)
         _fields_ = getattr(_class_, '_fields_', {})
 
-        rserved_attrs = ['_class_', '_classcell_', '_fields_', '_select_', '_select1_', '_filter_', '_first_', '_insert_', '_update_', '_save_']
+        rserved_attrs = ['_class_', '_classcell_', '_fields_',
+                        '_select_', '_select1_', '_filter_',
+                        '_first_', '_insert_', '_update_',
+                        '_save_', '_get_table_name_',
+                        '_get_db_instance_',]
         new_attrs = {}
 
         db_instance_given = False
@@ -74,6 +84,7 @@ class ModelMeta(ABCMeta):
                     raise AttributeError("'%s' is a reserved attribute for class"
                                         "'%s' defined in '%r'. Please do not "
                                         "redefine it as a field value." % (n, class_name, mcs,))
+                v.name = n
                 _fields_[n] = v
             elif n in attrs:
                 new_attrs[n] = attrs[n]
@@ -93,6 +104,7 @@ class ModelMeta(ABCMeta):
             new_attrs['__classcell__'] = classcell
         return super().__new__(mcs, class_name, bases, new_attrs)
 
+class ItemDoesNotExistError(Exception): pass
 
 class _Model_(metaclass=ModelMeta):
     _db_instance_no_check_ = True # internal use only
@@ -101,6 +113,11 @@ class _Model_(metaclass=ModelMeta):
     '''_db_instance_ will be inherited in subclasses'''
     _table_name_ = None
     """_table_name_ will not be inherited in subclasses"""
+
+    _exclude_up_keys_ = ()
+    _exclude_up_values_ = ()
+    _exclude_down_keys_ = ()
+    _exclude_down_values = ()
 
 
 
@@ -128,7 +145,7 @@ class _Model_(metaclass=ModelMeta):
             list: List of model instances
         """
         if not prepared_args: prepared_args = []
-        query = 'SELECT %s FROM %s WHERE %s' % (what, cls._get_table_name_(), where)
+        query = 'SELECT %s FROM "%s" WHERE %s' % (what, cls._get_table_name_(), where)
         return await cls._get_db_instance_().fetch(query, *prepared_args, model_class=cls)
 
     @classmethod
@@ -161,7 +178,7 @@ class _Model_(metaclass=ModelMeta):
             Model: A model instance.
         """
         if not prepared_args: prepared_args = []
-        query = 'SELECT %s FROM %s WHERE %s LIMIT 1' % (what, cls._get_table_name_(), where)
+        query = 'SELECT %s FROM "%s" WHERE %s LIMIT 1' % (what, cls._get_table_name_(), where)
         return await cls._get_db_instance_().fetchrow(query, *prepared_args, model_class=cls)
 
     @classmethod
@@ -179,21 +196,128 @@ class _Model_(metaclass=ModelMeta):
         """
         return await cls._select1_(where=where, prepared_args=prepared_args)
 
-    async def _insert_(self, exclude_values=None, exclude_keys=None):
-        if not exclude_values: exclude_values = []
-        if not exclude_keys: exclude_keys = []
+    # @classmethod
+    # def _get_props_(cls):
+    #     props = {}
+    #     for k,v in cls._fields_.items():
+    #         props[k] = v.sql_def
+    #     return props
 
-class User(_Model_):
+    def _get_insert_query_(self, exclude_values=(), exclude_keys=()):
+        pk = self._pk_
+        table = self.__class__._get_table_name_()
+        query = f"INSERT INTO \"{table}\""
+        columns = '('
+        values = '('
+        args = []
+        c = 0
+        for k,field in self._fields_.items():
+            if k in exclude_keys \
+                or k in self._exclude_up_keys_:
+                continue
+            v = getattr(self, k, Void)
+            if v is Void or v is None:
+                v = field.get_default()
+            if v is Void:
+                # we don't have any value for k
+                continue
+            if v in exclude_values \
+                or v in self._exclude_up_values_:
+                continue
+            c = c + 1
+            columns = f"{columns} \"{k}\","
+            values = f"{values} ${c},"
+            args.append(v)
+        columns = columns.strip(',')
+        values = values.strip(',')
+
+        query = f"{query} {columns}) VALUES {values})  RETURNING {pk}"
+        return query, args
+
+    def _get_update_query_(self, exclude_values=(), exclude_keys=()):
+        table = self.__class__._get_table_name_()
+        pk = self._pk_
+        try:
+            pkval = getattr(self, pk)
+            if not pkval:
+                raise ItemDoesNotExistError("Can not update. Item does not exist.")
+        except AttributeError:
+            raise ItemDoesNotExistError("Can not update. Item does not exist.")
+        query = f"UPDATE \"{table}\" SET "
+        args = []
+        c = 0
+        for k,field in self._fields_.items():
+            if k in exclude_keys \
+                or k in self._exclude_up_keys_:
+                continue
+            v = getattr(self, k, Void)
+            if v is Void or v is None:
+                v = field.get_default()
+            if v is Void:
+                # we don't have any value for k
+                continue
+            if v in exclude_values \
+                or v in self._exclude_up_values_:
+                continue
+            if k == pk:
+                continue
+            c = c + 1
+            query = f"{query} \"{k}\"=${c},"
+            args.append(v)
+        query = query.strip(',')
+
+        c = c + 1
+        query = f"{query} WHERE {pk}=${c}"
+        args.append(pkval)
+
+        return query, args
+
+    async def _insert_(self, exclude_values=(), exclude_keys=()):
+        query, args = self._get_insert_query_(exclude_values=exclude_values, exclude_keys=exclude_keys)
+        cls = self.__class__
+        pkval = await cls._get_db_instance_().fetchval(query, *args)
+        setattr(self, self._pk_, pkval)
+        return pkval
+
+    async def _update_(self, exclude_values=(), exclude_keys=()):
+        query, args = self._get_update_query_(exclude_values=exclude_values, exclude_keys=exclude_keys)
+        cls = self.__class__
+        return await cls._get_db_instance_().fetchrow(query, *args)
+
+    async def _save_(self, exclude_values=(), exclude_keys=()):
+        pk = self._pk_
+        try:
+            return await self._update_(exclude_values=exclude_values, exclude_keys=exclude_keys)
+        except ItemDoesNotExistError:
+            return await self._insert_(exclude_values=exclude_values, exclude_keys=exclude_keys)
+
+
+
+class Model(_Model_):
+
+    _db_instance_no_check_ = True # internal use only
+
+    _db_instance_ = None
+    '''_db_instance_ will be inherited in subclasses'''
+    _table_name_ = None
+    """_table_name_ will not be inherited in subclasses"""
+
+    _pk_ = 'id'
+    '''If you use different primary key, you must define it accordingly'''
+    id = Field('INT primary key')
+
+
+
+class User(Model):
     _db_instance_ = DB(SNORM_DB_POOL)
     name = Field('varchar(255)')
     profession = Field('varchar(255)')
-    id = Field('INT primary key')
 
 class BigUser(User):
     age = Field("int")
 
 
-class Test_Table(User):pass
+class test_table(User):pass
 
 
 
@@ -204,11 +328,28 @@ class TestMethods(unittest.TestCase):
         dbpool = await db.pool()
         await dbpool.execute('CREATE TABLE IF NOT EXISTS "BigUser" (id SERIAL not null PRIMARY KEY, name varchar(255), profession varchar(255), age int)')
         # await db.execute('INSERT into test_table')
-        mos = await Test_Table._first_(where='name like $1 order by id asc', prepared_args=['%dumm%'])
+        mos = await test_table._first_(where='name like $1 order by id asc', prepared_args=['%dumm%'])
         print(mos.__dict__)
-        # print(mos[0].__dict__)
-        print(BigUser()._fields_)
-        print(BigUser._get_table_name_())
+        # # print(mos[0].__dict__)
+        # print(BigUser()._fields_)
+        # print(BigUser._get_table_name_())
+        # b = BigUser()
+        # b.name = 'jahid'
+        # b.age = 28
+        # print(b._get_insert_query_())
+        # id = await b._insert_()
+        # print(id)
+
+        # b1 = await BigUser._first_(where='id=1')
+        # b1.name = 'Jahidul Hamid'
+        # print(b1._get_update_query_())
+        # await b1._update_()
+        b = BigUser()
+        b.name = 'John Doe'
+        b.profession = 'Teacher'
+        await b._save_()
+        b.age = 32
+        await b._save_()
 
     def test_default(self):
         asyncio.get_event_loop().run_until_complete(self._test_default())
