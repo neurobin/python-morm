@@ -69,21 +69,14 @@ class ModelMeta(ABCMeta):
         _class_ = super().__new__(mcs, 'x_' + class_name, new_bases, attrs)
         _fields_ = getattr(_class_, '_fields_', {})
 
-        rserved_attrs = ['_class_', '_classcell_', '_fields_',
-                        '_select_', '_select1_', '_filter_',
-                        '_first_', '_insert_', '_update_',
-                        '_save_', '_get_table_name_',
-                        '_get_db_instance_',]
         new_attrs = {}
-
         db_instance_given = False
         for n in dir(_class_):
             v = getattr(_class_, n)
             if isinstance(v, Field):
-                if n in rserved_attrs:
-                    raise AttributeError("'%s' is a reserved attribute for class"
-                                        "'%s' defined in '%r'. Please do not "
-                                        "redefine it as a field value." % (n, class_name, mcs,))
+                if n.startswith('_') and n.endswith('_'):
+                    raise AttributeError(f"Invalid field name '{n}' in model '{class_name}'. \
+                        Field name must not start and end with an underscore.")
                 v.name = n
                 _fields_[n] = v
             elif n in attrs:
@@ -116,8 +109,8 @@ class _Model_(metaclass=ModelMeta):
 
     _exclude_up_keys_ = ()
     _exclude_up_values_ = ()
-    _exclude_down_keys_ = ()
-    _exclude_down_values = ()
+    _exclude_down_keys_ = ()    # TODO: implement in select
+    _exclude_down_values = ()   # TODO: implement in select
 
 
 
@@ -203,14 +196,7 @@ class _Model_(metaclass=ModelMeta):
     #         props[k] = v.sql_def
     #     return props
 
-    def _get_insert_query_(self, exclude_values=(), exclude_keys=()):
-        pk = self._pk_
-        table = self.__class__._get_table_name_()
-        query = f"INSERT INTO \"{table}\""
-        columns = '('
-        values = '('
-        args = []
-        c = 0
+    def _active_fields_(self, exclude_values, exclude_keys):
         for k,field in self._fields_.items():
             if k in exclude_keys \
                 or k in self._exclude_up_keys_:
@@ -224,6 +210,17 @@ class _Model_(metaclass=ModelMeta):
             if v in exclude_values \
                 or v in self._exclude_up_values_:
                 continue
+            yield k, v, field
+
+    def _get_insert_query_(self, exclude_values=(), exclude_keys=()):
+        pk = self._pk_
+        table = self.__class__._get_table_name_()
+        query = f"INSERT INTO \"{table}\""
+        columns = '('
+        values = '('
+        args = []
+        c = 0
+        for k, v, field in self._active_fields_(exclude_values, exclude_keys):
             c = c + 1
             columns = f"{columns} \"{k}\","
             values = f"{values} ${c},"
@@ -246,21 +243,7 @@ class _Model_(metaclass=ModelMeta):
         query = f"UPDATE \"{table}\" SET "
         args = []
         c = 0
-        for k,field in self._fields_.items():
-            if k in exclude_keys \
-                or k in self._exclude_up_keys_:
-                continue
-            v = getattr(self, k, Void)
-            if v is Void or v is None:
-                v = field.get_default()
-            if v is Void:
-                # we don't have any value for k
-                continue
-            if v in exclude_values \
-                or v in self._exclude_up_values_:
-                continue
-            if k == pk:
-                continue
+        for k, v, field in self._active_fields_(exclude_values, exclude_keys):
             c = c + 1
             query = f"{query} \"{k}\"=${c},"
             args.append(v)
@@ -306,6 +289,13 @@ class Model(_Model_):
     '''If you use different primary key, you must define it accordingly'''
     id = Field('SERIAL NOT NULL PRIMARY KEY')
 
+    def __setattr__(self, k, v):
+        if not k.startswith('_') and k not in self._fields_:
+            raise AttributeError(f"No such attribute ('{k}') in model '{self.__class__.__name__}''")
+        if k in self._fields_:
+            v = self._fields_[k].clean(v)
+        super().__setattr__(k, v)
+
 
 
 class User(Model):
@@ -345,10 +335,10 @@ class TestMethods(unittest.TestCase):
         # print(b1._get_update_query_())
         # await b1._update_()
         b = BigUser()
-        b.name = 'John Doe'
+        b.name = 'John Doeee'
         b.profession = 'Teacher'
         await b._save_()
-        b.age = 32
+        b.age = 34
         await b._save_()
 
     def test_default(self):
