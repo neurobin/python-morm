@@ -38,9 +38,10 @@ class Model(object):
 
     @classmethod
     def _get_table_name_(cls):
-        if hasattr(cls, '_table_name_'):
+        try:
             return cls._table_name_
-        return cls.__name__
+        except AttributeError:
+            return cls.__name__
 
     @classmethod
     def _get_dbi(cls):
@@ -63,6 +64,21 @@ class Model(object):
         return await cls._get_dbi().select(query, *prepared_args, model_class=cls)
 
     @classmethod
+    async def _filter(cls, where='true', prepared_args=None):
+        """Filter according to where condition
+
+        e.g: "name like '%dummy%' and profession='teacher'"
+
+        Args:
+            where (str, optional): where condition. Defaults to 'true'.
+            prepared_args (list, optional): prepared arguments. Defaults to None.
+
+        Returns:
+            list: List of model instances.
+        """
+        return await cls._select(where=where, prepared_args=prepared_args)
+
+    @classmethod
     async def _select_first(cls, what='*', where='true', prepared_args=None):
         """Make a select query to retrieve one item of from this model.
 
@@ -77,8 +93,23 @@ class Model(object):
             Model: A model instance.
         """
         if not prepared_args: prepared_args = []
-        query = 'SELECT %s FROM %s WHERE %s limit 1' % (what, cls._get_table_name_(), where)
+        query = 'SELECT %s FROM %s WHERE %s LIMIT 1' % (what, cls._get_table_name_(), where)
         return await cls._get_dbi().select_first(query, *prepared_args, model_class=cls)
+
+    @classmethod
+    async def _first(cls, where='true', prepared_args=None):
+        """Get the first item that matches the where condition
+
+        e.g: "name like '%dummy%' and profession='teacher'"
+
+        Args:
+            where (str, optional): where condition. Defaults to 'true'.
+            prepared_args (list, optional): prepared args. Defaults to None.
+
+        Returns:
+            Model: A model instance
+        """
+        return await cls._select_first(where=where, prepared_args=prepared_args)
 
 
 
@@ -88,7 +119,7 @@ class TestMethods(unittest.TestCase):
         db = DB(SNORM_DB_POOL)
         await db.execute('CREATE TABLE IF NOT EXISTS test_table (id SERIAL not null PRIMARY KEY, name varchar(255))')
         # await db.execute('INSERT into test_table')
-        mos = await Model._select_first(where='name like $1 order by id asc', prepared_args=['%dumm%'])
+        mos = await Model._first(where='name like $1 order by id asc', prepared_args=['%dumm%'])
         print(mos.__dict__)
         # print(mos[0].__dict__)
 
