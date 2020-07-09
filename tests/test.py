@@ -48,7 +48,7 @@ class test_table(User):pass
 
 class TestMethods(unittest.TestCase):
 
-    async def _test_default(self):
+    async def _test_transaction(self):
         # db = DB(SNORM_DB_POOL)
         # dbpool = await db.pool()
         # await dbpool.execute('CREATE TABLE IF NOT EXISTS "BigUser" (id SERIAL not null PRIMARY KEY, name varchar(255), profession varchar(255), age int)')
@@ -89,9 +89,9 @@ class TestMethods(unittest.TestCase):
             #     # await asyncio.sleep()
             async with Transaction(BigUser._db_) as con:
                 print("with con: ", con)
-                b = await BigUser._get_('id=1', connection=con)
+                b = await BigUser._get_('id=1', con=con)
                 b.age += 2
-                await b._save_(connection=con)
+                await b._save_(con=con)
                 raise Exception
         except:
             raise
@@ -100,10 +100,9 @@ class TestMethods(unittest.TestCase):
         print("cleaning db pool ...")
         await SNORM_DB_POOL.close()
 
-    def test_default(self):
+    def test_transaction(self):
         try:
-            group = asyncio.gather(*[self._test_default() for i in range(5)])
-
+            group = asyncio.gather(*[self._test_transaction() for i in range(5)])
             asyncio.get_event_loop().run_until_complete(asyncio.gather(group))
         finally:
             asyncio.get_event_loop().run_until_complete(self.clean())

@@ -8,10 +8,11 @@ __version__ = '0.0.1'
 
 import typing
 from abc import ABCMeta
+from asyncpg import Record # type: ignore
 from morm.exceptions import ItemDoesNotExistError
 from morm.fields import Field
 from morm.types import Void
-from morm.db import DB, Q
+# morm.db must not be imported here.
 
 
 class _ModelMeta_(ABCMeta):
@@ -54,7 +55,7 @@ class _ModelMeta_(ABCMeta):
 class _Model_(metaclass=_ModelMeta_):
     _db_no_check_: bool = True # internal use only
 
-    _db_: typing.Optional[DB] = None
+    _db_: typing.Any = None
     '''_db_ will be inherited in subclasses'''
     _table_name_: typing.Optional[str] = None
     """_table_name_ will not be inherited in subclasses"""
@@ -383,7 +384,7 @@ class Model(_Model_):
 
     _db_no_check_: bool = True # internal use only
 
-    _db_: typing.Optional[DB] = None
+    _db_: typing.Any = None
     '''_db_ will be inherited in subclasses'''
 
     _table_name_: typing.Optional[str] = None
