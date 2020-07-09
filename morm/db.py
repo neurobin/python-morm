@@ -12,7 +12,7 @@ from typing import Optional
 
 
 class Pool(object):
-    def __init__(self, dsn: Optional[str] = None,
+    def __init__(self, dsn: str = None,
                  min_size: int = 10,
                  max_size: int = 100,
                  max_queries: int = 50000,
@@ -22,6 +22,21 @@ class Pool(object):
                  loop=None,
                  connection_class=asyncpg.connection.Connection,
                  **connect_kwargs):
+        """DB connection pool.
+
+        The parameters are same as `asyncpg.create_pool` function.
+
+        Args:
+            dsn (str, optional): DSN string. Defaults to None.
+            min_size (int, optional): Minimum connection in the pool. Defaults to 10.
+            max_size (int, optional): Maximum connection in the pool. Defaults to 100.
+            max_queries (int, optional): Number of queries after a connection is closed and replaced with a new connection. Defaults to 50000.
+            max_inactive_connection_lifetime (float, optional): Number of seconds after which inactive connections in the pool will be closed.  Pass `0` to disable this mechanism. Defaults to 300.0.
+            setup ([type], optional): A coroutine to prepare a connection right before it is returned  from `Pool.acquire()`. Defaults to None.
+            init ([type], optional): A coroutine to initialize a connection when it is created. Defaults to None.
+            loop ([type], optional): Asyncio even loop instance. Defaults to None.
+            connection_class ([type], optional): The class to use for connections.  Must be a subclass of `asyncpg.connection.Connection`. Defaults to asyncpg.connection.Connection.
+        """
         self._pool = None
         self.dsn = dsn
         self.min_size = min_size
