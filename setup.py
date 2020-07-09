@@ -5,7 +5,7 @@ import sys
 from codecs import open
 from setuptools import setup
 
-sys.path[0:0] = ['snorm']
+sys.path[0:0] = ['morm']
 
 from version import __version__
 
@@ -18,15 +18,15 @@ def get_readme(filename):
         pass
     return content
 
-setup(name="snorm",
+setup(name="morm",
       version=__version__,
       author="Md. Jahidul Hamid",
       author_email="jahidulhamid@yahoo.com",
-      description="A simple and normal database object relational mapper",
+      description="A minimal database object relational mapper",
       license="BSD",
       keywords="orm, postgresql",
-      url="https://github.com/neurobin/snorm",
-      packages=["snorm"],
+      url="https://github.com/neurobin/python-morm",
+      packages=["morm"],
       long_description=get_readme("README.md"),
       long_description_content_type="text/markdown",
       classifiers=[
@@ -43,4 +43,4 @@ setup(name="snorm",
       install_requires=['asyncpg',
                         'async-property>=0.2.1',
                         ],
-test_suite="snorm.tests.test")
+test_suite="morm.tests.test")

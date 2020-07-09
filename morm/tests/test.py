@@ -3,11 +3,11 @@ import logging
 import unittest
 from async_property import async_property, async_cached_property
 
-from snorm.db import Pool, DB
+from morm.db import Pool, DB
 from ocd import Void
 
 
-LOGGER_NAME = 'snorm-'
+LOGGER_NAME = 'morm-'
 log = logging.getLogger(LOGGER_NAME)
 
 def get_file_content(path):

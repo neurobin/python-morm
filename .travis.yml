@@ -7,5 +7,5 @@ python:
   - "nightly"
 # command to install dependencies
 script: 
- - python -m snorm.tests.test
+ - python -m morm.tests.test
 
