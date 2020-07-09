@@ -370,6 +370,17 @@ class Model(_Model_):
     user = User._get_(where=&#39;id=3&#39;)
     # user is a User object
     ```
+
+    **where query accepts prepared statement**. All of the above methods
+    can take a keyword argument `prepared_args` which is a list (or tuple) of
+    prepared arguments. Example:
+
+    ```python
+    # LIMIT 1 is added to the where quey, do not add it explicitly
+    user = User._get_(where=&#39;id=$1&#39;, prepared_args=[3])
+    # user is a User object
+    ```
+
     &#34;&#34;&#34;
 
     _db_instance_no_check_: bool = True # internal use only
@@ -508,6 +519,13 @@ user = User._select1_(what='*', where=&quot;name like '%Doe%' order by name asc&
 user = User._get_(where='id=3')
 # user is a User object
 </code></pre>
+<p><strong>where query accepts prepared statement</strong>. All of the above methods
+can take a keyword argument <code>prepared_args</code> which is a list (or tuple) of
+prepared arguments. Example:</p>
+<pre><code class="python"># LIMIT 1 is added to the where quey, do not add it explicitly
+user = User._get_(where='id=$1', prepared_args=[3])
+# user is a User object
+</code></pre>
 <h1 id="initialize-a-model-instance">Initialize a model instance.</h1>
 <p>keyword arguments initialize corresponding fields according to
 the keys.</p>
@@ -627,6 +645,17 @@ Model({'name': 'John Doe', 'profession': 'Teacher', 'active': True}, age=34)
     user = User._get_(where=&#39;id=3&#39;)
     # user is a User object
     ```
+
+    **where query accepts prepared statement**. All of the above methods
+    can take a keyword argument `prepared_args` which is a list (or tuple) of
+    prepared arguments. Example:
+
+    ```python
+    # LIMIT 1 is added to the where quey, do not add it explicitly
+    user = User._get_(where=&#39;id=$1&#39;, prepared_args=[3])
+    # user is a User object
+    ```
+
     &#34;&#34;&#34;
 
     _db_instance_no_check_: bool = True # internal use only

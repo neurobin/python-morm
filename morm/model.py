@@ -343,6 +343,17 @@ class Model(_Model_):
     user = User._get_(where='id=3')
     # user is a User object
     ```
+
+    **where query accepts prepared statement**. All of the above methods
+    can take a keyword argument `prepared_args` which is a list (or tuple) of
+    prepared arguments. Example:
+
+    ```python
+    # LIMIT 1 is added to the where quey, do not add it explicitly
+    user = User._get_(where='id=$1', prepared_args=[3])
+    # user is a User object
+    ```
+
     """
 
     _db_instance_no_check_: bool = True # internal use only
