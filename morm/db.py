@@ -8,14 +8,15 @@ __version__ = '0.1.0'
 
 
 import asyncpg # type: ignore
+from typing import Optional
 
 
 class Pool(object):
-    def __init__(self, dsn=None,
-                 min_size=10,
-                 max_size=100,
-                 max_queries=50000,
-                 max_inactive_connection_lifetime=300.0,
+    def __init__(self, dsn: Optional[str] = None,
+                 min_size: int = 10,
+                 max_size: int = 100,
+                 max_queries: int = 50000,
+                 max_inactive_connection_lifetime: float = 300.0,
                  setup=None,
                  init=None,
                  loop=None,
