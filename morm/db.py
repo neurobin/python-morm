@@ -10,6 +10,8 @@ __version__ = '0.1.0'
 import asyncpg # type: ignore
 from typing import Optional
 
+from morm.exceptions import TransactionError
+
 
 class Pool(object):
     def __init__(self, dsn: str = None,
@@ -76,6 +78,74 @@ class Pool(object):
             await self._pool.close()
 
 
+class Transaction():
+    def __init__(self, db, *,
+                isolation='read_committed',
+                readonly=False,
+                deferrable=False):
+        """Start a transaction.
+
+        Args:
+            db (DB): DB instance.
+            isolation (str, optional): Transaction isolation mode, can be one of: `'serializable'`, `'repeatable_read'`, `'read_committed'`. Defaults to 'read_committed'.
+            readonly (bool, optional): Specifies whether or not this transaction is read-only. Defaults to False.
+            deferrable (bool, optional): Specifies whether or not this transaction is deferrable. Defaults to False.
+        """
+        self.db = db
+        self.pool = None
+        self.tr = None
+        self.started = False
+        self.tr_args = {
+            'isolation': isolation,
+            'readonly': readonly,
+            'deferrable': deferrable,
+        }
+
+    async def __aenter__(self):
+        if self.started or self.db._con:
+            raise TransactionError('Another transaction is running')
+        await self.start()
+
+    async def start(self):
+        print('Starting transaction ...')
+        self.started = True
+        self.db._transaction = True
+        self.pool = await self.db.pool()
+        self.db._con = await self.pool.acquire()
+        self.tr = self.db._con.transaction(**self.tr_args)
+        await self.tr.start()
+
+    async def rollback(self):
+        if self.tr:
+            await self.tr.rollback()
+
+    async def commit(self):
+        if self.tr:
+            await self.tr.commit()
+
+    async def end(self):
+        try:
+            if self.pool and self.db._con:
+                await self.pool.release(self.db._con)
+        finally:
+            print('Transaction ended. Cleaning ...')
+            self.db._con = None
+            self.db._transaction = False
+            self.started = False
+            self.tr = None
+            self.pool = None
+
+    async def __aexit__(self, extype, ex, tb):
+        try:
+            if extype is not None:
+                await self.rollback()
+            else:
+                await self.commit()
+        finally:
+            self.end()
+
+
+
 class DB(object):
     """Helper class that can execute query taking a connection from a
     connection pool defined by a Pool object.
@@ -88,15 +158,38 @@ class DB(object):
             pool (Pool): A connection pool
         """
         self._pool = pool
+        self._con = None
+        self._transaction = False
 
+    def transaction(self, isolation='read_committed',
+                          readonly=False,
+                          deferrable=False):
+        return Transaction(self, isolation=isolation,
+                            readonly=readonly,
+                            deferrable=deferrable)
+
+    def is_in_transaction(self):
+        """Whether current connection is in transcation.
+
+        Returns:
+            bool: True if it's in transaction.
+        """
+        return self._transaction
 
     async def pool(self):
-        """Return the active connection pool
+        """Return the active connection pool or a connection if available.
+
+        If a connection is available, that connection will be returned
+        instead of the pool. Useful for implementing transaction.
 
         Returns:
             asyncpg.Pool: asyncpg.Pool object
         """
+        if self._con:
+            return self._con
         return await self._pool.pool()
+
+
 
 
     @staticmethod
