@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
+<meta name="generator" content="pdoc 0.7.5" />
+<title>morm.model API documentation</title>
+<meta name="description" content="Model." />
+<link href='https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.0/normalize.min.css' rel='stylesheet'>
+<link href='https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/8.0.0/sanitize.min.css' rel='stylesheet'>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css" rel="stylesheet">
+<style>.flex{display:flex !important}body{line-height:1.5em}#content{padding:20px}#sidebar{padding:30px;overflow:hidden}.http-server-breadcrumbs{font-size:130%;margin:0 0 15px 0}#footer{font-size:.75em;padding:5px 30px;border-top:1px solid #ddd;text-align:right}#footer p{margin:0 0 0 1em;display:inline-block}#footer p:last-child{margin-right:30px}h1,h2,h3,h4,h5{font-weight:300}h1{font-size:2.5em;line-height:1.1em}h2{font-size:1.75em;margin:1em 0 .50em 0}h3{font-size:1.4em;margin:25px 0 10px 0}h4{margin:0;font-size:105%}a{color:#058;text-decoration:none;transition:color .3s ease-in-out}a:hover{color:#e82}.title code{font-weight:bold}h2[id^="header-"]{margin-top:2em}.ident{color:#900}pre code{background:#f8f8f8;font-size:.8em;line-height:1.4em}code{background:#f2f2f1;padding:1px 4px;overflow-wrap:break-word}h1 code{background:transparent}pre{background:#f8f8f8;border:0;border-top:1px solid #ccc;border-bottom:1px solid #ccc;margin:1em 0;padding:1ex}#http-server-module-list{display:flex;flex-flow:column}#http-server-module-list div{display:flex}#http-server-module-list dt{min-width:10%}#http-server-module-list p{margin-top:0}.toc ul,#index{list-style-type:none;margin:0;padding:0}#index code{background:transparent}#index h3{border-bottom:1px solid #ddd}#index ul{padding:0}#index h4{font-weight:bold}#index h4 + ul{margin-bottom:.6em}@media (min-width:200ex){#index .two-column{column-count:2}}@media (min-width:300ex){#index .two-column{column-count:3}}dl{margin-bottom:2em}dl dl:last-child{margin-bottom:4em}dd{margin:0 0 1em 3em}#header-classes + dl > dd{margin-bottom:3em}dd dd{margin-left:2em}dd p{margin:10px 0}.name{background:#eee;font-weight:bold;font-size:.85em;padding:5px 10px;display:inline-block;min-width:40%}.name:hover{background:#e0e0e0}.name > span:first-child{white-space:nowrap}.name.class > span:nth-child(2){margin-left:.4em}.inherited{color:#999;border-left:5px solid #eee;padding-left:1em}.inheritance em{font-style:normal;font-weight:bold}.desc h2{font-weight:400;font-size:1.25em}.desc h3{font-size:1em}.desc dt code{background:inherit}.source summary,.git-link-div{color:#666;text-align:right;font-weight:400;font-size:.8em;text-transform:uppercase}.source summary > *{white-space:nowrap;cursor:pointer}.git-link{color:inherit;margin-left:1em}.source pre{max-height:500px;overflow:auto;margin:0}.source pre code{font-size:12px;overflow:visible}.hlist{list-style:none}.hlist li{display:inline}.hlist li:after{content:',\2002'}.hlist li:last-child:after{content:none}.hlist .hlist{display:inline;padding-left:1em}img{max-width:100%}.admonition{padding:.1em .5em;margin-bottom:1em}.admonition-title{font-weight:bold}.admonition.note,.admonition.info,.admonition.important{background:#aef}.admonition.todo,.admonition.versionadded,.admonition.tip,.admonition.hint{background:#dfd}.admonition.warning,.admonition.versionchanged,.admonition.deprecated{background:#fd4}.admonition.error,.admonition.danger,.admonition.caution{background:lightpink}</style>
+<style media="screen and (min-width: 700px)">@media screen and (min-width:700px){#sidebar{width:30%}#content{width:70%;max-width:100ch;padding:3em 4em;border-left:1px solid #ddd}pre code{font-size:1em}.item .name{font-size:1em}main{display:flex;flex-direction:row-reverse;justify-content:flex-end}.toc ul ul,#index ul{padding-left:1.5em}.toc > ul > li{margin-top:.5em}}</style>
+<style media="print">@media print{#sidebar h1{page-break-before:always}.source{display:none}}@media print{*{background:transparent !important;color:#000 !important;box-shadow:none !important;text-shadow:none !important}a[href]:after{content:" (" attr(href) ")";font-size:90%}a[href][title]:after{content:none}abbr[title]:after{content:" (" attr(title) ")"}.ir a:after,a[href^="javascript:"]:after,a[href^="#"]:after{content:""}pre,blockquote{border:1px solid #999;page-break-inside:avoid}thead{display:table-header-group}tr,img{page-break-inside:avoid}img{max-width:100% !important}@page{margin:0.5cm}p,h2,h3{orphans:3;widows:3}h1,h2,h3,h4,h5,h6{page-break-after:avoid}}</style>
+</head>
+<body>
+<main>
+<article id="content">
+<header>
+<h1 class="title">Module <code>morm.model</code></h1>
+</header>
+<section id="section-intro">
+<p>Model.</p>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">&#34;&#34;&#34;Model.
+&#34;&#34;&#34;
+
+__author__ = &#39;Md Jahidul Hamid &lt;jahidulhamid@yahoo.com&gt;&#39;
+__copyright__ = &#39;Copyright © Md Jahidul Hamid &lt;https://github.com/neurobin/&gt;&#39;
+__license__ = &#39;[BSD](http://www.opensource.org/licenses/bsd-license.php)&#39;
+__version__ = &#39;0.0.1&#39;
+
+import typing
+from abc import ABCMeta
+from morm.exceptions import ItemDoesNotExistError
+from morm.fields import Field
+from morm.types import Void
+from morm.db import DB
+
+
+class _ModelMeta_(ABCMeta):
+    def __new__(mcs, class_name, bases, attrs):
+        classcell = attrs.pop(&#39;__classcell__&#39;, None)
+        new_bases = tuple(base._class_ for base in bases if hasattr(base, &#39;_class_&#39;))
+        _class_ = super().__new__(mcs, &#39;x_&#39; + class_name, new_bases, attrs)
+        _fields_ = getattr(_class_, &#39;_fields_&#39;, {})
+
+        new_attrs = {}
+        db_instance_given = False
+        for n in dir(_class_):
+            v = getattr(_class_, n)
+            if isinstance(v, Field):
+                if n.startswith(&#39;_&#39;) and n.endswith(&#39;_&#39;):
+                    raise AttributeError(f&#34;Invalid field name &#39;{n}&#39; in model &#39;{class_name}&#39;. \
+                        Field name must not start and end with an underscore.&#34;)
+                v.name = n
+                _fields_[n] = v
+            elif n in attrs:
+                new_attrs[n] = attrs[n]
+            if n == &#39;_db_instance_&#39; and v:
+                db_instance_given = True
+
+        new_attrs[&#39;_fields_&#39;] = _fields_
+        new_attrs[&#39;_class_&#39;] = _class_
+
+        if not &#39;_table_name_&#39; in new_attrs:
+            new_attrs[&#39;_table_name_&#39;] = None
+        if not &#39;_db_instance_no_check_&#39; in new_attrs:
+            new_attrs[&#39;_db_instance_no_check_&#39;] = False
+        if not db_instance_given and not new_attrs[&#39;_db_instance_no_check_&#39;]:
+            raise AttributeError(f&#34;Attribute: _db_instance_ must be given in class {class_name}&#34;)
+        if classcell is not None:
+            new_attrs[&#39;__classcell__&#39;] = classcell
+        return super().__new__(mcs, class_name, bases, new_attrs)
+
+
+
+class _Model_(metaclass=_ModelMeta_):
+    _db_instance_no_check_: bool = True # internal use only
+
+    _db_instance_: typing.Optional[DB] = None
+    &#39;&#39;&#39;_db_instance_ will be inherited in subclasses&#39;&#39;&#39;
+    _table_name_: typing.Optional[str] = None
+    &#34;&#34;&#34;_table_name_ will not be inherited in subclasses&#34;&#34;&#34;
+
+    _exclude_up_keys_: tuple = ()
+    &#39;&#39;&#39;Exclude columns for these keys when saving the data to database&#39;&#39;&#39;
+    _exclude_up_values_: tuple = ()
+    &#39;&#39;&#39;Exclude columns for these values when saving the data to database&#39;&#39;&#39;
+    _exclude_down_keys_ : tuple= ()    # TODO: implement in select
+    &#39;&#39;&#39;Exclude columns for these keys when retrieving data from database&#39;&#39;&#39;
+    _exclude_down_values: tuple = ()   # TODO: implement in select
+    &#39;&#39;&#39;Exclude columns for these values when retrieving data from database&#39;&#39;&#39;
+
+
+
+    @classmethod
+    def _get_table_name_(cls):
+        if cls._table_name_:
+            return cls._table_name_
+        else:
+            return cls.__name__
+
+    @classmethod
+    def _get_db_instance_(cls):
+        return cls._db_instance_
+
+    @classmethod
+    async def _select_(cls, what=&#39;*&#39;, where=&#39;true&#39;, prepared_args=None):
+        &#34;&#34;&#34;Make a select query for this model.
+
+        Args:
+            what (str, optional): Columns. Defaults to &#39;*&#39;.
+            where (str, optional): Where conditon (sql). Defaults to &#39;true&#39;.
+            prepared_args (list, optional): prepared arguments. Defaults to None.
+
+        Returns:
+            list: List of model instances
+        &#34;&#34;&#34;
+        if not prepared_args: prepared_args = []
+        query = &#39;SELECT %s FROM &#34;%s&#34; WHERE %s&#39; % (what, cls._get_table_name_(), where)
+        return await cls._get_db_instance_().fetch(query, *prepared_args, model_class=cls)
+
+    @classmethod
+    async def _filter_(cls, where=&#39;true&#39;, prepared_args=None):
+        &#34;&#34;&#34;Filter according to where condition
+
+        e.g: &#34;name like &#39;%dummy%&#39; and profession=&#39;teacher&#39;&#34;
+
+        Args:
+            where (str, optional): where condition. Defaults to &#39;true&#39;.
+            prepared_args (list, optional): prepared arguments. Defaults to None.
+
+        Returns:
+            list: List of model instances.
+        &#34;&#34;&#34;
+        return await cls._select_(where=where, prepared_args=prepared_args)
+
+    @classmethod
+    async def _select1_(cls, what=&#39;*&#39;, where=&#39;true&#39;, prepared_args=None):
+        &#34;&#34;&#34;Make a select query to retrieve one item from this model.
+
+        &#39;LIMIT 1&#39; is added at the end of the query.
+
+        Args:
+            what (str, optional): Columns. Defaults to &#39;*&#39;.
+            where (str, optional): Where condition. Defaults to &#39;true&#39;.
+            prepared_args (list, optional): prepared arguments. Defaults to None.
+
+        Returns:
+            Model: A model instance.
+        &#34;&#34;&#34;
+        if not prepared_args: prepared_args = []
+        query = &#39;SELECT %s FROM &#34;%s&#34; WHERE %s LIMIT 1&#39; % (what, cls._get_table_name_(), where)
+        return await cls._get_db_instance_().fetchrow(query, *prepared_args, model_class=cls)
+
+    @classmethod
+    async def _get_(cls, where=&#39;true&#39;, prepared_args=None):
+        &#34;&#34;&#34;Get the first item that matches the where condition
+
+        e.g: &#34;name like &#39;%dummy%&#39; and profession=&#39;teacher&#39;&#34;
+
+        Args:
+            where (str, optional): where condition. Defaults to &#39;true&#39;.
+            prepared_args (list, optional): prepared args. Defaults to None.
+
+        Returns:
+            Model: A model instance
+        &#34;&#34;&#34;
+        return await cls._select1_(where=where, prepared_args=prepared_args)
+
+    def _active_fields_(self, exclude_values: tuple, exclude_keys: tuple):
+        for k,field in self._fields_.items():   # type: ignore
+            if k in exclude_keys \
+                or k in self._exclude_up_keys_:
+                continue
+            v = getattr(self, k, Void)
+            if v is Void or v is None:
+                v = field.get_default()
+            if v is Void:
+                # we don&#39;t have any value for k
+                continue
+            if v in exclude_values \
+                or v in self._exclude_up_values_:
+                continue
+            yield k, v, field
+
+    def _get_insert_query_(self, exclude_values=(), exclude_keys=()):
+        pk = self._pk_     # type: ignore
+        table = self.__class__._get_table_name_()
+        query = f&#34;INSERT INTO \&#34;{table}\&#34;&#34;
+        columns = &#39;(&#39;
+        values = &#39;(&#39;
+        args = []
+        c = 0
+        for k, v, field in self._active_fields_(exclude_values, exclude_keys):
+            c = c + 1
+            columns = f&#34;{columns} \&#34;{k}\&#34;,&#34;
+            values = f&#34;{values} ${c},&#34;
+            args.append(v)
+        columns = columns.strip(&#39;,&#39;)
+        values = values.strip(&#39;,&#39;)
+
+        query = f&#34;{query} {columns}) VALUES {values})  RETURNING {pk}&#34;
+        return query, args
+
+    def _get_update_query_(self, exclude_values=(), exclude_keys=()):
+        table = self.__class__._get_table_name_()
+        pk = self._pk_     # type: ignore
+        try:
+            pkval = getattr(self, pk)
+            if not pkval:
+                raise ItemDoesNotExistError(&#34;Can not update. Item does not exist.&#34;)
+        except AttributeError:
+            raise ItemDoesNotExistError(&#34;Can not update. Item does not exist.&#34;)
+        query = f&#34;UPDATE \&#34;{table}\&#34; SET &#34;
+        args = []
+        c = 0
+        for k, v, field in self._active_fields_(exclude_values, exclude_keys):
+            c = c + 1
+            query = f&#34;{query} \&#34;{k}\&#34;=${c},&#34;
+            args.append(v)
+        query = query.strip(&#39;,&#39;)
+
+        c = c + 1
+        query = f&#34;{query} WHERE {pk}=${c}&#34;
+        args.append(pkval)
+
+        return query, args
+
+    async def _insert_(self, exclude_values=(), exclude_keys=()):
+        query, args = self._get_insert_query_(exclude_values=exclude_values, exclude_keys=exclude_keys)
+        cls = self.__class__
+        pkval = await cls._get_db_instance_().fetchval(query, *args)
+        setattr(self, self._pk_, pkval)
+        return pkval
+
+    async def _update_(self, exclude_values=(), exclude_keys=()):
+        query, args = self._get_update_query_(exclude_values=exclude_values, exclude_keys=exclude_keys)
+        cls = self.__class__
+        return await cls._get_db_instance_().fetchrow(query, *args)
+
+    async def _save_(self, exclude_values=(), exclude_keys=()):
+        pk = self._pk_
+        try:
+            return await self._update_(exclude_values=exclude_values, exclude_keys=exclude_keys)
+        except ItemDoesNotExistError:
+            return await self._insert_(exclude_values=exclude_values, exclude_keys=exclude_keys)
+
+
+
+class Model(_Model_):
+
+    _db_instance_no_check_: bool = True # internal use only
+
+    _db_instance_: typing.Optional[DB] = None
+    &#39;&#39;&#39;_db_instance_ will be inherited in subclasses&#39;&#39;&#39;
+    _table_name_: typing.Optional[str] = None
+    &#34;&#34;&#34;_table_name_ will not be inherited in subclasses&#34;&#34;&#34;
+
+    _pk_: str = &#39;id&#39;
+    &#39;&#39;&#39;If you use different primary key, you must define it accordingly&#39;&#39;&#39;
+    id: Field = Field(&#39;SERIAL NOT NULL PRIMARY KEY&#39;)
+    &#39;&#39;&#39;Default primary key&#39;&#39;&#39;
+
+    def __init__(self, *args, **kwargs):
+        for arg in args:
+            try:
+                for k,v in arg.items():
+                    setattr(self, k, v)
+            except AttributeError:
+                raise ValueError(&#34;Invalid argument to Model __init__ method. Expected: dictionary or keyword argument&#34;)
+        for k,v in kwargs.items():
+            setattr(self, k, v)
+
+
+    def __setattr__(self, k, v):
+        if not k.startswith(&#39;_&#39;) and k not in self._fields_:
+            raise AttributeError(f&#34;No such attribute (&#39;{k}&#39;) in model &#39;{self.__class__.__name__}&#39;&#39;&#34;)
+        if k in self._fields_:
+            v = self._fields_[k].clean(v)
+        super().__setattr__(k, v)</code></pre>
+</details>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+<h2 class="section-title" id="header-classes">Classes</h2>
+<dl>
+<dt id="morm.model.Model"><code class="flex name class">
+<span>class <span class="ident">Model</span></span>
+<span>(</span><span>*args, **kwargs)</span>
+</code></dt>
+<dd>
+<section class="desc"></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class Model(_Model_):
+
+    _db_instance_no_check_: bool = True # internal use only
+
+    _db_instance_: typing.Optional[DB] = None
+    &#39;&#39;&#39;_db_instance_ will be inherited in subclasses&#39;&#39;&#39;
+    _table_name_: typing.Optional[str] = None
+    &#34;&#34;&#34;_table_name_ will not be inherited in subclasses&#34;&#34;&#34;
+
+    _pk_: str = &#39;id&#39;
+    &#39;&#39;&#39;If you use different primary key, you must define it accordingly&#39;&#39;&#39;
+    id: Field = Field(&#39;SERIAL NOT NULL PRIMARY KEY&#39;)
+    &#39;&#39;&#39;Default primary key&#39;&#39;&#39;
+
+    def __init__(self, *args, **kwargs):
+        for arg in args:
+            try:
+                for k,v in arg.items():
+                    setattr(self, k, v)
+            except AttributeError:
+                raise ValueError(&#34;Invalid argument to Model __init__ method. Expected: dictionary or keyword argument&#34;)
+        for k,v in kwargs.items():
+            setattr(self, k, v)
+
+
+    def __setattr__(self, k, v):
+        if not k.startswith(&#39;_&#39;) and k not in self._fields_:
+            raise AttributeError(f&#34;No such attribute (&#39;{k}&#39;) in model &#39;{self.__class__.__name__}&#39;&#39;&#34;)
+        if k in self._fields_:
+            v = self._fields_[k].clean(v)
+        super().__setattr__(k, v)</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li>morm.model._Model_</li>
+</ul>
+</dd>
+</dl>
+</section>
+</article>
+<nav id="sidebar">
+<h1>Index</h1>
+<div class="toc">
+<ul></ul>
+</div>
+<ul id="index">
+<li><h3><a href="#header-classes">Classes</a></h3>
+<ul>
+<li>
+<h4><code><a title="morm.model.Model" href="#morm.model.Model">Model</a></code></h4>
+</li>
+</ul>
+</li>
+</ul>
+</nav>
+</main>
+<footer id="footer">
+<p>Generated by <a href="https://pdoc3.github.io/pdoc"><cite>pdoc</cite> 0.7.5</a>.</p>
+</footer>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
+<script>hljs.initHighlightingOnLoad()</script>
+</body>
+</html>

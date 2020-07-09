@@ -205,23 +205,42 @@ class _Model_(metaclass=_ModelMeta_):
         return query, args
 
     async def _insert_(self, exclude_values=(), exclude_keys=()):
+        """Attempt an insert with the data on this model instance.
+
+        Args:
+            exclude_values (tuple, optional): Exclude columns that matches one of these values. Defaults to ().
+            exclude_keys (tuple, optional): Exclude columns that matches one of these keys. Defaults to ().
+        """
         query, args = self._get_insert_query_(exclude_values=exclude_values, exclude_keys=exclude_keys)
         cls = self.__class__
         pkval = await cls._get_db_instance_().fetchval(query, *args)
         setattr(self, self._pk_, pkval)
-        return pkval
 
     async def _update_(self, exclude_values=(), exclude_keys=()):
+        """Attempt an update with the data on this model instance.
+
+        Args:
+            exclude_values (tuple, optional): Exclude columns that matches one of these values. Defaults to ().
+            exclude_keys (tuple, optional): Exclude columns that matches one of these keys. Defaults to ().
+        """
         query, args = self._get_update_query_(exclude_values=exclude_values, exclude_keys=exclude_keys)
         cls = self.__class__
-        return await cls._get_db_instance_().fetchrow(query, *args)
+        await cls._get_db_instance_().fetchrow(query, *args, model_class=cls)
 
     async def _save_(self, exclude_values=(), exclude_keys=()):
-        pk = self._pk_
+        """Attempt to save the data on this model instance.
+
+        If pk exists, the data is updated and if pk does not exist,
+        the data is inserted.
+
+        Args:
+            exclude_values (tuple, optional): Exclude columns that matches one of these values. Defaults to ().
+            exclude_keys (tuple, optional): Exclude columns that matches one of these keys. Defaults to ().
+        """
         try:
-            return await self._update_(exclude_values=exclude_values, exclude_keys=exclude_keys)
+            await self._update_(exclude_values=exclude_values, exclude_keys=exclude_keys)
         except ItemDoesNotExistError:
-            return await self._insert_(exclude_values=exclude_values, exclude_keys=exclude_keys)
+            await self._insert_(exclude_values=exclude_values, exclude_keys=exclude_keys)
 
 
 
@@ -231,12 +250,14 @@ class Model(_Model_):
 
     _db_instance_: typing.Optional[DB] = None
     '''_db_instance_ will be inherited in subclasses'''
+
     _table_name_: typing.Optional[str] = None
     """_table_name_ will not be inherited in subclasses"""
 
     _pk_: str = 'id'
     '''If you use different primary key, you must define it accordingly'''
-    id: Field = Field('SERIAL NOT NULL PRIMARY KEY')
+
+    id = Field('SERIAL NOT NULL PRIMARY KEY')
     '''Default primary key'''
 
     def __init__(self, *args, **kwargs):
