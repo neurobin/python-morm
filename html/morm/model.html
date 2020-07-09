@@ -60,7 +60,7 @@ class _ModelMeta_(ABCMeta):
                 _fields_[n] = v
             elif n in attrs:
                 new_attrs[n] = attrs[n]
-            if n == &#39;_db_instance_&#39; and v:
+            if n == &#39;_db_&#39; and v:
                 db_instance_given = True
 
         new_attrs[&#39;_fields_&#39;] = _fields_
@@ -68,10 +68,10 @@ class _ModelMeta_(ABCMeta):
 
         if not &#39;_table_name_&#39; in new_attrs:
             new_attrs[&#39;_table_name_&#39;] = None
-        if not &#39;_db_instance_no_check_&#39; in new_attrs:
-            new_attrs[&#39;_db_instance_no_check_&#39;] = False
-        if not db_instance_given and not new_attrs[&#39;_db_instance_no_check_&#39;]:
-            raise AttributeError(f&#34;Attribute: _db_instance_ must be given in class {class_name}&#34;)
+        if not &#39;_db_no_check_&#39; in new_attrs:
+            new_attrs[&#39;_db_no_check_&#39;] = False
+        if not db_instance_given and not new_attrs[&#39;_db_no_check_&#39;]:
+            raise AttributeError(f&#34;Attribute: _db_ must be given in class {class_name}&#34;)
         if classcell is not None:
             new_attrs[&#39;__classcell__&#39;] = classcell
         return super().__new__(mcs, class_name, bases, new_attrs)
@@ -79,10 +79,10 @@ class _ModelMeta_(ABCMeta):
 
 
 class _Model_(metaclass=_ModelMeta_):
-    _db_instance_no_check_: bool = True # internal use only
+    _db_no_check_: bool = True # internal use only
 
-    _db_instance_: typing.Optional[DB] = None
-    &#39;&#39;&#39;_db_instance_ will be inherited in subclasses&#39;&#39;&#39;
+    _db_: typing.Optional[DB] = None
+    &#39;&#39;&#39;_db_ will be inherited in subclasses&#39;&#39;&#39;
     _table_name_: typing.Optional[str] = None
     &#34;&#34;&#34;_table_name_ will not be inherited in subclasses&#34;&#34;&#34;
 
@@ -105,8 +105,8 @@ class _Model_(metaclass=_ModelMeta_):
             return cls.__name__
 
     @classmethod
-    def _get_db_instance_(cls):
-        return cls._db_instance_
+    def _get_db_(cls):
+        return cls._db_
 
     @classmethod
     async def _select_(cls, what=&#39;*&#39;, where=&#39;true&#39;, prepared_args=None):
@@ -122,7 +122,7 @@ class _Model_(metaclass=_ModelMeta_):
         &#34;&#34;&#34;
         if not prepared_args: prepared_args = []
         query = &#39;SELECT %s FROM &#34;%s&#34; WHERE %s&#39; % (what, cls._get_table_name_(), where)
-        return await cls._get_db_instance_().fetch(query, *prepared_args, model_class=cls)
+        return await cls._get_db_().fetch(query, *prepared_args, model_class=cls)
 
     @classmethod
     async def _filter_(cls, where=&#39;true&#39;, prepared_args=None):
@@ -155,7 +155,7 @@ class _Model_(metaclass=_ModelMeta_):
         &#34;&#34;&#34;
         if not prepared_args: prepared_args = []
         query = &#39;SELECT %s FROM &#34;%s&#34; WHERE %s LIMIT 1&#39; % (what, cls._get_table_name_(), where)
-        return await cls._get_db_instance_().fetchrow(query, *prepared_args, model_class=cls)
+        return await cls._get_db_().fetchrow(query, *prepared_args, model_class=cls)
 
     @classmethod
     async def _get_(cls, where=&#39;true&#39;, prepared_args=None):
@@ -240,7 +240,7 @@ class _Model_(metaclass=_ModelMeta_):
         &#34;&#34;&#34;
         query, args = self._get_insert_query_(exclude_values=exclude_values, exclude_keys=exclude_keys)
         cls = self.__class__
-        pkval = await cls._get_db_instance_().fetchval(query, *args)
+        pkval = await cls._get_db_().fetchval(query, *args)
         setattr(self, self._pk_, pkval)
 
     async def _update_(self, exclude_values=(), exclude_keys=()):
@@ -252,7 +252,7 @@ class _Model_(metaclass=_ModelMeta_):
         &#34;&#34;&#34;
         query, args = self._get_update_query_(exclude_values=exclude_values, exclude_keys=exclude_keys)
         cls = self.__class__
-        await cls._get_db_instance_().fetchrow(query, *args, model_class=cls)
+        await cls._get_db_().fetchrow(query, *args, model_class=cls)
 
     async def _save_(self, exclude_values=(), exclude_keys=()):
         &#34;&#34;&#34;Attempt to save the data on this model instance.
@@ -281,7 +281,7 @@ class Model(_Model_):
     from morm.db import DB, Pool
 
     class Base(Model):
-        _db_instance_ = DB(MORM_DB_POOL)
+        _db_ = DB(MORM_DB_POOL)
         # we generally will not create any table for this model.
 
     class User(Base):
@@ -383,10 +383,10 @@ class Model(_Model_):
 
     &#34;&#34;&#34;
 
-    _db_instance_no_check_: bool = True # internal use only
+    _db_no_check_: bool = True # internal use only
 
-    _db_instance_: typing.Optional[DB] = None
-    &#39;&#39;&#39;_db_instance_ will be inherited in subclasses&#39;&#39;&#39;
+    _db_: typing.Optional[DB] = None
+    &#39;&#39;&#39;_db_ will be inherited in subclasses&#39;&#39;&#39;
 
     _table_name_: typing.Optional[str] = None
     &#34;&#34;&#34;_table_name_ will not be inherited in subclasses&#34;&#34;&#34;
@@ -456,7 +456,7 @@ class Model(_Model_):
 from morm.db import DB, Pool
 
 class Base(Model):
-    _db_instance_ = DB(MORM_DB_POOL)
+    _db_ = DB(MORM_DB_POOL)
     # we generally will not create any table for this model.
 
 class User(Base):
@@ -556,7 +556,7 @@ Model({'name': 'John Doe', 'profession': 'Teacher', 'active': True}, age=34)
     from morm.db import DB, Pool
 
     class Base(Model):
-        _db_instance_ = DB(MORM_DB_POOL)
+        _db_ = DB(MORM_DB_POOL)
         # we generally will not create any table for this model.
 
     class User(Base):
@@ -658,10 +658,10 @@ Model({'name': 'John Doe', 'profession': 'Teacher', 'active': True}, age=34)
 
     &#34;&#34;&#34;
 
-    _db_instance_no_check_: bool = True # internal use only
+    _db_no_check_: bool = True # internal use only
 
-    _db_instance_: typing.Optional[DB] = None
-    &#39;&#39;&#39;_db_instance_ will be inherited in subclasses&#39;&#39;&#39;
+    _db_: typing.Optional[DB] = None
+    &#39;&#39;&#39;_db_ will be inherited in subclasses&#39;&#39;&#39;
 
     _table_name_: typing.Optional[str] = None
     &#34;&#34;&#34;_table_name_ will not be inherited in subclasses&#34;&#34;&#34;

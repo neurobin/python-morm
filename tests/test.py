@@ -32,7 +32,7 @@ SNORM_DB_POOL = Pool(
 from morm import Model, Field
 
 class User(Model):
-    _db_instance_ = DB(SNORM_DB_POOL)
+    _db_ = DB(SNORM_DB_POOL)
     name = Field('varchar(255)')
     profession = Field('varchar(255)')
 

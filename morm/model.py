@@ -33,7 +33,7 @@ class _ModelMeta_(ABCMeta):
                 _fields_[n] = v
             elif n in attrs:
                 new_attrs[n] = attrs[n]
-            if n == '_db_instance_' and v:
+            if n == '_db_' and v:
                 db_instance_given = True
 
         new_attrs['_fields_'] = _fields_
@@ -41,10 +41,10 @@ class _ModelMeta_(ABCMeta):
 
         if not '_table_name_' in new_attrs:
             new_attrs['_table_name_'] = None
-        if not '_db_instance_no_check_' in new_attrs:
-            new_attrs['_db_instance_no_check_'] = False
-        if not db_instance_given and not new_attrs['_db_instance_no_check_']:
-            raise AttributeError(f"Attribute: _db_instance_ must be given in class {class_name}")
+        if not '_db_no_check_' in new_attrs:
+            new_attrs['_db_no_check_'] = False
+        if not db_instance_given and not new_attrs['_db_no_check_']:
+            raise AttributeError(f"Attribute: _db_ must be given in class {class_name}")
         if classcell is not None:
             new_attrs['__classcell__'] = classcell
         return super().__new__(mcs, class_name, bases, new_attrs)
@@ -52,10 +52,10 @@ class _ModelMeta_(ABCMeta):
 
 
 class _Model_(metaclass=_ModelMeta_):
-    _db_instance_no_check_: bool = True # internal use only
+    _db_no_check_: bool = True # internal use only
 
-    _db_instance_: typing.Optional[DB] = None
-    '''_db_instance_ will be inherited in subclasses'''
+    _db_: typing.Optional[DB] = None
+    '''_db_ will be inherited in subclasses'''
     _table_name_: typing.Optional[str] = None
     """_table_name_ will not be inherited in subclasses"""
 
@@ -78,8 +78,8 @@ class _Model_(metaclass=_ModelMeta_):
             return cls.__name__
 
     @classmethod
-    def _get_db_instance_(cls):
-        return cls._db_instance_
+    def _get_db_(cls):
+        return cls._db_
 
     @classmethod
     async def _select_(cls, what='*', where='true', prepared_args=None):
@@ -95,7 +95,7 @@ class _Model_(metaclass=_ModelMeta_):
         """
         if not prepared_args: prepared_args = []
         query = 'SELECT %s FROM "%s" WHERE %s' % (what, cls._get_table_name_(), where)
-        return await cls._get_db_instance_().fetch(query, *prepared_args, model_class=cls)
+        return await cls._get_db_().fetch(query, *prepared_args, model_class=cls)
 
     @classmethod
     async def _filter_(cls, where='true', prepared_args=None):
@@ -128,7 +128,7 @@ class _Model_(metaclass=_ModelMeta_):
         """
         if not prepared_args: prepared_args = []
         query = 'SELECT %s FROM "%s" WHERE %s LIMIT 1' % (what, cls._get_table_name_(), where)
-        return await cls._get_db_instance_().fetchrow(query, *prepared_args, model_class=cls)
+        return await cls._get_db_().fetchrow(query, *prepared_args, model_class=cls)
 
     @classmethod
     async def _get_(cls, where='true', prepared_args=None):
@@ -213,7 +213,7 @@ class _Model_(metaclass=_ModelMeta_):
         """
         query, args = self._get_insert_query_(exclude_values=exclude_values, exclude_keys=exclude_keys)
         cls = self.__class__
-        pkval = await cls._get_db_instance_().fetchval(query, *args)
+        pkval = await cls._get_db_().fetchval(query, *args)
         setattr(self, self._pk_, pkval)
 
     async def _update_(self, exclude_values=(), exclude_keys=()):
@@ -225,7 +225,7 @@ class _Model_(metaclass=_ModelMeta_):
         """
         query, args = self._get_update_query_(exclude_values=exclude_values, exclude_keys=exclude_keys)
         cls = self.__class__
-        await cls._get_db_instance_().fetchrow(query, *args, model_class=cls)
+        await cls._get_db_().fetchrow(query, *args, model_class=cls)
 
     async def _save_(self, exclude_values=(), exclude_keys=()):
         """Attempt to save the data on this model instance.
@@ -254,7 +254,7 @@ class Model(_Model_):
     from morm.db import DB, Pool
 
     class Base(Model):
-        _db_instance_ = DB(MORM_DB_POOL)
+        _db_ = DB(MORM_DB_POOL)
         # we generally will not create any table for this model.
 
     class User(Base):
@@ -356,10 +356,10 @@ class Model(_Model_):
 
     """
 
-    _db_instance_no_check_: bool = True # internal use only
+    _db_no_check_: bool = True # internal use only
 
-    _db_instance_: typing.Optional[DB] = None
-    '''_db_instance_ will be inherited in subclasses'''
+    _db_: typing.Optional[DB] = None
+    '''_db_ will be inherited in subclasses'''
 
     _table_name_: typing.Optional[str] = None
     """_table_name_ will not be inherited in subclasses"""
