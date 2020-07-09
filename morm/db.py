@@ -99,7 +99,7 @@ class Transaction():
 
         Args:
             db (DB): DB instance.
-            isolation (str, optional): Transaction isolation mode, can be one of: `'serializable'`, `'repeatable_read'`, `'read_committed'`. Defaults to 'read_committed'.
+            isolation (str, optional): Transaction isolation mode, can be one of: `'serializable'`, `'repeatable_read'`, `'read_committed'`. Defaults to 'read_committed'. See https://www.postgresql.org/docs/9.5/transaction-iso.html
             readonly (bool, optional): Specifies whether or not this transaction is read-only. Defaults to False.
             deferrable (bool, optional): Specifies whether or not this transaction is deferrable. Defaults to False.
         """

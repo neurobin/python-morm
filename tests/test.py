@@ -92,7 +92,7 @@ class TestMethods(unittest.TestCase):
                 b = await BigUser._get_('id=1', connection=con)
                 b.age += 2
                 await b._save_(connection=con)
-                # raise Exception
+                raise Exception
         except:
             raise
 
