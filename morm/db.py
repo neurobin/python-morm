@@ -161,13 +161,6 @@ class DB(object):
         self._con = None
         self._transaction = False
 
-    def transaction(self, isolation='read_committed',
-                          readonly=False,
-                          deferrable=False):
-        return Transaction(self, isolation=isolation,
-                            readonly=readonly,
-                            deferrable=deferrable)
-
     def is_in_transaction(self):
         """Whether current connection is in transcation.
 
