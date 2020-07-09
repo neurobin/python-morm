@@ -10,8 +10,18 @@ __version__ = '0.1.0'
 import asyncpg # type: ignore
 from typing import Optional
 
-from morm.exceptions import TransactionError
+from morm import exceptions
 
+def Q(name:str) -> str:
+    """SQL quote name by adding leading and trailing double quote.
+
+    Args:
+        name (str): name of table or column.
+
+    Returns:
+        str: Quoted name
+    """
+    return f'"{name}"'
 
 class Pool(object):
     def __init__(self, dsn: str = None,
@@ -74,6 +84,8 @@ class Pool(object):
         return self._pool
 
     async def close(self):
+        """Attempt to close the pool gracefully.
+        """
         if self._pool:
             await self._pool.close()
 
@@ -93,8 +105,8 @@ class Transaction():
         """
         self.db = db
         self.pool = None
+        self.con = None
         self.tr = None
-        self.started = False
         self.tr_args = {
             'isolation': isolation,
             'readonly': readonly,
@@ -102,21 +114,21 @@ class Transaction():
         }
 
     async def __aenter__(self):
-        if self.started or self.db._con:
-            raise TransactionError('Another transaction is running')
-        await self.start()
+        return await self.start()
 
     async def start(self):
+        if self.con:
+            raise exceptions.TransactionError('Another transaction is running (or not ended properly) with this Transaction object')
         print('Starting transaction ...')
-        self.started = True
-        self.db._transaction = True
         self.pool = await self.db.pool()
-        self.db._con = await self.pool.acquire()
-        self.tr = self.db._con.transaction(**self.tr_args)
+        self.con = await self.pool.acquire()
+        self.tr = self.con.transaction(**self.tr_args)
         await self.tr.start()
+        return self.con
 
     async def rollback(self):
         if self.tr:
+            print('rolling back ...')
             await self.tr.rollback()
 
     async def commit(self):
@@ -125,24 +137,23 @@ class Transaction():
 
     async def end(self):
         try:
-            if self.pool and self.db._con:
-                await self.pool.release(self.db._con)
+            if self.pool and self.con:
+                await self.pool.release(self.con)
         finally:
             print('Transaction ended. Cleaning ...')
-            self.db._con = None
-            self.db._transaction = False
-            self.started = False
-            self.tr = None
+            self.con = None
             self.pool = None
+            self.tr = None
 
     async def __aexit__(self, extype, ex, tb):
+        print(extype)
         try:
             if extype is not None:
                 await self.rollback()
             else:
                 await self.commit()
         finally:
-            self.end()
+            await self.end()
 
 
 
@@ -152,38 +163,34 @@ class DB(object):
     """
 
     def __init__(self, pool):
-        """Return a DB object setting a pool to get connection from.
+        """Initialize a DB object setting a pool to get connection from.
 
         Args:
             pool (Pool): A connection pool
         """
         self._pool = pool
-        self._con = None
-        self._transaction = False
-
-    def is_in_transaction(self):
-        """Whether current connection is in transcation.
-
-        Returns:
-            bool: True if it's in transaction.
-        """
-        return self._transaction
 
     async def pool(self):
-        """Return the active connection pool or a connection if available.
-
-        If a connection is available, that connection will be returned
-        instead of the pool. Useful for implementing transaction.
+        """Return the active connection pool.
 
         Returns:
             asyncpg.Pool: asyncpg.Pool object
         """
-        if self._con:
-            return self._con
         return await self._pool.pool()
 
+    async def get_connection_or_pool(self, connection):
+        """Return the connection if given, otherwise return a Pool
 
+        Args:
+            connection (asyncpg.Connection): Connection object or None
 
+        Returns:
+            asyncpg.Connection or asyncpg.Pool: asyncpg.Pool if connection is None.
+        """
+        if connection:
+            return connection
+        else:
+            return await self.pool()
 
     @staticmethod
     def record_to_model(record, model_class):
@@ -196,6 +203,7 @@ class DB(object):
     async def fetch(self, query: str, *args,
                     timeout: float = None,
                     model_class=None,
+                    connection=None,
                     ):
         """Make a query and get the results.
 
@@ -205,12 +213,13 @@ class DB(object):
             query (str): Query string.
             args (list or tuple): Query arguments.
             timeout (float, optional): Timeout value. Defaults to None.
-            model_class (class, optional): A model class. Defaults to None.
+            model_class (Model, optional): Defaults to None.
+            connection (asyncpg.Connection, optional): Defaults to None.
 
         Returns:
             list : List of records
         """
-        pool = await self.pool()
+        pool = await self.get_connection_or_pool(connection)
         records = await pool.fetch(query, *args, timeout=timeout)
         if not model_class:
             return records
@@ -224,6 +233,7 @@ class DB(object):
     async def fetchrow(self, query: str, *args,
                         timeout: float = None,
                         model_class=None,
+                        connection=None,
                         ):
         """Make a query and get the first row.
 
@@ -233,12 +243,15 @@ class DB(object):
             query (str): Query string.
             args (list or tuple): Query arguments.
             timeout (float, optional): Timeout value. Defaults to None.
-            model_class (class, optional): A model class. Defaults to None.
+            model_class (Model, optional): Defaults to None.
+            connection (asyncpg.Connection, optional): Defaults to None.
 
         Returns:
             Record or model_clas object or None if no rows were selected.
         """
-        pool = await self.pool()
+        print(connection)
+        pool = await self.get_connection_or_pool(connection)
+        print(pool)
         record = await pool.fetchrow(query, *args, timeout=timeout)
         if not model_class:
             return record
@@ -250,16 +263,19 @@ class DB(object):
 
     async def fetchval(self, query: str, *args,
                         column: int = 0,
-                        timeout: float = None):
+                        timeout: float = None,
+                        connection=None,
+                        ):
         """Run a query and return a column value in the first row.
 
         Args:
             query (str): Query to run.
             column (int, optional): Column index. Defaults to 0.
             timeout (float, optional): Timeout. Defaults to None.
+            connection (asyncpg.Connection, optional): Defaults to None.
 
         Returns:
             Any: Coulmn (indentified by index) value of first row.
         """
-        pool = await self.pool()
+        pool = await self.get_connection_or_pool(connection)
         return await pool.fetchval(query, *args, column=column, timeout=timeout)

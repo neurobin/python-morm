@@ -11,7 +11,7 @@ from abc import ABCMeta
 from morm.exceptions import ItemDoesNotExistError
 from morm.fields import Field
 from morm.types import Void
-from morm.db import DB
+from morm.db import DB, Q
 
 
 class _ModelMeta_(ABCMeta):
@@ -69,7 +69,6 @@ class _Model_(metaclass=_ModelMeta_):
     '''Exclude columns for these values when retrieving data from database'''
 
 
-
     @classmethod
     def _get_table_name_(cls):
         if cls._table_name_:
@@ -78,27 +77,24 @@ class _Model_(metaclass=_ModelMeta_):
             return cls.__name__
 
     @classmethod
-    def _get_db_(cls):
-        return cls._db_
-
-    @classmethod
-    async def _select_(cls, what='*', where='true', prepared_args=None):
+    async def _select_(cls, what='*', where='true', prepared_args=None, connection=None):
         """Make a select query for this model.
 
         Args:
             what (str, optional): Columns. Defaults to '*'.
             where (str, optional): Where conditon (sql). Defaults to 'true'.
             prepared_args (list, optional): prepared arguments. Defaults to None.
+            connection (asyncpg.Connection, optional): Defaults to None.
 
         Returns:
             list: List of model instances
         """
         if not prepared_args: prepared_args = []
         query = 'SELECT %s FROM "%s" WHERE %s' % (what, cls._get_table_name_(), where)
-        return await cls._get_db_().fetch(query, *prepared_args, model_class=cls)
+        return await cls._db_.fetch(query, *prepared_args, model_class=cls, connection=connection)
 
     @classmethod
-    async def _filter_(cls, where='true', prepared_args=None):
+    async def _filter_(cls, where='true', prepared_args=None, connection=None):
         """Filter according to where condition
 
         e.g: "name like '%dummy%' and profession='teacher'"
@@ -106,14 +102,15 @@ class _Model_(metaclass=_ModelMeta_):
         Args:
             where (str, optional): where condition. Defaults to 'true'.
             prepared_args (list, optional): prepared arguments. Defaults to None.
+            connection (asyncpg.Connection, optional): Defaults to None.
 
         Returns:
             list: List of model instances.
         """
-        return await cls._select_(where=where, prepared_args=prepared_args)
+        return await cls._select_(where=where, prepared_args=prepared_args, connection=connection)
 
     @classmethod
-    async def _select1_(cls, what='*', where='true', prepared_args=None):
+    async def _select1_(cls, what='*', where='true', prepared_args=None, connection=None):
         """Make a select query to retrieve one item from this model.
 
         'LIMIT 1' is added at the end of the query.
@@ -122,16 +119,17 @@ class _Model_(metaclass=_ModelMeta_):
             what (str, optional): Columns. Defaults to '*'.
             where (str, optional): Where condition. Defaults to 'true'.
             prepared_args (list, optional): prepared arguments. Defaults to None.
+            connection (asyncpg.Connection, optional): Defaults to None.
 
         Returns:
             Model: A model instance.
         """
         if not prepared_args: prepared_args = []
         query = 'SELECT %s FROM "%s" WHERE %s LIMIT 1' % (what, cls._get_table_name_(), where)
-        return await cls._get_db_().fetchrow(query, *prepared_args, model_class=cls)
+        return await cls._db_.fetchrow(query, *prepared_args, model_class=cls, connection=connection)
 
     @classmethod
-    async def _get_(cls, where='true', prepared_args=None):
+    async def _get_(cls, where='true', prepared_args=None, connection=None):
         """Get the first item that matches the where condition
 
         e.g: "name like '%dummy%' and profession='teacher'"
@@ -139,11 +137,41 @@ class _Model_(metaclass=_ModelMeta_):
         Args:
             where (str, optional): where condition. Defaults to 'true'.
             prepared_args (list, optional): prepared args. Defaults to None.
+            connection (asyncpg.Connection, optional): Defaults to None.
 
         Returns:
             Model: A model instance
         """
-        return await cls._select1_(where=where, prepared_args=prepared_args)
+        return await cls._select1_(where=where, prepared_args=prepared_args, connection=connection)
+
+    @classmethod
+    async def _update_(cls, what: str = '',
+                        where: str = '',
+                        prepared_args=None,
+                        returning_column=0,
+                        connection=None):
+        """Make an update query.
+
+        Args:
+            what (str, optional): what query, e.g "name='John Doe'". Defaults to ''.
+            where (str, optional): where query, e.g "id=2". Defaults to ''.
+            prepared_args (tuple, optional): Defaults to None.
+            returning_column (int, optional): index of column from the result to return. Defaults to 0.
+            connection (asyncpg.Connection, optional): Connection object. Defaults to None.
+
+        Raises:
+            ValueError: If what or where query is not given
+
+        Returns:
+            Any: value of the index 'column' from the query result.
+        """
+        if not what or not where:
+            raise ValueError("what or where value missing.")
+        if not prepared_args: prepared_args = []
+        query = 'UPDATE "%s" SET %s WHERE %s' % (cls._get_table_name_(), what, where)
+        return await cls._db_.fetchval(query, *prepared_args, column=returning_column, connection=connection) # type: ignore
+
+
 
     def _active_fields_(self, exclude_values: tuple, exclude_keys: tuple):
         for k,field in self._fields_.items():   # type: ignore
@@ -161,7 +189,7 @@ class _Model_(metaclass=_ModelMeta_):
                 continue
             yield k, v, field
 
-    def _get_insert_query_(self, exclude_values=(), exclude_keys=()):
+    def _get_insert_query_(self, exclude_values: tuple, exclude_keys: tuple):
         pk = self._pk_     # type: ignore
         table = self.__class__._get_table_name_()
         query = f"INSERT INTO \"{table}\""
@@ -180,7 +208,7 @@ class _Model_(metaclass=_ModelMeta_):
         query = f"{query} {columns}) VALUES {values})  RETURNING {pk}"
         return query, args
 
-    def _get_update_query_(self, exclude_values=(), exclude_keys=()):
+    def _get_update_query_(self, exclude_values: tuple, exclude_keys: tuple):
         table = self.__class__._get_table_name_()
         pk = self._pk_     # type: ignore
         try:
@@ -204,43 +232,50 @@ class _Model_(metaclass=_ModelMeta_):
 
         return query, args
 
-    async def _insert_(self, exclude_values=(), exclude_keys=()):
+    async def _insert_me_(self, exclude_values: tuple, exclude_keys: tuple, connection=None):
         """Attempt an insert with the data on this model instance.
 
         Args:
-            exclude_values (tuple, optional): Exclude columns that matches one of these values. Defaults to ().
-            exclude_keys (tuple, optional): Exclude columns that matches one of these keys. Defaults to ().
+            exclude_values (tuple): Exclude columns that matches one of these values.
+            exclude_keys (tuple): Exclude columns that matches one of these keys.
+            connection (asyncpg.Connection, optional): Defaults to None.
         """
-        query, args = self._get_insert_query_(exclude_values=exclude_values, exclude_keys=exclude_keys)
+        query, args = self._get_insert_query_(exclude_values, exclude_keys)
         cls = self.__class__
-        pkval = await cls._get_db_().fetchval(query, *args)
-        setattr(self, self._pk_, pkval)
+        pkval = await cls._db_.fetchval(query, *args, column=0, connection=connection) # type: ignore
+        setattr(self, self._pk_, pkval) # type: ignore
 
-    async def _update_(self, exclude_values=(), exclude_keys=()):
+    async def _update_me_(self, exclude_values: tuple, exclude_keys: tuple, connection=None):
         """Attempt an update with the data on this model instance.
 
         Args:
-            exclude_values (tuple, optional): Exclude columns that matches one of these values. Defaults to ().
-            exclude_keys (tuple, optional): Exclude columns that matches one of these keys. Defaults to ().
+            exclude_values (tuple): Exclude columns that matches one of these values.
+            exclude_keys (tuple): Exclude columns that matches one of these keys.
+            connection (asyncpg.Connection, optional): Defaults to None.
         """
-        query, args = self._get_update_query_(exclude_values=exclude_values, exclude_keys=exclude_keys)
+        print(connection)
+        query, args = self._get_update_query_(exclude_values, exclude_keys)
         cls = self.__class__
-        await cls._get_db_().fetchrow(query, *args, model_class=cls)
+        await cls._db_.fetchrow(query, *args, model_class=cls, connection=connection) # type: ignore
 
-    async def _save_(self, exclude_values=(), exclude_keys=()):
+    async def _save_(self, exclude_values=None, exclude_keys=None, connection=None):
         """Attempt to save the data on this model instance.
 
         If pk exists, the data is updated and if pk does not exist,
         the data is inserted.
 
         Args:
-            exclude_values (tuple, optional): Exclude columns that matches one of these values. Defaults to ().
-            exclude_keys (tuple, optional): Exclude columns that matches one of these keys. Defaults to ().
+            exclude_values (tuple, optional): Exclude columns that matches one of these values. Defaults to None.
+            exclude_keys (tuple, optional): Exclude columns that matches one of these keys. Defaults to None.
+            connection (asyncpg.Connection, optional): Defaults to None.
         """
+        print(connection)
+        if not exclude_values: exclude_values = ()
+        if not exclude_keys: exclude_keys = ()
         try:
-            await self._update_(exclude_values=exclude_values, exclude_keys=exclude_keys)
+            await self._update_me_(exclude_values, exclude_keys, connection=connection)
         except ItemDoesNotExistError:
-            await self._insert_(exclude_values=exclude_values, exclude_keys=exclude_keys)
+            await self._insert_me_(exclude_values, exclude_keys, connection=connection)
 
 
 
@@ -305,11 +340,6 @@ class Model(_Model_):
     ```python
     user = User(name='John Doe', email='jd@ex.com')
     user._save_() # saves the data in db (update if exists, otherwise insert)
-    # or you can directly call _insert_
-    user._insert_()
-    # or you can call _update_ if it already exists.
-    user.name = 'Jane Doe'
-    user._update_()
     ```
 
     ## Select/Filter/Get
