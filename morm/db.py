@@ -88,7 +88,6 @@ class Pool(object):
             asyncpg.pool.Pool: Pool object (singleton)
         """
         if not self._pool:
-            # print(self.dsn)
             self._pool = await asyncpg.create_pool(
                                         dsn=self.dsn,
                                         min_size=self.min_size,
@@ -107,6 +106,7 @@ class Pool(object):
         """
         if self._pool:
             await self._pool.close()
+            self._pool = None
 
 
 class DB(object):
@@ -193,9 +193,7 @@ class DB(object):
         Returns:
             Record or model_clas object or None if no rows were selected.
         """
-        print(con)
         pool = await self.get_connection_or_pool(con)
-        print(pool)
         record = await pool.fetchrow(query, *args, timeout=timeout)
         if not model_class:
             return record
@@ -249,7 +247,7 @@ class Transaction():
             'deferrable': deferrable,
         }
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> Connection:
         return await self.start()
 
     async def start(self) -> Connection:
@@ -263,7 +261,6 @@ class Transaction():
         """
         if self.con:
             raise exceptions.TransactionError('Another transaction is running (or not ended properly) with this Transaction object')
-        print('Starting transaction ...')
         self.pool = await self.db.pool()
         self.con = await self.pool.acquire() # type: ignore
         self.tr = self.con.transaction(**self.tr_args) # type: ignore
@@ -274,7 +271,6 @@ class Transaction():
         """Rollback the transaction.
         """
         if self.tr:
-            print('rolling back ...')
             await self.tr.rollback()
 
     async def commit(self):
@@ -292,13 +288,11 @@ class Transaction():
             if self.pool and self.con:
                 await self.pool.release(self.con)
         finally:
-            print('Transaction ended. Cleaning ...')
             self.con = None
             self.pool = None
             self.tr = None
 
     async def __aexit__(self, extype, ex, tb):
-        print(extype)
         try:
             if extype is not None:
                 await self.rollback()

@@ -251,7 +251,6 @@ class _Model_(metaclass=_ModelMeta_):
             exclude_keys (tuple, optional): Exclude columns that matches one of these keys. Defaults to ().
             con (asyncpg.Connection, optional): Defaults to None.
         """
-        print(con)
         query, args = self._get_update_query_(exclude_values=exclude_values, exclude_keys=exclude_keys)
         cls = self.__class__
         await cls._db_.fetchrow(query, *args, model_class=cls, con=con)
@@ -267,7 +266,6 @@ class _Model_(metaclass=_ModelMeta_):
             exclude_keys (tuple, optional): Exclude columns that matches one of these keys. Defaults to ().
             con (asyncpg.Connection, optional): Defaults to None.
         """
-        print(con)
         try:
             await self._update_me_(exclude_values=exclude_values, exclude_keys=exclude_keys, con=con)
         except ItemDoesNotExistError:
