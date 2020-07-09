@@ -1,68 +1,19 @@
-import asyncio
-import logging
-import unittest
-from async_property import async_property, async_cached_property
+"""Model.
+"""
 
-from morm.db import Pool, DB
-from ocd import Void
+__author__ = 'Md Jahidul Hamid <jahidulhamid@yahoo.com>'
+__copyright__ = 'Copyright © Md Jahidul Hamid <https://github.com/neurobin/>'
+__license__ = '[BSD](http://www.opensource.org/licenses/bsd-license.php)'
+__version__ = '0.0.1'
 
-
-LOGGER_NAME = 'morm-'
-log = logging.getLogger(LOGGER_NAME)
-
-def get_file_content(path):
-    cont = ''
-    try:
-        with open(path, 'r') as f:
-            cont = f.read();
-    except Exception as e:
-        log.exception("E: could not read file: " + path)
-    return cont
-
-
-SNORM_DB_POOL = Pool(
-    dsn='postgres://',
-    host='localhost',
-    port=5432,
-    user='jahid',
-    password='jahid',
-    database='test',
-    min_size=10,
-    max_size=100,
-)
-
-def always_valid(value):
-    return True
-
-def nomodify(value):
-    return value
-
-class Field(object):
-    def __init__(self, sql_def, default=Void,
-                 validator=always_valid,
-                 modifier=nomodify):
-        self.sql_def = sql_def
-        self.default = default
-        self.validator = validator
-        self.modifier = modifier
-        self.name = ''
-
-    def clean(self, value):
-        value = self.modifier(value)
-        if not self.validator(value):
-            raise ValueError("Value did not pass validation check for '%s'" % (self.name,))
-        return value
-
-    def get_default(self):
-        if callable(self.default):
-            return self.default()
-        else:
-            return self.default
 
 from abc import ABCMeta
-from collections import OrderedDict
+from morm.exceptions import ItemDoesNotExistError
+from morm.fields import Field
+from morm.types import Void
 
-class ModelMeta(ABCMeta):
+
+class _ModelMeta_(ABCMeta):
     def __new__(mcs, class_name, bases, attrs):
         classcell = attrs.pop('__classcell__', None)
         new_bases = tuple(base._class_ for base in bases if hasattr(base, '_class_'))
@@ -97,9 +48,9 @@ class ModelMeta(ABCMeta):
             new_attrs['__classcell__'] = classcell
         return super().__new__(mcs, class_name, bases, new_attrs)
 
-class ItemDoesNotExistError(Exception): pass
 
-class _Model_(metaclass=ModelMeta):
+
+class _Model_(metaclass=_ModelMeta_):
     _db_instance_no_check_ = True # internal use only
 
     _db_instance_ = None
@@ -311,60 +262,3 @@ class Model(_Model_):
         if k in self._fields_:
             v = self._fields_[k].clean(v)
         super().__setattr__(k, v)
-
-
-
-class User(Model):
-    _db_instance_ = DB(SNORM_DB_POOL)
-    name = Field('varchar(255)')
-    profession = Field('varchar(255)')
-
-class BigUser(User):
-    age = Field("int")
-
-
-class test_table(User):pass
-
-
-
-class TestMethods(unittest.TestCase):
-
-    async def _test_default(self):
-        db = DB(SNORM_DB_POOL)
-        dbpool = await db.pool()
-        await dbpool.execute('CREATE TABLE IF NOT EXISTS "BigUser" (id SERIAL not null PRIMARY KEY, name varchar(255), profession varchar(255), age int)')
-        # await db.execute('INSERT into test_table')
-        mos = await test_table._get_(where='name like $1 order by id asc', prepared_args=['%dumm%'])
-        print(mos.__dict__)
-        # # print(mos[0].__dict__)
-        # print(BigUser()._fields_)
-        # print(BigUser._get_table_name_())
-        # b = BigUser()
-        # b.name = 'jahid'
-        # b.age = 28
-        # print(b._get_insert_query_())
-        # id = await b._insert_()
-        # print(id)
-
-        # b1 = await BigUser._get_(where='id=1')
-        # b1.name = 'Jahidul Hamid'
-        # print(b1._get_update_query_())
-        # await b1._update_()
-        # b = BigUser()
-        # b.name = 'John Doeee'
-        # b.profession = 'Teacher'
-        # await b._save_()
-        # b.age = 34
-        # await b._save_()
-        d = {
-            'name': 'John Doe',
-            'age': 45,
-        }
-        b = BigUser(d)
-        await b._save_()
-
-    def test_default(self):
-        asyncio.get_event_loop().run_until_complete(self._test_default())
-
-if __name__ == "__main__":
-    unittest.main()
