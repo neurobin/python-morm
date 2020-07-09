@@ -250,6 +250,9 @@ class Model(_Model_):
     example model classes would look like:
 
     ```python
+    from morm import Model, Field
+    from morm.db import DB, Pool
+
     class Base(Model):
         _db_instance_ = DB(MORM_DB_POOL)
         # we generally will not create any table for this model.
@@ -262,11 +265,26 @@ class Model(_Model_):
         password = Field('varchar(256)')
     ```
 
-    The default primary key is 'id'. If you want to set a custom primary
+    `MORM_DB_POOL` is a `Pool` object with database settings. Example:
+
+    ```python
+    MORM_DB_POOL = Pool(
+        dsn='postgres://',
+        host='localhost',
+        port=5432,
+        user='jahid',
+        password='jahid',
+        database='test',
+        min_size=10,
+        max_size=100,
+    )
+    ```
+
+    The default primary key is `id`. If you want to set a custom primary
     key, you must define `_pk_` accordingly (`_pk_ = 'id'` by default)
 
-    You must not use any custom name that start with a single underscore and
-    end with a single underscore. This naming convention is reserved by
+    You must not use any custom name that starts with a single underscore and
+    ends with a single underscore. This naming convention is reserved by
     Model class intself and all predefined variable names and method names
     follow this rule.
 
@@ -290,6 +308,7 @@ class Model(_Model_):
     # or you can directly call _insert_
     user._insert_()
     # or you can call _update_ if it already exists.
+    user.name = 'Jane Doe'
     user._update_()
     ```
 
@@ -305,6 +324,7 @@ class Model(_Model_):
     ### Select one item (first item)
 
     ```python
+    # LIMIT 1 is added to the where quey, do not add it explicitly
     user = User._select1_(what='*', where="name like '%Doe%' order by name asc")
     # user is a User object
     ```
@@ -319,6 +339,7 @@ class Model(_Model_):
     ### Get
 
     ```python
+    # LIMIT 1 is added to the where quey, do not add it explicitly
     user = User._get_(where='id=3')
     # user is a User object
     ```
@@ -339,7 +360,7 @@ class Model(_Model_):
     '''Default primary key'''
 
     def __init__(self, *args, **kwargs):
-        """Initialize a model instance.
+        """# Initialize a model instance.
 
         keyword arguments initialize corresponding fields according to
         the keys.

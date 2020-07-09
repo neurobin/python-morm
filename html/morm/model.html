@@ -232,47 +232,187 @@ class _Model_(metaclass=_ModelMeta_):
         return query, args
 
     async def _insert_(self, exclude_values=(), exclude_keys=()):
+        &#34;&#34;&#34;Attempt an insert with the data on this model instance.
+
+        Args:
+            exclude_values (tuple, optional): Exclude columns that matches one of these values. Defaults to ().
+            exclude_keys (tuple, optional): Exclude columns that matches one of these keys. Defaults to ().
+        &#34;&#34;&#34;
         query, args = self._get_insert_query_(exclude_values=exclude_values, exclude_keys=exclude_keys)
         cls = self.__class__
         pkval = await cls._get_db_instance_().fetchval(query, *args)
         setattr(self, self._pk_, pkval)
-        return pkval
 
     async def _update_(self, exclude_values=(), exclude_keys=()):
+        &#34;&#34;&#34;Attempt an update with the data on this model instance.
+
+        Args:
+            exclude_values (tuple, optional): Exclude columns that matches one of these values. Defaults to ().
+            exclude_keys (tuple, optional): Exclude columns that matches one of these keys. Defaults to ().
+        &#34;&#34;&#34;
         query, args = self._get_update_query_(exclude_values=exclude_values, exclude_keys=exclude_keys)
         cls = self.__class__
-        return await cls._get_db_instance_().fetchrow(query, *args)
+        await cls._get_db_instance_().fetchrow(query, *args, model_class=cls)
 
     async def _save_(self, exclude_values=(), exclude_keys=()):
-        pk = self._pk_
+        &#34;&#34;&#34;Attempt to save the data on this model instance.
+
+        If pk exists, the data is updated and if pk does not exist,
+        the data is inserted.
+
+        Args:
+            exclude_values (tuple, optional): Exclude columns that matches one of these values. Defaults to ().
+            exclude_keys (tuple, optional): Exclude columns that matches one of these keys. Defaults to ().
+        &#34;&#34;&#34;
         try:
-            return await self._update_(exclude_values=exclude_values, exclude_keys=exclude_keys)
+            await self._update_(exclude_values=exclude_values, exclude_keys=exclude_keys)
         except ItemDoesNotExistError:
-            return await self._insert_(exclude_values=exclude_values, exclude_keys=exclude_keys)
+            await self._insert_(exclude_values=exclude_values, exclude_keys=exclude_keys)
 
 
 
 class Model(_Model_):
+    &#34;&#34;&#34;Base model class that must be inherited to make a model.
+
+    example model classes would look like:
+
+    ```python
+    from morm import Model, Field
+    from morm.db import DB, Pool
+
+    class Base(Model):
+        _db_instance_ = DB(MORM_DB_POOL)
+        # we generally will not create any table for this model.
+
+    class User(Base):
+        _table_name_ = &#39;User&#39; # if not given, class name will be table name.
+
+        name = Field(&#39;varchar(100)&#39;)
+        email = Field(&#39;varchar(256)&#39;)
+        password = Field(&#39;varchar(256)&#39;)
+    ```
+
+    `MORM_DB_POOL` is a `Pool` object with database settings. Example:
+
+    ```python
+    MORM_DB_POOL = Pool(
+        dsn=&#39;postgres://&#39;,
+        host=&#39;localhost&#39;,
+        port=5432,
+        user=&#39;jahid&#39;,
+        password=&#39;jahid&#39;,
+        database=&#39;test&#39;,
+        min_size=10,
+        max_size=100,
+    )
+    ```
+
+    The default primary key is `id`. If you want to set a custom primary
+    key, you must define `_pk_` accordingly (`_pk_ = &#39;id&#39;` by default)
+
+    You must not use any custom name that starts with a single underscore and
+    ends with a single underscore. This naming convention is reserved by
+    Model class intself and all predefined variable names and method names
+    follow this rule.
+
+    For field names, do not start with an underscore. This way, you will
+    be protected from spelling mistakes. For example, if you have defined
+    a field named `name` and then try to do
+
+    ```python
+    user.namee = &#39;John Doe&#39; # throws AttributeError
+    ```
+
+    you will get an Attribute error.
+
+    # Handling data
+
+    ## Save/Update/Insert
+
+    ```python
+    user = User(name=&#39;John Doe&#39;, email=&#39;jd@ex.com&#39;)
+    user._save_() # saves the data in db (update if exists, otherwise insert)
+    # or you can directly call _insert_
+    user._insert_()
+    # or you can call _update_ if it already exists.
+    user.name = &#39;Jane Doe&#39;
+    user._update_()
+    ```
+
+    ## Select/Filter/Get
+
+    ### Select
+
+    ```python
+    users = User._select_(what=&#39;*&#39;, where=&#34;name like &#39;%Doe%&#39;&#34;)
+    # users is a list of User object
+    ```
+
+    ### Select one item (first item)
+
+    ```python
+    # LIMIT 1 is added to the where quey, do not add it explicitly
+    user = User._select1_(what=&#39;*&#39;, where=&#34;name like &#39;%Doe%&#39; order by name asc&#34;)
+    # user is a User object
+    ```
+
+    ### Filter
+
+    ```python
+    users = User._filter_(where=&#34;name like &#39;%Doe%&#39;&#34;)
+    # users is a list of User object
+    ```
+
+    ### Get
+
+    ```python
+    # LIMIT 1 is added to the where quey, do not add it explicitly
+    user = User._get_(where=&#39;id=3&#39;)
+    # user is a User object
+    ```
+    &#34;&#34;&#34;
 
     _db_instance_no_check_: bool = True # internal use only
 
     _db_instance_: typing.Optional[DB] = None
     &#39;&#39;&#39;_db_instance_ will be inherited in subclasses&#39;&#39;&#39;
+
     _table_name_: typing.Optional[str] = None
     &#34;&#34;&#34;_table_name_ will not be inherited in subclasses&#34;&#34;&#34;
 
     _pk_: str = &#39;id&#39;
     &#39;&#39;&#39;If you use different primary key, you must define it accordingly&#39;&#39;&#39;
-    id: Field = Field(&#39;SERIAL NOT NULL PRIMARY KEY&#39;)
+
+    id = Field(&#39;SERIAL NOT NULL PRIMARY KEY&#39;)
     &#39;&#39;&#39;Default primary key&#39;&#39;&#39;
 
     def __init__(self, *args, **kwargs):
+        &#34;&#34;&#34;# Initialize a model instance.
+
+        keyword arguments initialize corresponding fields according to
+        the keys.
+
+        Positional arguments must be dictionaries of
+        keys and values.
+
+        Example:
+
+        ```
+        Model(name=&#39;John Doe&#39;, profession=&#39;Teacher&#39;)
+        Model({&#39;name&#39;: &#39;John Doe&#39;, &#39;profession&#39;: &#39;Teacher&#39;})
+        Model({&#39;name&#39;: &#39;John Doe&#39;, &#39;profession&#39;: &#39;Teacher&#39;}, age=34)
+        Model({&#39;name&#39;: &#39;John Doe&#39;, &#39;profession&#39;: &#39;Teacher&#39;, &#39;active&#39;: True}, age=34)
+        ```
+
+        Raises:
+            TypeError: If invalid type of argument is provided.
+        &#34;&#34;&#34;
         for arg in args:
             try:
                 for k,v in arg.items():
                     setattr(self, k, v)
             except AttributeError:
-                raise ValueError(&#34;Invalid argument to Model __init__ method. Expected: dictionary or keyword argument&#34;)
+                raise TypeError(&#34;Invalid argument type to Model __init__ method. Expected: dictionary or keyword argument&#34;)
         for k,v in kwargs.items():
             setattr(self, k, v)
 
@@ -299,32 +439,237 @@ class Model(_Model_):
 <span>(</span><span>*args, **kwargs)</span>
 </code></dt>
 <dd>
-<section class="desc"></section>
+<section class="desc"><p>Base model class that must be inherited to make a model.</p>
+<p>example model classes would look like:</p>
+<pre><code class="python">from morm import Model, Field
+from morm.db import DB, Pool
+
+class Base(Model):
+    _db_instance_ = DB(MORM_DB_POOL)
+    # we generally will not create any table for this model.
+
+class User(Base):
+    _table_name_ = 'User' # if not given, class name will be table name.
+
+    name = Field('varchar(100)')
+    email = Field('varchar(256)')
+    password = Field('varchar(256)')
+</code></pre>
+<p><code>MORM_DB_POOL</code> is a <code>Pool</code> object with database settings. Example:</p>
+<pre><code class="python">MORM_DB_POOL = Pool(
+    dsn='postgres://',
+    host='localhost',
+    port=5432,
+    user='jahid',
+    password='jahid',
+    database='test',
+    min_size=10,
+    max_size=100,
+)
+</code></pre>
+<p>The default primary key is <code>id</code>. If you want to set a custom primary
+key, you must define <code>_pk_</code> accordingly (<code>_pk_ = 'id'</code> by default)</p>
+<p>You must not use any custom name that starts with a single underscore and
+ends with a single underscore. This naming convention is reserved by
+Model class intself and all predefined variable names and method names
+follow this rule.</p>
+<p>For field names, do not start with an underscore. This way, you will
+be protected from spelling mistakes. For example, if you have defined
+a field named <code>name</code> and then try to do</p>
+<pre><code class="python">user.namee = 'John Doe' # throws AttributeError
+</code></pre>
+<p>you will get an Attribute error.</p>
+<h1 id="handling-data">Handling data</h1>
+<h2 id="saveupdateinsert">Save/Update/Insert</h2>
+<pre><code class="python">user = User(name='John Doe', email='jd@ex.com')
+user._save_() # saves the data in db (update if exists, otherwise insert)
+# or you can directly call _insert_
+user._insert_()
+# or you can call _update_ if it already exists.
+user.name = 'Jane Doe'
+user._update_()
+</code></pre>
+<h2 id="selectfilterget">Select/Filter/Get</h2>
+<h3 id="select">Select</h3>
+<pre><code class="python">users = User._select_(what='*', where=&quot;name like '%Doe%'&quot;)
+# users is a list of User object
+</code></pre>
+<h3 id="select-one-item-first-item">Select one item (first item)</h3>
+<pre><code class="python"># LIMIT 1 is added to the where quey, do not add it explicitly
+user = User._select1_(what='*', where=&quot;name like '%Doe%' order by name asc&quot;)
+# user is a User object
+</code></pre>
+<h3 id="filter">Filter</h3>
+<pre><code class="python">users = User._filter_(where=&quot;name like '%Doe%'&quot;)
+# users is a list of User object
+</code></pre>
+<h3 id="get">Get</h3>
+<pre><code class="python"># LIMIT 1 is added to the where quey, do not add it explicitly
+user = User._get_(where='id=3')
+# user is a User object
+</code></pre>
+<h1 id="initialize-a-model-instance">Initialize a model instance.</h1>
+<p>keyword arguments initialize corresponding fields according to
+the keys.</p>
+<p>Positional arguments must be dictionaries of
+keys and values.</p>
+<p>Example:</p>
+<pre><code>Model(name='John Doe', profession='Teacher')
+Model({'name': 'John Doe', 'profession': 'Teacher'})
+Model({'name': 'John Doe', 'profession': 'Teacher'}, age=34)
+Model({'name': 'John Doe', 'profession': 'Teacher', 'active': True}, age=34)
+</code></pre>
+<h2 id="raises">Raises</h2>
+<dl>
+<dt><strong><code>TypeError</code></strong></dt>
+<dd>If invalid type of argument is provided.</dd>
+</dl></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">class Model(_Model_):
+    &#34;&#34;&#34;Base model class that must be inherited to make a model.
+
+    example model classes would look like:
+
+    ```python
+    from morm import Model, Field
+    from morm.db import DB, Pool
+
+    class Base(Model):
+        _db_instance_ = DB(MORM_DB_POOL)
+        # we generally will not create any table for this model.
+
+    class User(Base):
+        _table_name_ = &#39;User&#39; # if not given, class name will be table name.
+
+        name = Field(&#39;varchar(100)&#39;)
+        email = Field(&#39;varchar(256)&#39;)
+        password = Field(&#39;varchar(256)&#39;)
+    ```
+
+    `MORM_DB_POOL` is a `Pool` object with database settings. Example:
+
+    ```python
+    MORM_DB_POOL = Pool(
+        dsn=&#39;postgres://&#39;,
+        host=&#39;localhost&#39;,
+        port=5432,
+        user=&#39;jahid&#39;,
+        password=&#39;jahid&#39;,
+        database=&#39;test&#39;,
+        min_size=10,
+        max_size=100,
+    )
+    ```
+
+    The default primary key is `id`. If you want to set a custom primary
+    key, you must define `_pk_` accordingly (`_pk_ = &#39;id&#39;` by default)
+
+    You must not use any custom name that starts with a single underscore and
+    ends with a single underscore. This naming convention is reserved by
+    Model class intself and all predefined variable names and method names
+    follow this rule.
+
+    For field names, do not start with an underscore. This way, you will
+    be protected from spelling mistakes. For example, if you have defined
+    a field named `name` and then try to do
+
+    ```python
+    user.namee = &#39;John Doe&#39; # throws AttributeError
+    ```
+
+    you will get an Attribute error.
+
+    # Handling data
+
+    ## Save/Update/Insert
+
+    ```python
+    user = User(name=&#39;John Doe&#39;, email=&#39;jd@ex.com&#39;)
+    user._save_() # saves the data in db (update if exists, otherwise insert)
+    # or you can directly call _insert_
+    user._insert_()
+    # or you can call _update_ if it already exists.
+    user.name = &#39;Jane Doe&#39;
+    user._update_()
+    ```
+
+    ## Select/Filter/Get
+
+    ### Select
+
+    ```python
+    users = User._select_(what=&#39;*&#39;, where=&#34;name like &#39;%Doe%&#39;&#34;)
+    # users is a list of User object
+    ```
+
+    ### Select one item (first item)
+
+    ```python
+    # LIMIT 1 is added to the where quey, do not add it explicitly
+    user = User._select1_(what=&#39;*&#39;, where=&#34;name like &#39;%Doe%&#39; order by name asc&#34;)
+    # user is a User object
+    ```
+
+    ### Filter
+
+    ```python
+    users = User._filter_(where=&#34;name like &#39;%Doe%&#39;&#34;)
+    # users is a list of User object
+    ```
+
+    ### Get
+
+    ```python
+    # LIMIT 1 is added to the where quey, do not add it explicitly
+    user = User._get_(where=&#39;id=3&#39;)
+    # user is a User object
+    ```
+    &#34;&#34;&#34;
 
     _db_instance_no_check_: bool = True # internal use only
 
     _db_instance_: typing.Optional[DB] = None
     &#39;&#39;&#39;_db_instance_ will be inherited in subclasses&#39;&#39;&#39;
+
     _table_name_: typing.Optional[str] = None
     &#34;&#34;&#34;_table_name_ will not be inherited in subclasses&#34;&#34;&#34;
 
     _pk_: str = &#39;id&#39;
     &#39;&#39;&#39;If you use different primary key, you must define it accordingly&#39;&#39;&#39;
-    id: Field = Field(&#39;SERIAL NOT NULL PRIMARY KEY&#39;)
+
+    id = Field(&#39;SERIAL NOT NULL PRIMARY KEY&#39;)
     &#39;&#39;&#39;Default primary key&#39;&#39;&#39;
 
     def __init__(self, *args, **kwargs):
+        &#34;&#34;&#34;# Initialize a model instance.
+
+        keyword arguments initialize corresponding fields according to
+        the keys.
+
+        Positional arguments must be dictionaries of
+        keys and values.
+
+        Example:
+
+        ```
+        Model(name=&#39;John Doe&#39;, profession=&#39;Teacher&#39;)
+        Model({&#39;name&#39;: &#39;John Doe&#39;, &#39;profession&#39;: &#39;Teacher&#39;})
+        Model({&#39;name&#39;: &#39;John Doe&#39;, &#39;profession&#39;: &#39;Teacher&#39;}, age=34)
+        Model({&#39;name&#39;: &#39;John Doe&#39;, &#39;profession&#39;: &#39;Teacher&#39;, &#39;active&#39;: True}, age=34)
+        ```
+
+        Raises:
+            TypeError: If invalid type of argument is provided.
+        &#34;&#34;&#34;
         for arg in args:
             try:
                 for k,v in arg.items():
                     setattr(self, k, v)
             except AttributeError:
-                raise ValueError(&#34;Invalid argument to Model __init__ method. Expected: dictionary or keyword argument&#34;)
+                raise TypeError(&#34;Invalid argument type to Model __init__ method. Expected: dictionary or keyword argument&#34;)
         for k,v in kwargs.items():
             setattr(self, k, v)
 
