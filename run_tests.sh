@@ -28,4 +28,7 @@ for test in "${tests[@]}"; do
     if ! python -m "$test"; then
         exit 1
     fi
+    if ! mypy -m "$test"; then
+        exit 1
+    fi
 done

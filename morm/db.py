@@ -7,7 +7,7 @@ __license__ = '[BSD](http://www.opensource.org/licenses/bsd-license.php)'
 __version__ = '0.1.0'
 
 
-import asyncpg
+import asyncpg # type: ignore
 
 
 class Pool(object):

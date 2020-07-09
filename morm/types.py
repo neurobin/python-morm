@@ -11,7 +11,7 @@ class SingletonMeta(type):
     """A metaclass to make singleton classes that can have only one
     instance.
     """
-    _instances = {}
+    _instances: dict = {}
     def __call__(cls, *args, **kwargs):
         if cls not in cls._instances:
             cls._instances[cls] = super(SingletonMeta, cls).__call__(*args,

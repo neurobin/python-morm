@@ -6,11 +6,12 @@ __copyright__ = 'Copyright © Md Jahidul Hamid <https://github.com/neurobin/>'
 __license__ = '[BSD](http://www.opensource.org/licenses/bsd-license.php)'
 __version__ = '0.0.1'
 
-
+import typing
 from abc import ABCMeta
 from morm.exceptions import ItemDoesNotExistError
 from morm.fields import Field
 from morm.types import Void
+from morm.db import DB
 
 
 class _ModelMeta_(ABCMeta):
@@ -51,20 +52,20 @@ class _ModelMeta_(ABCMeta):
 
 
 class _Model_(metaclass=_ModelMeta_):
-    _db_instance_no_check_ = True # internal use only
+    _db_instance_no_check_: bool = True # internal use only
 
-    _db_instance_ = None
+    _db_instance_: typing.Optional[DB] = None
     '''_db_instance_ will be inherited in subclasses'''
-    _table_name_ = None
+    _table_name_: typing.Optional[str] = None
     """_table_name_ will not be inherited in subclasses"""
 
-    _exclude_up_keys_ = ()
+    _exclude_up_keys_: tuple = ()
     '''Exclude columns for these keys when saving the data to database'''
-    _exclude_up_values_ = ()
+    _exclude_up_values_: tuple = ()
     '''Exclude columns for these values when saving the data to database'''
-    _exclude_down_keys_ = ()    # TODO: implement in select
+    _exclude_down_keys_ : tuple= ()    # TODO: implement in select
     '''Exclude columns for these keys when retrieving data from database'''
-    _exclude_down_values = ()   # TODO: implement in select
+    _exclude_down_values: tuple = ()   # TODO: implement in select
     '''Exclude columns for these values when retrieving data from database'''
 
 
@@ -144,15 +145,8 @@ class _Model_(metaclass=_ModelMeta_):
         """
         return await cls._select1_(where=where, prepared_args=prepared_args)
 
-    # @classmethod
-    # def _get_props_(cls):
-    #     props = {}
-    #     for k,v in cls._fields_.items():
-    #         props[k] = v.sql_def
-    #     return props
-
-    def _active_fields_(self, exclude_values, exclude_keys):
-        for k,field in self._fields_.items():
+    def _active_fields_(self, exclude_values: tuple, exclude_keys: tuple):
+        for k,field in self._fields_.items():   # type: ignore
             if k in exclude_keys \
                 or k in self._exclude_up_keys_:
                 continue
@@ -168,7 +162,7 @@ class _Model_(metaclass=_ModelMeta_):
             yield k, v, field
 
     def _get_insert_query_(self, exclude_values=(), exclude_keys=()):
-        pk = self._pk_
+        pk = self._pk_     # type: ignore
         table = self.__class__._get_table_name_()
         query = f"INSERT INTO \"{table}\""
         columns = '('
@@ -188,7 +182,7 @@ class _Model_(metaclass=_ModelMeta_):
 
     def _get_update_query_(self, exclude_values=(), exclude_keys=()):
         table = self.__class__._get_table_name_()
-        pk = self._pk_
+        pk = self._pk_     # type: ignore
         try:
             pkval = getattr(self, pk)
             if not pkval:
@@ -233,16 +227,16 @@ class _Model_(metaclass=_ModelMeta_):
 
 class Model(_Model_):
 
-    _db_instance_no_check_ = True # internal use only
+    _db_instance_no_check_: bool = True # internal use only
 
-    _db_instance_ = None
+    _db_instance_: typing.Optional[DB] = None
     '''_db_instance_ will be inherited in subclasses'''
-    _table_name_ = None
+    _table_name_: typing.Optional[str] = None
     """_table_name_ will not be inherited in subclasses"""
 
-    _pk_ = 'id'
+    _pk_: str = 'id'
     '''If you use different primary key, you must define it accordingly'''
-    id = Field('SERIAL NOT NULL PRIMARY KEY')
+    id: Field = Field('SERIAL NOT NULL PRIMARY KEY')
     '''Default primary key'''
 
     def __init__(self, *args, **kwargs):

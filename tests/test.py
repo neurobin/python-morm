@@ -1,7 +1,6 @@
 import asyncio
 import logging
 import unittest
-from async_property import async_property, async_cached_property
 
 from morm.db import Pool, DB
 
