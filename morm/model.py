@@ -245,6 +245,84 @@ class _Model_(metaclass=_ModelMeta_):
 
 
 class Model(_Model_):
+    """Base model class that must be inherited to make a model.
+
+    example model classes would look like:
+
+    ```python
+    class Base(Model):
+        _db_instance_ = DB(MORM_DB_POOL)
+        # we generally will not create any table for this model.
+
+    class User(Base):
+        _table_name_ = 'User' # if not given, class name will be table name.
+
+        name = Field('varchar(100)')
+        email = Field('varchar(256)')
+        password = Field('varchar(256)')
+    ```
+
+    The default primary key is 'id'. If you want to set a custom primary
+    key, you must define `_pk_` accordingly (`_pk_ = 'id'` by default)
+
+    You must not use any custom name that start with a single underscore and
+    end with a single underscore. This naming convention is reserved by
+    Model class intself and all predefined variable names and method names
+    follow this rule.
+
+    For field names, do not start with an underscore. This way, you will
+    be protected from spelling mistakes. For example, if you have defined
+    a field named `name` and then try to do
+
+    ```python
+    user.namee = 'John Doe' # throws AttributeError
+    ```
+
+    you will get an Attribute error.
+
+    # Handling data
+
+    ## Save/Update/Insert
+
+    ```python
+    user = User(name='John Doe', email='jd@ex.com')
+    user._save_() # saves the data in db (update if exists, otherwise insert)
+    # or you can directly call _insert_
+    user._insert_()
+    # or you can call _update_ if it already exists.
+    user._update_()
+    ```
+
+    ## Select/Filter/Get
+
+    ### Select
+
+    ```python
+    users = User._select_(what='*', where="name like '%Doe%'")
+    # users is a list of User object
+    ```
+
+    ### Select one item (first item)
+
+    ```python
+    user = User._select1_(what='*', where="name like '%Doe%' order by name asc")
+    # user is a User object
+    ```
+
+    ### Filter
+
+    ```python
+    users = User._filter_(where="name like '%Doe%'")
+    # users is a list of User object
+    ```
+
+    ### Get
+
+    ```python
+    user = User._get_(where='id=3')
+    # user is a User object
+    ```
+    """
 
     _db_instance_no_check_: bool = True # internal use only
 
@@ -261,12 +339,32 @@ class Model(_Model_):
     '''Default primary key'''
 
     def __init__(self, *args, **kwargs):
+        """Initialize a model instance.
+
+        keyword arguments initialize corresponding fields according to
+        the keys.
+
+        Positional arguments must be dictionaries of
+        keys and values.
+
+        Example:
+
+        ```
+        Model(name='John Doe', profession='Teacher')
+        Model({'name': 'John Doe', 'profession': 'Teacher'})
+        Model({'name': 'John Doe', 'profession': 'Teacher'}, age=34)
+        Model({'name': 'John Doe', 'profession': 'Teacher', 'active': True}, age=34)
+        ```
+
+        Raises:
+            TypeError: If invalid type of argument is provided.
+        """
         for arg in args:
             try:
                 for k,v in arg.items():
                     setattr(self, k, v)
             except AttributeError:
-                raise ValueError("Invalid argument to Model __init__ method. Expected: dictionary or keyword argument")
+                raise TypeError("Invalid argument type to Model __init__ method. Expected: dictionary or keyword argument")
         for k,v in kwargs.items():
             setattr(self, k, v)
 
