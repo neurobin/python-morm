@@ -36,7 +36,10 @@ SNORM_DB_POOL = Pool(
 
 from morm import Model, Field
 
-
+def mprint(*args, **kwargs):
+    print("-"*80)
+    print(*args, **kwargs)
+    print("-"*80)
 
 class TestMethods(unittest.TestCase):
 
@@ -134,6 +137,19 @@ class TestMethods(unittest.TestCase):
             with self.assertRaises(TypeError):
                 self.checkMetaAttributeType(k, v)
 
+    def test_Model_Meta_Attr_Defaults(self):
+        class User(Model):
+            profession = Field('varchar(255)')
+            name = Field('varchar(255)')
+        class BigUser(User):
+            age = Field("int")
+
+        self.assertEqual(User.Meta.db_table, 'User')
+        self.assertEqual(BigUser.Meta.db_table, 'BigUser')
+        self.assertTrue(User.Meta._field_defs_)
+        mprint(User.Meta._field_defs_)
+
+
         # with self.assertRaises(TypeError):
         #     class User(Model):
         #         class Meta(mdl.Meta):
@@ -158,14 +174,19 @@ class TestMethods(unittest.TestCase):
             name = Field('varchar(255)')
             profession = Field('varchar(255)')
 
-        class BigUser(User):
+        class BigUser(Model):
+            name = Field('varchar(255)')
+            profession = Field('varchar(255)')
             age = Field("int")
 
         user = BigUser()
         user.name = 'ffdsf'
         user.age = 34
         user.profession = 'Teacher'
-        print(inspect.getsource(BigUser))
+        with self.assertRaises(AttributeError):
+            user.profesion = 'Teacher' # spelling mistake
+        mprint(inspect.getsource(BigUser))
+        mprint(user)
 
         # b = BigUser(name='__dummy__', age=23)
 

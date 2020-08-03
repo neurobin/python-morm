@@ -107,9 +107,25 @@ class ModelType(type):
         raise NotImplementedError("You can not delete model attributes outside model definition.")
 
 
+class ModelBase(metaclass=ModelType):
+    """Base Model without any default fields.
 
-class Model(metaclass=ModelType):
+    Use Model instead, if you are not an advanced user.
+
+    Meta.pk is set to 'id', you must specify a new primary key and change
+    it accordingly if you use this model as your base model.
+
+    Raises:
+        TypeError: When invalid typeis encountered
+        AttributeError: When misspelled fields are tried to set.
+    """
     class Meta(mt.Meta):
+        # The following needs to be defined here, not in meta.Meta
+        # meta.Meta is used in client Models, thus everything
+        # included there will be blindly inherited, while these are passed
+        # through the metaclasses __new__ methods and processed accordingly
+        # to determine which one should be inherited and which one should not.
+        pk = 'id'
         db_table = ''
         abstract = True
         proxy = False
@@ -120,6 +136,77 @@ class Model(metaclass=ModelType):
         exclude_down_keys = ()
         exclude_up_values = ()
         exclude_down_values = ()
+
+
+    def __init__(self, *args, **kwargs):
+        for arg in args:
+            try:
+                for k,v in arg.items():
+                    setattr(self, k, v)
+            except AttributeError:
+                raise TypeError("Invalid argument type to Model __init__ method. Expected: dictionary or keyword argument")
+        for k,v in kwargs.items():
+            setattr(self, k, v)
+
+
+    def __setattr__(self, k, v):
+        field_defs = self.__class__.Meta._field_defs_
+        if k not in field_defs:
+            raise AttributeError(f"No such field ('{k}') in model '{self.__class__.__name__}''")
+        v = field_defs[k].clean(v)
+        super().__setattr__(k, v)
+
+
+
+class Model(ModelBase):
+    """Base model to be inherited by other models.
+
+    This model defines an auto incremented primary key: 'id' by default.
+
+    A minimal model could look like:
+
+    ```python
+    import morm.model as mdl
+
+    class User(mdl.Model):
+        name = Field('varchar(65)')
+        email = Field('varchar(255)')
+        password = Field('varchar(255)')
+    ```
+
+    An advanced model could look like:
+
+    ```python
+    import random
+
+    def get_rand():
+        return random.randint(1, 9)
+
+    class User(mdl.Model):
+        class Meta(mdl.Meta):
+            db_table = 'myapp_user'
+            abstract = False
+            proxy = False
+            # ... etc...
+
+        name = Field('varchar(65)')
+        email = Field('varchar(255)')
+        password = Field('varchar(255)')
+        profession = Field('varchar(255)', default='Unknown')
+        random = Field('int', default=get_rand) # function can be default
+    ```
+    """
+    class Meta(mt.Meta):
+        # The following needs to be defined here, not in meta.Meta
+        # meta.Meta is used in client Models, thus everything
+        # included there will be blindly inherited, while these are passed
+        # through the metaclasses __new__ methods and processed accordingly
+        # to determine which one should be inherited and which one should not.
+        pk = 'id'
+        db_table = ''
+        abstract = True
+
+    id = Field('SERIAL NOT NULL PRIMARY KEY')
 
     def __init__(self, *args, **kwargs):
         """# Initialize a model instance.
@@ -142,23 +229,7 @@ class Model(metaclass=ModelType):
         Raises:
             TypeError: If invalid type of argument is provided.
         """
-        for arg in args:
-            try:
-                for k,v in arg.items():
-                    setattr(self, k, v)
-            except AttributeError:
-                raise TypeError("Invalid argument type to Model __init__ method. Expected: dictionary or keyword argument")
-        for k,v in kwargs.items():
-            setattr(self, k, v)
-
-
-    def __setattr__(self, k, v):
-        field_defs = self.__class__.Meta._field_defs_
-        if k not in field_defs:
-            raise AttributeError(f"No such attribute ('{k}') in model '{self.__class__.__name__}''")
-        v = field_defs[k].clean(v)
-        super().__setattr__(k, v)
-
+        super().__init__(*args, **kwargs)
 
 # class _Model_(metaclass=ModelType):
 #     _db_no_check_: bool = True # internal use only

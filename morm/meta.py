@@ -19,5 +19,8 @@ class MetaType(type):
 
 
 class Meta(metaclass=MetaType):
+    # _field_defs_ = {} This must not be included in Meta class
+    # If it is included here, Meta class will inherently be allowed to pass
+    # this/these fields which is not expected.
     def __init__(self):
         raise NotImplementedError("Creating instances of Meta class is not supported")
