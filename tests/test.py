@@ -3,9 +3,11 @@ import logging
 import unittest
 import random
 from uuid import uuid4
+import inspect
 
 from morm.db import Pool, DB, Transaction
 import morm.model as mdl
+import morm.meta as mt
 
 
 LOGGER_NAME = 'morm-'
@@ -39,23 +41,29 @@ from morm import Model, Field
 class TestMethods(unittest.TestCase):
 
     def checkModelAttributeSet(self, name, value):
-        print(f"Checking attribute '{name}' with invalid value {value} for model class")
+        print(f"> Checking attribute '{name}' with invalid value {value} for model class")
         class User(Model):pass
         setattr(User, name, value)
 
 
     def checkModelAttributeDel(self, name):
-        print(f"Checking attribute '{name}' for deletion for model class")
+        print(f"> Checking attribute '{name}' for deletion for model class")
         class User(Model):pass
         delattr(User, name)
 
     def checkMetaAttributeSet(self, name, value):
-        print(f"Checking attribute '{name}' with invalid value {value} for Meta class of model")
+        print(f"> Checking attribute '{name}' with invalid value {value} for Meta class of model")
         class User(Model):
             class Meta(mdl.Meta): pass
             setattr(Meta, name, value)
 
-    def test_Model_Attr_Set(self):
+    def checkMetaAttributeDel(self, name, value):
+        print(f"> Checking attribute '{name}' for deletion for Meta class of model")
+        class User(Model):
+            class Meta(mdl.Meta): pass
+            delattr(Meta, name)
+
+    def test_Model_Attr_Set_Del(self):
         attrs = ['Meta', 'name', 'dummy', 'hozoborolo']
         for k in attrs:
             with self.assertRaises(NotImplementedError):
@@ -79,7 +87,7 @@ class TestMethods(unittest.TestCase):
                 class Meta(mdl.Meta):
                     _field_defs_ = 67576
 
-    def test_Model_Meta_Attr_Types(self):
+    def test_Model_Meta_Attr_Set_Del(self):
 
         meta_attrs = {
             'pk': 23,
@@ -98,6 +106,33 @@ class TestMethods(unittest.TestCase):
         for k, v in meta_attrs.items():
             with self.assertRaises(NotImplementedError):
                 self.checkMetaAttributeSet(k, v)
+            with self.assertRaises(NotImplementedError):
+                self.checkMetaAttributeDel(k, v)
+
+    def checkMetaAttributeType(self, name, value):
+        print(f"> Checking attribute '{name}' with invalid value {value} for Meta class in Model")
+        class User(Model):
+            Meta = mt.MetaType('Meta', (mt.Meta,), {name: value})
+
+    def test_Model_Meta_Attr_Types(self):
+
+        meta_attrs = {
+            'pk': 23,
+            'proxy': 23,             # TODO: Implement in migration
+            'ordering': 23,             # TODO: Implement in db util
+            'fields_up': 23,            # TODO: Implement in db util
+            'fields_down': 23,          # TODO: Implement in db util
+            'exclude_up_keys': 23,      # TODO: Implement in db util
+            'exclude_down_keys': 23,    # TODO: Implement in db util
+            'exclude_up_values': 23,    # TODO: Implement in db util
+            'exclude_down_values': 23,  # TODO: Implement in db util
+            'db_table': 23,
+            'abstract': 23,          # TODO: Implement in migration
+        }
+
+        for k, v in meta_attrs.items():
+            with self.assertRaises(TypeError):
+                self.checkMetaAttributeType(k, v)
 
         # with self.assertRaises(TypeError):
         #     class User(Model):
@@ -118,7 +153,7 @@ class TestMethods(unittest.TestCase):
 
 
 
-    def test_Model(self):
+    def test_Model_Instance(self):
         class User(Model):
             name = Field('varchar(255)')
             profession = Field('varchar(255)')
@@ -126,8 +161,11 @@ class TestMethods(unittest.TestCase):
         class BigUser(User):
             age = Field("int")
 
-        user = User()
+        user = BigUser()
         user.name = 'ffdsf'
+        user.age = 34
+        user.profession = 'Teacher'
+        print(inspect.getsource(BigUser))
 
         # b = BigUser(name='__dummy__', age=23)
 
@@ -197,7 +235,7 @@ class TestMethods(unittest.TestCase):
 
 if __name__ == "__main__":
     try:
-        unittest.main()
+        unittest.main(verbosity=2)
     except:
         SNORM_DB_POOL.close()
         raise

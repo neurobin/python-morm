@@ -14,8 +14,10 @@ from morm.exceptions import ItemDoesNotExistError
 from morm.fields import Field
 from morm.types import Void
 import morm.meta as mt      # for internal use
-from morm.meta import Meta # for client use
+
 # morm.db must not be imported here.
+
+Meta = mt.Meta  # For client use
 
 
 class ModelType(type):
@@ -118,9 +120,6 @@ class Model(metaclass=ModelType):
         exclude_down_keys = ()
         exclude_up_values = ()
         exclude_down_values = ()
-
-        # Do not override the following in your model class
-        _field_defs_: typing.Dict[str, Field] = {} # reserved and internal
 
     def __init__(self, *args, **kwargs):
         """# Initialize a model instance.
