@@ -6,32 +6,25 @@ __copyright__ = 'Copyright © Md Jahidul Hamid <https://github.com/neurobin/>'
 __license__ = '[BSD](http://www.opensource.org/licenses/bsd-license.php)'
 __version__ = '0.1.0'
 
+import re
+import asyncio
+from contextlib import asynccontextmanager
 
 import asyncpg # type: ignore
 from asyncpg import Record, Connection # type: ignore
-from typing import Optional, List
+from typing import Optional, List, Tuple
 
 from morm import exceptions
-from morm.model import _ModelMeta_, Model
-
-def Q(name:str) -> str:
-    """SQL quote name by adding leading and trailing double quote.
-
-    Args:
-        name (str): name of table or column.
-
-    Returns:
-        str: Quoted name
-    """
-    return f'"{name}"'
+from morm.model import ModelType, Model
+from morm.q import Q, SelectQuery
 
 
-def record_to_model(record: Record, model_class: _ModelMeta_) -> Model:
+def record_to_model(record: Record, model_class: ModelType) -> Model:
     """Convert a Record object to Model object.
 
     Args:
         record (Record): Record object.
-        model_class (_ModelMeta_): Model class
+        model_class (ModelType): Model class
 
     Returns:
         Model: Model instance.
@@ -68,7 +61,6 @@ class Pool(object):
             loop ([type], optional): Asyncio even loop instance. Defaults to None.
             connection_class ([type], optional): The class to use for connections.  Must be a subclass of `asyncpg.connection.Connection`. Defaults to asyncpg.connection.Connection.
         """
-        self._pool = None
         self.dsn = dsn
         self.min_size = min_size
         self.max_size = max_size
@@ -80,15 +72,22 @@ class Pool(object):
         self.connection_class = connection_class
         self.connect_kwargs = connect_kwargs
 
+        self._pool = None
+        self.open()
 
-    async def pool(self) -> asyncpg.pool.Pool:
-        """Get a singleton pool for this Pool object.
+    @property
+    def pool(self) -> asyncpg.pool.Pool:
+        """Property pool that is an asyncpg.pool.Pool object
+        """
+        return self._pool
+
+    async def __create_pool(self) -> asyncpg.pool.Pool:
+        """Create a asyncpg.pool.Pool for this Pool object.
 
         Returns:
             asyncpg.pool.Pool: Pool object (singleton)
         """
-        if not self._pool:
-            self._pool = await asyncpg.create_pool(
+        return await asyncpg.create_pool(
                                         dsn=self.dsn,
                                         min_size=self.min_size,
                                         max_size=self.max_size,
@@ -99,14 +98,20 @@ class Pool(object):
                                         loop=self.loop,
                                         connection_class=self.connection_class,
                                         **self.connect_kwargs)
-        return self._pool
+    def open(self):
+        """Open the pool
+        """
+        if not self._pool:
+            self._pool = asyncio.get_event_loop().run_until_complete(self.__create_pool())
+            print("Pool opened")
 
-    async def close(self):
+    def close(self):
         """Attempt to close the pool gracefully.
         """
         if self._pool:
-            await self._pool.close()
+            asyncio.get_event_loop().run_until_complete(self._pool.close())
             self._pool = None
+            print("Pool closed")
 
 
 class DB(object):
@@ -121,32 +126,30 @@ class DB(object):
             pool (Pool): A connection pool
         """
         self._pool = pool
+        self._con = None
 
-    async def pool(self) -> asyncpg.pool.Pool:
-        """Return the active connection pool.
+    @property
+    def pool(self) -> Pool:
+        """Return the Pool object
 
         Returns:
-            asyncpg.pool.Pool: asyncpg.pool.Pool object
+            Pool: Pool object
         """
-        return await self._pool.pool()
+        return self._pool
 
-    async def get_connection_or_pool(self, con):
-        """Return the connection if given, otherwise return a Pool.
-
-        Args:
-            con (Connection): Connection object or None
+    def poolorcon(self):
+        """Return the connection if available, otherwise return a Pool.
 
         Returns:
             Connection or asyncpg.pool.Pool object
         """
-        if con:
-            return con
-        else:
-            return await self.pool()
+        if self._con:
+            return self._con
+        return self._pool.pool
 
     async def fetch(self, query: str, *args,
                     timeout: float = None,
-                    model_class: _ModelMeta_=None,
+                    model_class: ModelType=None,
                     con: Connection=None,
                     ):
         """Make a query and get the results.
@@ -163,7 +166,7 @@ class DB(object):
         Returns:
             List[Model] or List[Record] : List of model instances if model_class is given, otherwise list of Record instances.
         """
-        pool = await self.get_connection_or_pool(con)
+        pool = self.poolorcon()
         records = await pool.fetch(query, *args, timeout=timeout)
         if not model_class:
             return records
@@ -176,7 +179,7 @@ class DB(object):
 
     async def fetchrow(self, query: str, *args,
                         timeout: float = None,
-                        model_class: _ModelMeta_=None,
+                        model_class: ModelType=None,
                         con: Connection=None,
                         ):
         """Make a query and get the first row.
@@ -193,7 +196,7 @@ class DB(object):
         Returns:
             Record or model_clas object or None if no rows were selected.
         """
-        pool = await self.get_connection_or_pool(con)
+        pool = self.poolorcon()
         record = await pool.fetchrow(query, *args, timeout=timeout)
         if not model_class:
             return record
@@ -219,27 +222,27 @@ class DB(object):
         Returns:
             Any: Coulmn (indentified by index) value of first row.
         """
-        pool = await self.get_connection_or_pool(con)
+        pool = self.poolorcon()
         return await pool.fetchval(query, *args, column=column, timeout=timeout)
 
+    def select(self, model):
+        return SelectQuery(self.fetch, model)
 
 
 class Transaction():
-    def __init__(self, db: DB, *,
+    def __init__(self, pool: Pool, *,
                 isolation: str='read_committed',
                 readonly: bool=False,
                 deferrable: bool=False):
         """Start a transaction.
 
         Args:
-            db (DB): DB instance.
+            pool (Pool): Pool instance.
             isolation (str, optional): Transaction isolation mode, can be one of: `'serializable'`, `'repeatable_read'`, `'read_committed'`. Defaults to 'read_committed'. See https://www.postgresql.org/docs/9.5/transaction-iso.html
             readonly (bool, optional): Specifies whether or not this transaction is read-only. Defaults to False.
             deferrable (bool, optional): Specifies whether or not this transaction is deferrable. Defaults to False.
         """
-        self.db = db
-        self.pool = None
-        self.con = None
+        self.db = DB(pool)
         self.tr = None
         self.tr_args = {
             'isolation': isolation,
@@ -259,13 +262,12 @@ class Transaction():
         Returns:
             Connection: Connection object.
         """
-        if self.con:
+        if self.db._con:
             raise exceptions.TransactionError('Another transaction is running (or not ended properly) with this Transaction object')
-        self.pool = await self.db.pool()
-        self.con = await self.pool.acquire() # type: ignore
-        self.tr = self.con.transaction(**self.tr_args) # type: ignore
+        self.db._con = await self.db._pool.pool.acquire() # type: ignore
+        self.tr = self.db._con.transaction(**self.tr_args) # type: ignore
         await self.tr.start() # type: ignore
-        return self.con
+        return self.db
 
     async def rollback(self):
         """Rollback the transaction.
@@ -285,11 +287,10 @@ class Transaction():
         Resources are released and some cleanups are done.
         """
         try:
-            if self.pool and self.con:
-                await self.pool.release(self.con)
+            if self.db._con:
+                await self.db._pool.pool.release(self.db._con)
         finally:
-            self.con = None
-            self.pool = None
+            self.db._con = None
             self.tr = None
 
     async def __aexit__(self, extype, ex, tb):
