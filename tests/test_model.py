@@ -319,7 +319,7 @@ class TestMethods(unittest.TestCase):
 
         keys = ['id', 'name', 'profession', 'age']
         ckey = list(User.Meta._field_defs_.keys())
-        print("> Class attribute definition order must be preserved (requires python 3.6+)")
+        print("> Class attribute definition order must be preserved (requires python 3.7+)")
         self.assertEqual(keys, ckey)
 
     def test_Model_Field(self):
