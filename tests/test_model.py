@@ -322,6 +322,18 @@ class TestMethods(unittest.TestCase):
         print("> Class attribute definition order must be preserved (requires python 3.6+)")
         self.assertEqual(keys, ckey)
 
+    def test_Model_Field(self):
+        def name_default():
+            return random.choice(User.NAMES)
+
+        class User(Model):
+            NAMES = ['John Doe', 'Jane Doe']
+            name = Field('varchar(255)', default=name_default)
+            profession = Field('varchar(255)')
+            age = Field("int")
+
+
+
 
         # b = BigUser(name='__dummy__', age=23)
 
