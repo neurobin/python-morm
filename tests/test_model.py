@@ -44,47 +44,51 @@ def mprint(*args, **kwargs):
 class TestMethods(unittest.TestCase):
 
     def checkModelAttributeSet(self, name, value):
-        print(f"> Checking attribute '{name}' with invalid value {value} for model class")
-        class User(Model):pass
-        setattr(User, name, value)
+        print(f"> set attribute '{name}' for model class must produce NotImplementedError")
+        with self.assertRaises(NotImplementedError):
+            class User(Model):pass
+            setattr(User, name, value)
 
 
     def checkModelAttributeDel(self, name):
-        print(f"> Checking attribute '{name}' for deletion for model class")
-        class User(Model):pass
-        delattr(User, name)
+        print(f"> del attribute '{name}' for model class must produce NotImplementedError")
+        with self.assertRaises(NotImplementedError):
+            class User(Model):pass
+            delattr(User, name)
 
     def checkMetaAttributeSet(self, name, value):
-        print(f"> Checking attribute '{name}' with invalid value {value} for Meta class of model")
-        class User(Model):
-            class Meta(mdl.Meta): pass
-            setattr(Meta, name, value)
+        print(f"> set attribute '{name}' for Meta class of model must produce NotImplementedError")
+        with self.assertRaises(NotImplementedError):
+            class User(Model):
+                class Meta(mdl.Meta): pass
+                setattr(Meta, name, value)
 
     def checkMetaAttributeDel(self, name, value):
-        print(f"> Checking attribute '{name}' for deletion for Meta class of model")
-        class User(Model):
-            class Meta(mdl.Meta): pass
-            delattr(Meta, name)
+        print(f"> del attribute '{name}' for Meta class of model must produce NotImplementedError")
+        with self.assertRaises(NotImplementedError):
+            class User(Model):
+                class Meta(mdl.Meta): pass
+                delattr(Meta, name)
 
     def test_Model_Attr_Set_Del(self):
         attrs = ['Meta', 'name', 'dummy', 'hozoborolo']
         for k in attrs:
-            with self.assertRaises(NotImplementedError):
-                self.checkModelAttributeSet(k, 32)
-            with self.assertRaises(NotImplementedError):
-                self.checkModelAttributeDel(k)
+            self.checkModelAttributeSet(k, 32)
+            self.checkModelAttributeDel(k)
 
     def test_Model_Meta(self):
+        print("> Meta can not be anything other than a class")
         with self.assertRaises(TypeError):
             class User(Model):
                 Meta = 32
+        print("> Meta class must be a sublcass of morm.model.Meta")
+        with self.assertRaises(TypeError):
+            class User(Model):
+                class Meta:
+                    proxy = True
 
-    def test_Model_Internal_Meta(self):
-        def checkTypeError(attr, value):
-            with self.assertRaises(TypeError):
-                class User(Model):
-                    class Meta(mdl.Meta):pass
-                    setattr(Meta, attr, value)
+    def test_Model_Meta_Internal_fields(self):
+        print("> _field_defs_ internal meta field can not be set by user.")
         with self.assertRaises(ValueError):
             class User(Model):
                 class Meta(mdl.Meta):
@@ -94,48 +98,46 @@ class TestMethods(unittest.TestCase):
 
         meta_attrs = {
             'pk': 23,
-            'proxy': 23,             # TODO: Implement in migration
-            'ordering': 23,             # TODO: Implement in db util
-            'fields_up': 23,            # TODO: Implement in db util
-            'fields_down': 23,          # TODO: Implement in db util
-            'exclude_up_keys': 23,      # TODO: Implement in db util
-            'exclude_down_keys': 23,    # TODO: Implement in db util
-            'exclude_up_values': 23,    # TODO: Implement in db util
-            'exclude_down_values': 23,  # TODO: Implement in db util
+            'proxy': 23,
+            'ordering': 23,
+            'fields_up': 23,
+            'fields_down': 23,
+            'exclude_up_keys': 23,
+            'exclude_down_keys': 23,
+            'exclude_up_values': 23,
+            'exclude_down_values': 23,
             'db_table': 23,
-            'abstract': 23,          # TODO: Implement in migration
+            'abstract': 23,
         }
 
         for k, v in meta_attrs.items():
-            with self.assertRaises(NotImplementedError):
-                self.checkMetaAttributeSet(k, v)
-            with self.assertRaises(NotImplementedError):
-                self.checkMetaAttributeDel(k, v)
+            self.checkMetaAttributeSet(k, v)
+            self.checkMetaAttributeDel(k, v)
 
     def checkMetaAttributeType(self, name, value):
-        print(f"> Checking attribute '{name}' with invalid value {value} for Meta class in Model")
-        class User(Model):
-            Meta = mt.MetaType('Meta', (mt.Meta,), {name: value})
+        print(f"> set attribute '{name}' with invalid (typed) value {value} for Meta class in Model must produce TypeError")
+        with self.assertRaises(TypeError):
+            class User(Model):
+                Meta = mt.MetaType('Meta', (mt.Meta,), {name: value})
 
     def test_Model_Meta_Attr_Types(self):
 
         meta_attrs = {
             'pk': 23,
-            'proxy': 23,             # TODO: Implement in migration
-            'ordering': 23,             # TODO: Implement in db util
-            'fields_up': 23,            # TODO: Implement in db util
-            'fields_down': 23,          # TODO: Implement in db util
-            'exclude_up_keys': 23,      # TODO: Implement in db util
-            'exclude_down_keys': 23,    # TODO: Implement in db util
-            'exclude_up_values': 23,    # TODO: Implement in db util
-            'exclude_down_values': 23,  # TODO: Implement in db util
+            'proxy': 23,
+            'ordering': 23,
+            'fields_up': 23,
+            'fields_down': 23,
+            'exclude_up_keys': 23,
+            'exclude_down_keys': 23,
+            'exclude_up_values': 23,
+            'exclude_down_values': 23,
             'db_table': 23,
-            'abstract': 23,          # TODO: Implement in migration
+            'abstract': 23,
         }
 
         for k, v in meta_attrs.items():
-            with self.assertRaises(TypeError):
-                self.checkMetaAttributeType(k, v)
+            self.checkMetaAttributeType(k, v)
 
     def test_Model_Meta_Attr_Defaults(self):
         class User(Model):
@@ -144,11 +146,109 @@ class TestMethods(unittest.TestCase):
         class BigUser(User):
             age = Field("int")
 
+        print("> db_table default value must be the class name")
         self.assertEqual(User.Meta.db_table, 'User')
         self.assertEqual(BigUser.Meta.db_table, 'BigUser')
-        self.assertTrue(User.Meta._field_defs_)
-        mprint(User.Meta._field_defs_)
-        mprint(type(User.Meta._field_defs_))
+
+        print("> Meta._field_defs_ must be a dict")
+        self.assertTrue(isinstance(User.Meta._field_defs_, dict))
+
+        meta_attrs_defaults = {
+            'pk': 'id',
+            'abstract': False,
+            'proxy': False,
+            'ordering': (),
+            'fields_up': (),
+            'fields_down': (),
+            'exclude_up_keys': (),
+            'exclude_down_keys': (),
+            'exclude_up_values': (),
+            'exclude_down_values': (),
+        }
+        for k, v in meta_attrs_defaults.items():
+            gv = getattr(BigUser.Meta, k)
+            print(f"> User Model without Meta class must have default value {v} for Meta attribute {k}")
+            self.assertEqual(gv, v)
+
+
+
+
+    def test_Model_Meta_Attribute_Definition(self):
+        class User(Model):
+            class Meta(mdl.Meta):
+                pk = 'column_id'
+                db_table = 'myapp_model_user'
+                abstract = True
+                proxy = True
+                ordering = ('id', 'name')
+                fields_up = ('id', 'name')
+                fields_down = ('id', 'name')
+                exclude_up_keys = ('updated_at',)
+                exclude_down_keys = ('password',)
+                exclude_up_values = ('', None)
+                exclude_down_values = ('', None)
+
+        meta_attr_inh = {
+            'pk': 'column_id',
+            'proxy': True,
+            'ordering': ('id', 'name'),
+            'fields_up': ('id', 'name'),
+            'fields_down': ('id', 'name'),
+            'exclude_up_keys': ('updated_at',),
+            'exclude_down_keys': ('password',),
+            'exclude_up_values': ('', None),
+            'exclude_down_values': ('', None),
+        }
+
+        meta_attrs_no_inh = {
+            'db_table': 'myapp_model_user',
+            'abstract': True,
+        }
+
+        meta_attrs = {**meta_attr_inh, **meta_attrs_no_inh}
+
+        for k, v in meta_attrs.items():
+            print(f"> Meta attribute value for '{k}' must match with defined custom value: {v}")
+            self.assertEqual(getattr(User.Meta, k), v)
+
+        # checking Meta inheritance
+        class User2(Model):
+            class Meta(mdl.Meta):
+                pk = 'column_id'
+                proxy = True
+                ordering = ('id', 'name')
+                fields_up = ('id', 'name')
+                fields_down = ('id', 'name')
+                exclude_up_keys = ('updated_at',)
+                exclude_down_keys = ('password',)
+                exclude_up_values = ('', None)
+                exclude_down_values = ('', None)
+
+        class User3(User): pass
+
+
+        for k, v in meta_attr_inh.items():
+            print(f"> Meta attribute value for '{k}' must match with inherited value: {v}")
+            self.assertEqual(getattr(User3.Meta, k), v)
+
+
+        meta_attrs_no_inh_default = {
+            'db_table': 'User3',
+            'abstract': False,
+        }
+        for k, v in meta_attrs_no_inh.items():
+            mv = getattr(User3.Meta, k)
+            dv = meta_attrs_no_inh_default[k]
+            print(f"> Meta attribute value for '{k}' must not be inherited and match the default value: {dv}")
+            self.assertEqual(mv, dv)
+
+
+
+
+
+
+        # mprint(User.Meta._field_defs_)
+        # mprint(type(User.Meta._field_defs_))
 
 
         # with self.assertRaises(TypeError):
@@ -189,10 +289,14 @@ class TestMethods(unittest.TestCase):
         user.name = 'ffdsf'
         user.age = 34
         user.profession = 'Teacher'
+        print("> set attribute on model instance for non-existence field must produce AttributeError")
         with self.assertRaises(AttributeError):
             user.profesion = 'Teacher' # spelling mistake
-        mprint(inspect.getsource(BigUser2))
-        mprint(user)
+
+        print("> del attribute on model instance is allowed")
+        del user.profession
+        # mprint(inspect.getsource(BigUser2))
+        # mprint(user)
 
     def test_Model_Proxy(self):
         class User(Model):
