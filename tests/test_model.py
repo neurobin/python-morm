@@ -148,6 +148,7 @@ class TestMethods(unittest.TestCase):
         self.assertEqual(BigUser.Meta.db_table, 'BigUser')
         self.assertTrue(User.Meta._field_defs_)
         mprint(User.Meta._field_defs_)
+        mprint(type(User.Meta._field_defs_))
 
 
         # with self.assertRaises(TypeError):
@@ -179,13 +180,18 @@ class TestMethods(unittest.TestCase):
             profession = Field('varchar(255)')
             age = Field("int")
 
+        class BigUser2(Model):
+            name = Field('varchar(255)')
+            profession = Field('varchar(255)')
+            age = Field("int")
+
         user = BigUser()
         user.name = 'ffdsf'
         user.age = 34
         user.profession = 'Teacher'
         with self.assertRaises(AttributeError):
             user.profesion = 'Teacher' # spelling mistake
-        mprint(inspect.getsource(BigUser))
+        mprint(inspect.getsource(BigUser2))
         mprint(user)
 
         # b = BigUser(name='__dummy__', age=23)

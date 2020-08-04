@@ -8,6 +8,7 @@ __version__ = '0.0.1'
 
 import inspect
 import typing
+from collections import OrderedDict
 from abc import ABCMeta
 from asyncpg import Record # type: ignore
 from morm.exceptions import ItemDoesNotExistError
@@ -54,7 +55,9 @@ class ModelType(type):
         }
 
         meta_attrs_inheritable_internal = {
-            '_field_defs_': {},         # Internal
+            # for preserving order, python 3.6+ is required.
+            # This library requires at least 3.7
+            '_field_defs_': {},         # Internal, Dicts are ordered from python 3.6
         }
 
         meta_attrs = {}
@@ -82,12 +85,19 @@ class ModelType(type):
 
         new_attrs = {}
 
-        for n in dir(_class_):
-            v = getattr(_class_, n)
+        # https://www.python.org/dev/peps/pep-0520
+        # PEP 520 says: dir() will not depend on __definition_order__
+        # Even though as of python 3.8.3 we see dir() also preserves order
+        # but let's be safe.
+        # for n in dir(_class_):
+        #     v = getattr(_class_, n)
+        for n, v in _class_.__dict__.items():
             if isinstance(v, Field):
                 if n.startswith('__') and n.endswith('__'):
                     raise AttributeError(f"Invalid field name '{n}' in model '{class_name}'. \
                         Field name must not start and end with double underscore.")
+                if meta_attrs['proxy']:
+                    raise ValueError(f"Proxy model '{class_name}' can not define new field: {n}")
                 v.name = n
                 meta_attrs['_field_defs_'][n] = v
             elif n in attrs:

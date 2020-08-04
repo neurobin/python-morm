@@ -1,7 +1,7 @@
 #!/bin/bash
 
 tests=(
-    'tests.test'
+    'tests.test_model'
 )
 
 print_chars(){
