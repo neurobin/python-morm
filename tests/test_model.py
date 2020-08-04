@@ -194,6 +194,31 @@ class TestMethods(unittest.TestCase):
         mprint(inspect.getsource(BigUser2))
         mprint(user)
 
+    def test_Model_Proxy(self):
+        class User(Model):
+            name = Field('varchar(255)')
+            profession = Field('varchar(255)')
+            age = Field("int")
+        print("> Proxy model can not include new fields")
+        with self.assertRaises(ValueError):
+            class Me(User):
+                fdslkjlds = Field('varchar(255)')
+                name = 34
+                class Meta(mdl.Meta):
+                    proxy = True
+
+    def test_Model_Field_Order(self):
+        class User(Model):
+            name = Field('varchar(255)')
+            profession = Field('varchar(255)')
+            age = Field("int")
+
+        keys = ['id', 'name', 'profession', 'age']
+        ckey = list(User.Meta._field_defs_.keys())
+        print("> Class attribute definition order must be preserved (requires python 3.6+)")
+        self.assertEqual(keys, ckey)
+
+
         # b = BigUser(name='__dummy__', age=23)
 
     # async def _test_transaction_setup(self):

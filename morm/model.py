@@ -22,7 +22,7 @@ Meta = mt.Meta  # For client use
 
 
 class ModelType(type):
-    def __new__(mcs, class_name, bases, attrs):
+    def __new__(mcs, class_name: str, bases: tuple, attrs: dict):
         # Ensure initialization is only performed for subclasses of Model
         # excluding Model class itself.
         parents = tuple(b for b in bases if isinstance(b, ModelType))
@@ -33,7 +33,7 @@ class ModelType(type):
         class _Meta_(mt.Meta): pass
         meta = attrs.pop('Meta', _Meta_)
         if not issubclass(meta, mt.Meta):
-            raise TypeError(f"Name 'Meta' is reserved for a class which inherits from morm.model.Meta to pass configuration or metadata of a model. Error in model '{class_name}'")
+            raise TypeError(f"Name 'Meta' is reserved for a class which must inherit from morm.model.Meta to pass configuration or metadata of a model. Error in model '{class_name}'")
         _class_ = super().__new__(mcs, 'x_' + class_name, parents, attrs)
         BaseMeta = getattr(_class_, 'Meta', _Meta_)
 
@@ -54,7 +54,7 @@ class ModelType(type):
             'abstract': False,          # TODO: Implement in migration
         }
 
-        meta_attrs_inheritable_internal = {
+        meta_attrs_inheritable_internal = { # type: ignore
             # for preserving order, python 3.6+ is required.
             # This library requires at least 3.7
             '_field_defs_': {},         # Internal, Dicts are ordered from python 3.6
@@ -71,7 +71,7 @@ class ModelType(type):
                     required_type = type(v)
                     if not given_type is required_type:
                         raise TypeError(f"Invalid type {given_type} given for attribute '{k}' in class '{class_name}.Meta'. Required {required_type}.")
-                    meta_attrs[k] = v
+                    meta_attrs[k] = given_value
                 except AttributeError:
                     if inherit:
                         v = getattr(BaseMeta, k, v)
@@ -96,7 +96,7 @@ class ModelType(type):
                 if n.startswith('__') and n.endswith('__'):
                     raise AttributeError(f"Invalid field name '{n}' in model '{class_name}'. \
                         Field name must not start and end with double underscore.")
-                if meta_attrs['proxy']:
+                if meta_attrs['proxy'] and n in attrs:
                     raise ValueError(f"Proxy model '{class_name}' can not define new field: {n}")
                 v.name = n
                 meta_attrs['_field_defs_'][n] = v
