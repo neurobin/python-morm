@@ -2,6 +2,7 @@
 
 tests=(
     'tests.test_model'
+    'tests.test_field'
 )
 
 print_chars(){

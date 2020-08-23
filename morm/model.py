@@ -12,7 +12,7 @@ from collections import OrderedDict
 from abc import ABCMeta
 from asyncpg import Record # type: ignore
 from morm.exceptions import ItemDoesNotExistError
-from morm.fields import Field
+from morm.fields.field import Field, FieldValue
 from morm.types import Void
 import morm.meta as mt      # for internal use
 
@@ -57,7 +57,7 @@ class ModelType(type):
         meta_attrs_inheritable_internal = { # type: ignore
             # for preserving order, python 3.6+ is required.
             # This library requires at least 3.7
-            '_field_defs_': {},         # Internal, Dicts are ordered from python 3.6
+            '_field_defs_': {},         # Internal, Dicts are ordered from python 3.6, officially from 3.7
         }
 
         meta_attrs = {}
@@ -149,6 +149,11 @@ class ModelBase(metaclass=ModelType):
 
 
     def __init__(self, *args, **kwargs):
+        class Meta(object): pass
+        super(ModelBase, self).__setattr__('Meta', Meta)
+        self.Meta._fields_ = {}
+        for k, v in self.__class__.Meta._field_defs_.items():
+            self.Meta._fields_[k] = FieldValue(v)
         for arg in args:
             try:
                 for k,v in arg.items():
@@ -158,13 +163,35 @@ class ModelBase(metaclass=ModelType):
         for k,v in kwargs.items():
             setattr(self, k, v)
 
+    def __iter__(self):
+        """Iter through k, v where k is field name and v is field value
+
+        Yields:
+            tuple: field_name, field_value
+        """
+        for k, f in self.Meta._fields_.items():
+            yield k, f.value
+
+    def __delattr__(self, k):
+        field_defs = self.Meta._fields_
+        if k in field_defs:
+            field_defs[k].delete_value()
+        else:
+            super().__delattr__(k)
+
+    def __getattr__(self, k):
+        field_defs = self.Meta._fields_
+        if k in field_defs:
+            return field_defs[k].value
+        raise AttributeError
 
     def __setattr__(self, k, v):
-        field_defs = self.__class__.Meta._field_defs_
+        field_defs = self.Meta._fields_
         if k not in field_defs:
             raise AttributeError(f"No such field ('{k}') in model '{self.__class__.__name__}''")
-        v = field_defs[k].clean(v)
-        super().__setattr__(k, v)
+        # v = field_defs[k].clean(v)
+        # super().__setattr__(k, v)
+        field_defs[k].value = v
 
 
 

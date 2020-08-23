@@ -10,7 +10,7 @@ import morm.model as mdl
 import morm.meta as mt
 
 
-LOGGER_NAME = 'morm-'
+LOGGER_NAME = 'morm-test-model-'
 log = logging.getLogger(LOGGER_NAME)
 
 def get_file_content(path):
@@ -329,8 +329,19 @@ class TestMethods(unittest.TestCase):
         class User(Model):
             NAMES = ['John Doe', 'Jane Doe']
             name = Field('varchar(255)', default=name_default)
-            profession = Field('varchar(255)')
+            profession = Field('varchar(255)', default='Teacher')
             age = Field("int")
+
+        user = User()
+        self.assertTrue(user.name in User.NAMES)
+        user.name = 'Jahidul Hamid'
+        self.assertEqual('Jahidul Hamid', user.name)
+        print("> Field().name represents the string name of the field")
+        self.assertTrue(User.Meta._field_defs_['name'].name == 'name')
+
+        print("> Model instance is iterable (k,v)")
+        for k, v in user:
+            print((k, v,))
 
 
 

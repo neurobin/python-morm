@@ -37,7 +37,7 @@ class Field(object):
     """# Field class.
 
     Field object stores the sql definition of the model field,
-    modifier function, validator function and the default and provides
+    validator function, modifier function and the default and provides
     some utilities:
 
     `Field().clean(value, fallback=False)` provides a cleaning method.
@@ -46,23 +46,26 @@ class Field(object):
     """
     def __init__(self, sql_def: str, default: Any=Void,
                  validator: Callable=always_valid,
-                 modifier: Callable=nomodify):
+                 modifier: Callable=nomodify,
+                 fallback=False):
         """Initialize the Field object.
 
         Args:
             sql_def (str): SQL definition of the model Field
-            default (Any, optional): Default value (can be a callable). Defaults to Void.
+            default (Any, optional): Default value (can be a callable). Defaults to Void. (Do not use mutable values, use function instead)
             validator (callable, optional): A callable that accepts exactly one argument. Validates the value in `clean` method. Defaults to always_valid.
-            modifier (callable, optional): A callable that accepts exactly one argument. Modifies the value before passing it to `validator` when the `clean` method is called.. Defaults to nomodify.
+            modifier (callable, optional): A callable that accepts exactly one argument. Modifies the value if validation fails when the `clean` method is called.. Defaults to nomodify.
+            fallback (bool, optional): Whether invalid value should fallback to default value suppressing exception. (May hide bugs in your program)
         """
         self.sql_def = sql_def
         self.default = default
         self.validator = validator
         self.modifier = modifier
         self.name = ''
+        self.fallback = fallback
 
     def clean(self, value: Any, fallback: bool=False):
-        """Clean the value by calling modifier then validator.
+        """Clean the value by calling validator -> modifier -> validator
 
         If fallback is set to True, value that does not pass the
         validator will not raise any exception and will return the
@@ -79,11 +82,14 @@ class Field(object):
         Returns:
             Any: value
         """
-        value = self.modifier(value)
+        if not self.validator(value):
+            value = self.modifier(value)
+        else:
+            return value
         if not self.validator(value):
             if fallback:
                 return self.get_default()
-            raise ValueError("Value did not pass validation check for '%s'" % (self.name,))
+            raise ValueError("Value (%s) (type: %s) did not pass validation check for '%s'" % (str(value), type(value), self.name,))
         return value
 
     def get_default(self):
@@ -99,3 +105,71 @@ class Field(object):
             return self.default()
         except TypeError:
             return self.default
+
+
+class FieldValue(object):
+    """Field Value Container
+
+    `FieldValue().value` is a property that sets and gets the value.
+
+    `FieldValue().value_change_count` gives the count of how many times the value
+    has been set or changed.
+    """
+
+    def __init__(self, field: Field):
+        """Initialize field Value container.
+
+        Args:
+            field (Field): Field object
+        """
+        self._field = field
+        self.default_value = field.get_default()
+        self._value = self.default_value
+        self._value_change_count = 0
+
+    @property
+    def value_change_count(self):
+        """Return how many times the value has been set or changed.
+
+        Returns:
+            Any: value
+        """
+        return self._value_change_count
+
+    @property
+    def value(self):
+        """Get the value if set or default otherwise.
+
+        Returns:
+            Any: value or default
+        """
+        return self._value
+
+    @value.setter
+    def value(self, v):
+        """Set the value by doing cleanup.
+
+        Falls back to default if value is invalid.
+
+        Args:
+            v (Any): value
+        """
+        self.set_value(v, fallback=self._field.fallback)
+
+    def set_value(self, v, fallback=False):
+        """Value setter.
+
+        Args:
+            v (Any): value
+            fallback (bool, optional): Whether to fallback to default value if v is invalid. Defaults to False.
+        """
+        self._value = self._field.clean(v, fallback=fallback)
+        self._value_change_count += 1 # This must be the last line
+        # when the clean method raises exception, it will not be counted as
+        # a successful value assignment.
+
+    def delete_value(self):
+        """Return the value to its initial state.
+        """
+        self._value = self.default_value
+        self._value_change_count = 0
