@@ -343,6 +343,25 @@ class TestMethods(unittest.TestCase):
         for k, v in user:
             print((k, v,))
 
+        with self.assertRaises(AttributeError):
+            class User2(Model):
+                NAMES = ['John Doe', 'Jane Doe']
+                __name__ = Field('varchar(255)', default=name_default)
+
+    def test_Model_Init(self):
+
+        class User(Model):
+            NAMES = ['John Doe', 'Jane Doe']
+            name = Field('varchar(255)', default='')
+            profession = Field('varchar(255)', default='Teacher')
+            age = Field("int")
+
+        user = User({'profession': 'Student'}, name='Jahid')
+        with self.assertRaises(TypeError):
+            user = User(['profession', 'Student'], name='Jahid')
+        with self.assertRaises(AttributeError):
+            dct = user.fdsfdss
+        del user.__dict__ # for coverage to touch __delattr__
 
 
 

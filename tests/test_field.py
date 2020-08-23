@@ -49,6 +49,8 @@ class TestMethods(unittest.TestCase):
         with self.assertRaises(ValueError):
             f.value = '454f'
 
+        f.value = '345'
+
         with self.assertRaises(ValueError):
             f1.value = '34'
 

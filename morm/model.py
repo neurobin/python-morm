@@ -159,7 +159,7 @@ class ModelBase(metaclass=ModelType):
                 for k,v in arg.items():
                     setattr(self, k, v)
             except AttributeError:
-                raise TypeError("Invalid argument type to Model __init__ method. Expected: dictionary or keyword argument")
+                raise TypeError(f"Invalid argument type ({type(arg)}) to Model __init__ method. Expected: dictionary or keyword argument")
         for k,v in kwargs.items():
             setattr(self, k, v)
 
@@ -266,7 +266,7 @@ class Model(ModelBase):
         Raises:
             TypeError: If invalid type of argument is provided.
         """
-        super().__init__(*args, **kwargs)
+        super(Model, self).__init__(*args, **kwargs)
 
 # class _Model_(metaclass=ModelType):
 #     _db_no_check_: bool = True # internal use only

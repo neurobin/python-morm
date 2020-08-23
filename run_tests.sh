@@ -3,6 +3,9 @@
 tests=(
     'tests.test_model'
     'tests.test_field'
+    'tests.test_meta'
+    'tests.test_package'
+    'tests.test_types'
 )
 
 print_chars(){
@@ -25,8 +28,9 @@ print_msg(){
 }
 
 for test in "${tests[@]}"; do
-    print_msg "python -m $test"
-    if ! python -m "$test"; then
+    cmd="coverage run --source=morm -p -m $test"
+    print_msg "$cmd"
+    if ! $cmd; then
         exit 1
     fi
     print_msg "mypy -m $test"
@@ -34,3 +38,6 @@ for test in "${tests[@]}"; do
         exit 1
     fi
 done
+
+coverage combine
+coverage html
