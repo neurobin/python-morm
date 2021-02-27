@@ -16,7 +16,7 @@ from typing import Optional, List, Tuple
 
 from morm import exceptions
 from morm.model import ModelType, Model
-from morm.q import Q, SelectQuery
+from morm.q import Q, QueryBuilder
 
 
 def record_to_model(record: Record, model_class: ModelType) -> Model:
@@ -245,8 +245,15 @@ class DB(object):
         pool = self.corp()
         return await pool.execute(query, *args, timeout=timeout)
 
-    def select(self, model):
-        return SelectQuery(self.fetch, model)
+
+class ModelQuery():
+    def __init__(self, db: DB, model_class: ModelType):
+        self.db = db
+        self.model_class = model_class
+
+
+    def select(self, what='*', where='true', prepared_args=()):
+
 
 
 class Transaction():

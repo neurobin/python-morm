@@ -9,6 +9,7 @@ __version__ = '0.0.1'
 
 import re
 from typing import Tuple, List, Dict, Any
+import collections
 
 from morm.model import ModelType, Model
 
@@ -25,111 +26,40 @@ def Q(name:str) -> str:
     return f'"{name}"'
 
 
-class QueryBuilder():
-    def __init__(self, func, model: ModelType):
-        self._func = func
-        self._model = model
-        self._query: List[str] = []
-        self._prepared_args: List[Any] = []
-        self._named_args: Dict[str, Any] = {}
+class QueryBuilder(object):
+    def __init__(self):
+        self._query_str_queue = collections.deque()
+        self._prepared_args = []
+        self._arg_count = 0
+        self._named_args = {}
 
-    async def run(self, **kwargs):
-        """Run a query function with this query builder
-
-        Args:
-            kwargs: Other arguments that should be passed to the query function
-
-        Returns:
-            Any: query result
-        """
-        query, prepared_args = self._get_query_args()
-        return await self._func(query, *prepared_args, model_class=self._model, **kwargs)
-
-
-    def r(self, *args):
-        """Append query string/s to query builder
-
-        Args:
-             (str): query string
-
-        Returns:
-            QueryBuilder: self
-        """
-        self._query.extend(args)
-        return self
-
-    def q(self, *args):
-        """Append query strings to query builder by quoting them.
-
-        Returns:
-            QeuryBuilder: self
-        """
-        args = [Q(x) for x in args]
-        self._query.extend(args)
-        return self
-
-
-    def _get_query_args(self):
-        """Return the total query string along with the prepared args
-
-        Returns:
-            str, list: query string, prepared args
-        """
-        prepared_args = list(self._prepared_args)
-        s = ''.join(self._query)
-        # c = len(prepared_args)
-        # i = c
-        # for k, v in self._named_args.items():
-        #     pat = f"[:]{k}\\b"
-        #     if re.search(pat, s):
-        #         i = i + 1
-        #         prepared_args.append(v)
-        #         s = re.sub(pat, f"${i}", s)
-        return s, prepared_args
-
-
-    def args(self, *args):
-        """Add prepared arguments to query builder.
-        """
+    def _update_args(self, q: str, *args, **kwargs) -> str:
         self._prepared_args.extend(args)
+        self._arg_count += len(args)
+
+        self._named_args.update(kwargs)
+        for k,v in self._named_args.items():
+            q, mc = re.subn(f':{k}\\b', f'${self._arg_count+1}', q)
+            if mc > 0:
+                self._prepared_args.append(v)
+                self._arg_count += 1
+        return q
+
+
+    def R(self, q: str, *args, **kwargs):
+        q = self._update_args(q, *args, **kwargs)
+        self._query_str_queue.append(q)
         return self
 
-    def nargs(self, *args, **kwargs):
-        """Add named arguments to query builder
+    def L(self, q: str, *args, **kwargs):
+        q = self._update_args(q, *args, **kwargs)
+        self._query_str_queue.appendleft(q)
+        return self
 
-        This works by converting the named arguments to positional arguments.
-
-        Use: Add a colon before the name to reference it, e.g: :birthday
-
-        Args:
-            args: Dictionaries containg the name and values
-            kwargs: keyword args with name value
+    def get_query(self):
+        """Return query string and prepared arg list
 
         Returns:
-            QueryBuilder: self
+            tuple: (str, list) : (query, parepared_args)
         """
-        for arg in args:
-            self._named_args.update(arg)
-        self._named_args.update(kwargs)
-        return self
-
-
-
-
-class SelectQuery(QueryBuilder):
-    def __init__(self, func, model: ModelType):
-        super().__init__(func, model)
-        self._what_sql = '*'
-        self._where_sql = 'true'
-
-    def what(self, what_sql):
-        self._what_sql = what_sql
-        return self
-
-    def where(self, where_sql):
-        self._where_sql = where_sql
-        return self
-
-    async def run(self, **kwargs):
-        self.r('SELECT ', self._what_sql, ' FROM ', Q(self._model.Meta.db_table), ' WHERE ', self._where_sql)
-        return await super().run(**kwargs)
+        return ' '.join(self._query_str_queue), self._prepared_args
