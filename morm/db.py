@@ -122,6 +122,8 @@ class DB(object):
     def __init__(self, pool: Pool, con=None):
         """Initialize a DB object setting a pool to get connection from.
 
+        If connection is given, it is used instead.
+
         Args:
             pool (Pool): A connection pool
             con (asyncpg.Connection): Connection. Defaults to `None`.
@@ -153,7 +155,7 @@ class DB(object):
     async def fetch(self, query: str, *args,
                     timeout: float = None,
                     model_class: ModelType=None,
-                    con: Connection=None,
+                    # con: Connection=None,
                     ):
         """Make a query and get the results.
 
@@ -161,10 +163,9 @@ class DB(object):
 
         Args:
             query (str): Query string.
-            args (list or tuple): Query arguments.
+            args (*list or *tuple): Query arguments.
             timeout (float, optional): Timeout value. Defaults to None.
             model_class (Model, optional): Defaults to None.
-            con (Connection, optional): Defaults to None.
 
         Returns:
             List[Model] or List[Record] : List of model instances if model_class is given, otherwise list of Record instances.
@@ -183,7 +184,7 @@ class DB(object):
     async def fetchrow(self, query: str, *args,
                         timeout: float = None,
                         model_class: ModelType=None,
-                        con: Connection=None,
+                        # con: Connection=None,
                         ):
         """Make a query and get the first row.
 
@@ -191,10 +192,9 @@ class DB(object):
 
         Args:
             query (str): Query string.
-            args (list or tuple): Query arguments.
+            args (*list or *tuple): Query arguments.
             timeout (float, optional): Timeout value. Defaults to None.
             model_class (Model, optional): Defaults to None.
-            con (asyncpg.Connection, optional): Defaults to None.
 
         Returns:
             Record or model_clas object or None if no rows were selected.
@@ -212,21 +212,38 @@ class DB(object):
     async def fetchval(self, query: str, *args,
                         column: int = 0,
                         timeout: float = None,
-                        con: Connection=None,
+                        # con: Connection=None,
                         ):
         """Run a query and return a column value in the first row.
 
         Args:
             query (str): Query to run.
+            args (*list or *tuple): Query arguments.
             column (int, optional): Column index. Defaults to 0.
             timeout (float, optional): Timeout. Defaults to None.
-            con (asyncpg.Connection, optional): Defaults to None.
 
         Returns:
             Any: Coulmn (indentified by index) value of first row.
         """
         pool = self.corp()
         return await pool.fetchval(query, *args, column=column, timeout=timeout)
+
+    async def execute(self, query: str, *args,
+                        timeout: float = None,
+                        # con: Connection=None,
+                        ):
+        """Execute a query.
+
+        Args:
+            query (str): Query to run.
+            args (*list or *tuple): Query arguments.
+            timeout (float, optional): Timeout. Defaults to None.
+
+        Returns:
+            str: Status of the last SQL command
+        """
+        pool = self.corp()
+        return await pool.execute(query, *args, timeout=timeout)
 
     def select(self, model):
         return SelectQuery(self.fetch, model)
