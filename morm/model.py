@@ -32,8 +32,8 @@ class ModelType(type):
         classcell = attrs.pop('__classcell__', None)
         class _Meta_(mt.Meta): pass
         meta = attrs.pop('Meta', _Meta_)
-        if not issubclass(meta, mt.Meta):
-            raise TypeError(f"Name 'Meta' is reserved for a class which must inherit from morm.model.Meta to pass configuration or metadata of a model. Error in model '{class_name}'")
+        if not inspect.isclass(meta): #TEST: Meta is restricted as a class
+            raise TypeError(f"Name 'Meta' is reserved for a class to pass configuration or metadata of a model. Error in model '{class_name}'")
         _class_ = super().__new__(mcs, 'x_' + class_name, parents, attrs)
         BaseMeta = getattr(_class_, 'Meta', _Meta_)
 
@@ -61,11 +61,11 @@ class ModelType(type):
         }
 
         meta_attrs = {}
-        def set_meta_attrs(meta, meta_attrs_current, inherit=False, inernal=False):
+        def set_meta_attrs(meta, meta_attrs_current, inherit=False, internal=False):
             for k, v in meta_attrs_current.items():
                 try:
                     given_value = getattr(meta, k)
-                    if inernal:
+                    if internal:
                         raise ValueError(f"'{k}' is a reserved attribute for class Meta. Error in model '{class_name}'")
                     given_type = type(given_value)
                     required_type = type(v)
@@ -80,7 +80,7 @@ class ModelType(type):
                         meta_attrs[k] = v
         set_meta_attrs(meta, meta_attrs_inheritable, inherit=True)
         set_meta_attrs(meta, meta_attrs_noninheritable, inherit=False)
-        set_meta_attrs(meta, meta_attrs_inheritable_internal, inherit=True, inernal=True)
+        set_meta_attrs(meta, meta_attrs_inheritable_internal, inherit=True, internal=True)
 
 
         new_attrs = {}
@@ -173,39 +173,48 @@ class ModelBase(metaclass=ModelType):
             yield k, f.value
 
     def __delattr__(self, k):
-        field_defs = self.Meta._fields_
-        if k in field_defs:
-            field_defs[k].delete_value()
+        fields = self.Meta._fields_
+        if k in fields:
+            fields[k].delete_value()
         else:
             super().__delattr__(k)
 
     def __getattr__(self, k):
-        field_defs = self.Meta._fields_
-        if k in field_defs:
-            return field_defs[k].value
+        fields = self.Meta._fields_
+        if k in fields:
+            return fields[k].value
         raise AttributeError
 
     def __setattr__(self, k, v):
-        field_defs = self.Meta._fields_
-        if k not in field_defs:
+        fields = self.Meta._fields_
+        if k not in fields:
             raise AttributeError(f"No such field ('{k}') in model '{self.__class__.__name__}''")
-        # v = field_defs[k].clean(v)
+        # v = fields[k].clean(v)
         # super().__setattr__(k, v)
-        field_defs[k].value = v
+        fields[k].value = v
 
 
 
 class Model(ModelBase):
     """Base model to be inherited by other models.
 
-    This model defines an auto incremented primary key: 'id' by default.
-
-    A minimal model could look like:
+    It's more than a good practice to define a Base model first:
 
     ```python
     import morm.model as mdl
 
-    class User(mdl.Model):
+    class Base(mdl.Model):
+        class Meta:
+            pk = 'id' # setting primary key, it is defaulted to 'id'
+            abstract = True
+
+        id = Field('SERIAL NOT NULL PRIMARY KEY') #postgresql example
+    ```
+
+    Then a minimal model could look like this:
+
+    ```python
+    class User(Base):
         name = Field('varchar(65)')
         email = Field('varchar(255)')
         password = Field('varchar(255)')
@@ -219,11 +228,11 @@ class Model(ModelBase):
     def get_rand():
         return random.randint(1, 9)
 
-    class User(mdl.Model):
-        class Meta(mdl.Meta):
+    class User(Base):
+        class Meta:
             db_table = 'myapp_user'
-            abstract = False
-            proxy = False
+            abstract = False    # default is False
+            proxy = False       # default is False
             # ... etc...
 
         name = Field('varchar(65)')
@@ -239,11 +248,7 @@ class Model(ModelBase):
         # included there will be blindly inherited, while these are passed
         # through the metaclasses __new__ methods and processed accordingly
         # to determine which one should be inherited and which one should not.
-        pk = 'id'
-        db_table = ''
         abstract = True
-
-    id = Field('SERIAL NOT NULL PRIMARY KEY')
 
     def __init__(self, *args, **kwargs):
         """# Initialize a model instance.

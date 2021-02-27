@@ -86,6 +86,7 @@ class Field(object):
             value = self.modifier(value)
         else:
             return value
+        # the value may have been changed, try to validate again
         if not self.validator(value):
             if fallback:
                 return self.get_default()

@@ -66,16 +66,19 @@ class TestMethods(unittest.TestCase):
         b = BigUser(name='__dummy__', age=23)
         # await b._save_()
 
+    async def _test_direct_execute(self):
+        await SNORM_DB_POOL.pool.execute('CREATE TABLE IF NOT EXISTS "BigUser" (id SERIAL not null PRIMARY KEY, name varchar(255), profession varchar(255), age int)')
+
     async def _test_transaction(self):
         try:
-            async with Transaction(BigUser._db_) as con:
+            async with Transaction(SNORM_DB_POOL) as con:
                 # b = await BigUser._get_(where="name='__dummy__'", con=con)
                 # b.age += 2
                 # await b._save_(con=con)
                 # # raise Exception
                 await con.execute('CREATE TABLE IF NOT EXISTS "BigUser" (id SERIAL not null PRIMARY KEY, name varchar(255), profession varchar(255), age int)')
         except:
-            pass
+            raise
         # b = await BigUser._get_(where="name='__dummy__'")
         # self.assertEqual(b.age, 23)
         pass
@@ -87,7 +90,8 @@ class TestMethods(unittest.TestCase):
         try:
             asyncio.get_event_loop().run_until_complete(self._test_transaction_setup())
             # group = asyncio.gather(self._test_transaction_setup(), *[self._test_transaction() for i in range(10)])
-            group = asyncio.gather( *[self._test_transaction() for i in range(10)])
+            # group = asyncio.gather( *[self._test_transaction() for i in range(10000)])
+            group = asyncio.gather( *[self._test_direct_execute() for i in range(10000)])
             # group = asyncio.gather(self._test_transaction_setup())
             asyncio.get_event_loop().run_until_complete(asyncio.gather(group))
         finally:
