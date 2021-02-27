@@ -253,7 +253,8 @@ class ModelQuery():
 
 
     def select(self, what='*', where='true', prepared_args=()):
-
+        qb = QueryBuilder()
+        qb.R('SELECT')
 
 
 class Transaction():
