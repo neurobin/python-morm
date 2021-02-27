@@ -119,14 +119,15 @@ class DB(object):
     connection pool defined by a Pool object.
     """
 
-    def __init__(self, pool: Pool):
+    def __init__(self, pool: Pool, con=None):
         """Initialize a DB object setting a pool to get connection from.
 
         Args:
             pool (Pool): A connection pool
+            con (asyncpg.Connection): Connection. Defaults to `None`.
         """
         self._pool = pool
-        self._con = None
+        self._con = con
 
     @property
     def pool(self) -> Pool:
@@ -137,8 +138,10 @@ class DB(object):
         """
         return self._pool
 
-    def poolorcon(self):
+    def corp(self):
         """Return the connection if available, otherwise return a Pool.
+
+        Note: The name reads 'c or p'
 
         Returns:
             Connection or asyncpg.pool.Pool object
@@ -166,7 +169,7 @@ class DB(object):
         Returns:
             List[Model] or List[Record] : List of model instances if model_class is given, otherwise list of Record instances.
         """
-        pool = self.poolorcon()
+        pool = self.corp()
         records = await pool.fetch(query, *args, timeout=timeout)
         if not model_class:
             return records
@@ -196,7 +199,7 @@ class DB(object):
         Returns:
             Record or model_clas object or None if no rows were selected.
         """
-        pool = self.poolorcon()
+        pool = self.corp()
         record = await pool.fetchrow(query, *args, timeout=timeout)
         if not model_class:
             return record
@@ -222,7 +225,7 @@ class DB(object):
         Returns:
             Any: Coulmn (indentified by index) value of first row.
         """
-        pool = self.poolorcon()
+        pool = self.corp()
         return await pool.fetchval(query, *args, column=column, timeout=timeout)
 
     def select(self, model):

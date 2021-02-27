@@ -6,6 +6,7 @@ tests=(
     'tests.test_meta'
     'tests.test_package'
     'tests.test_types'
+    'tests.test_db'
 )
 
 print_chars(){
