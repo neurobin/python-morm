@@ -51,7 +51,10 @@ class BigUser(Model):
     class Meta:
         ordering = ('name', '-profession', '+age')
         exclude_fields_down = ('age',)
-        exclude_values_down = ('developer',)
+        exclude_values_down = {
+            '': (Void,),
+            'profession': ('developer',)
+            }
     name = Field('varchar(255)')
     profession = Field('varchar(255)')
     age = Field("int")
@@ -62,7 +65,9 @@ class BigUser(Model):
 class BigUser2(Model):
     class Meta:
         fields_down = ('name', 'profession')
-        exclude_values_down = ('developer',)
+        exclude_values_down = {
+            '': ('developer',)
+            }
     name = Field('varchar(255)')
     profession = Field('varchar(255)')
     age = Field("int")
@@ -121,6 +126,7 @@ class TestMethods(unittest.TestCase):
         res = await mq.fetch()
         res2 = await mq2.fetch()
         print(res)
+        print(res2)
         print('\n## Exclude fields and values\n')
 
         print('* fields_down and exclude_fields_down control which fields will be retrieved from db and accessed from model object')
@@ -134,7 +140,8 @@ class TestMethods(unittest.TestCase):
             res[0].profesion
 
         print('* when fields_down is specified, only specified fields will be down')
-        res2[0].profession
+        with self.assertRaises(AttributeError):
+            res2[0].profession # developer is in exclude_values_down
         res2[0].name
         print('* when fields_down is specified, unspecified fields will not be accessible')
         with self.assertRaises(AttributeError):

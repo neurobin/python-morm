@@ -64,3 +64,18 @@ class VoidType(object, metaclass=SingletonMeta):
 # this one needs to be defined here.
 Void = object.__new__(VoidType)
 '''Used internally to represent non-existent value, thus `None` retains its usual meaning.'''
+
+class imdict(dict):
+    def __hash__(self):
+        return id(self)
+
+    def _immutable(self, *args, **kws):
+        raise TypeError('object is immutable')
+
+    __setitem__ = _immutable
+    __delitem__ = _immutable
+    clear       = _immutable
+    update      = _immutable
+    setdefault  = _immutable
+    pop         = _immutable
+    popitem     = _immutable

@@ -13,7 +13,7 @@ from abc import ABCMeta
 from asyncpg import Record # type: ignore
 from morm.exceptions import ItemDoesNotExistError
 from morm.fields.field import Field, FieldValue
-from morm.types import Void
+from morm.types import Void, imdict
 import morm.meta as mt      # for internal use
 
 # morm.db must not be imported here.
@@ -46,8 +46,8 @@ class ModelType(type):
             'fields_down': (),
             'exclude_fields_up': (),
             'exclude_fields_down': (),
-            'exclude_values_up': (),
-            'exclude_values_down': (),
+            'exclude_values_up': {'':()},
+            'exclude_values_down': {'':()},
         }
         meta_attrs_noninheritable = {
             'db_table': class_name,
@@ -116,31 +116,36 @@ class ModelType(type):
     def __delattr__(self, k):
         raise NotImplementedError("You can not delete model attributes outside model definition.")
 
-    def _is_valid_down_key_(self, k):
-        fields = self.Meta.fields_down
-        if k in self.Meta.exclude_fields_down: return False
+    def __is_valid_key(self, k, fields, exclude_keys):
+        if k in exclude_keys: return False
         if fields and k not in fields: return False
         return True
+
+    def _is_valid_down_key_(self, k):
+        return self.__is_valid_key(k, self.Meta.fields_down, self.Meta.exclude_fields_down)
 
     def _is_valid_up_key_(self, k):
-        fields = self.Meta.fields_up
-        if k in self.Meta.exclude_fields_up: return False
-        if fields and k not in fields: return False
+        return self.__is_valid_key(k, self.Meta.fields_up, self.Meta.exclude_fields_up)
+
+    def __is_valid_value(self, k, v, exclude_values):
+        if k in exclude_values:
+            if v in exclude_values[k]:
+                return False
+        if '' in exclude_values and v in exclude_values['']:
+            return False
         return True
 
-    def _is_valid_up_value_(self, v):
-        if v in self.Meta.exclude_values_up: return False
-        return True
+    def _is_valid_up_value_(self, k, v):
+        return self.__is_valid_value(k, v, self.Meta.exclude_values_up)
 
-    def _is_valid_down_value_(self, v):
-        if v in self.Meta.exclude_values_down: return False
-        return True
+    def _is_valid_down_value_(self, k, v):
+        return self.__is_valid_value(k, v, self.Meta.exclude_values_down)
 
     def _is_valid_down_(self, k, v):
-        return self._is_valid_down_key_(k) and self._is_valid_down_value_(v)
+        return self._is_valid_down_key_(k) and self._is_valid_down_value_(k, v)
 
     def _is_valid_up_(self, k, v):
-        return self._is_valid_up_key_(k) and self._is_valid_up_value_(v)
+        return self._is_valid_up_key_(k) and self._is_valid_up_value_(k, v)
 
     def _get_fields_(self, up=False):
         if up:
@@ -151,8 +156,8 @@ class ModelType(type):
             exclude_keys = self.Meta.exclude_fields_down
         all_fields = self.Meta._field_defs_
         for k in all_fields:
-            if k in exclude_keys: continue
-            if fields and k not in fields: continue
+            if not self.__is_valid_key(k, fields, exclude_keys):
+                continue
             yield k
 
     def _get_data_for_valid_values_(self, data, up=False, gen=False):
@@ -162,7 +167,8 @@ class ModelType(type):
             exclude_values = self.Meta.exclude_values_down
         new_data = type(data)()
         for k,v in data.items():
-            if v in exclude_values: continue
+            if not self.__is_valid_value(k, v, exclude_values):
+                continue
             if gen:
                 yield k, v
             else:
