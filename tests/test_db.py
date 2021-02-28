@@ -47,6 +47,8 @@ class User(Model):
     profession = Field('varchar(255)')
 
 class BigUser(Model):
+    class Meta:
+        ordering = ('name', '-profession', '+age')
     name = Field('varchar(255)')
     profession = Field('varchar(255)')
     age = Field("int")
@@ -91,11 +93,25 @@ class TestMethods(unittest.TestCase):
             asyncio.get_event_loop().run_until_complete(self._test_transaction_setup())
             # group = asyncio.gather(self._test_transaction_setup(), *[self._test_transaction() for i in range(10)])
             # group = asyncio.gather( *[self._test_transaction() for i in range(10000)])
-            group = asyncio.gather( *[self._test_direct_execute() for i in range(10000)])
+            group = asyncio.gather( *[self._test_direct_execute() for i in range(10)])
             # group = asyncio.gather(self._test_transaction_setup())
             asyncio.get_event_loop().run_until_complete(asyncio.gather(group))
         finally:
             self.clean()
+
+    async def _test_db_filter_data(self):
+        db = DB(SNORM_DB_POOL)
+        mq = db(BigUser).filter('', '', True)
+        res = await mq.fetch()
+        print(res)
+
+
+    def test_filter_func(self):
+        db = DB(SNORM_DB_POOL)
+        q = db(BigUser).filter('', '', True).get_query()
+        print(q)
+        asyncio.get_event_loop().run_until_complete(self._test_db_filter_data())
+
 
     # def _test_something(self):
     #     db = DB(SNORM_DB_POOL)

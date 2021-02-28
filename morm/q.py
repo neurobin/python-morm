@@ -14,7 +14,7 @@ import collections
 from morm.model import ModelType, Model
 
 
-def Q(name:str) -> str:
+def Q(name:str, quote='"') -> str:
     """SQL quote name by adding leading and trailing double quote.
 
     Args:
@@ -23,7 +23,7 @@ def Q(name:str) -> str:
     Returns:
         str: Quoted name
     """
-    return f'"{name}"'
+    return f'{quote}{name}{quote}'
 
 
 class QueryBuilder(object):

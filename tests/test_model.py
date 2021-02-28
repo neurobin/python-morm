@@ -81,11 +81,6 @@ class TestMethods(unittest.TestCase):
         with self.assertRaises(TypeError):
             class User(Model):
                 Meta = 32
-        print("> Meta class must be a sublcass of morm.model.Meta")
-        with self.assertRaises(TypeError):
-            class User(Model):
-                class Meta:
-                    proxy = True
 
     def test_Model_Meta_Internal_fields(self):
         print("> _field_defs_ internal meta field can not be set by user.")
@@ -317,7 +312,7 @@ class TestMethods(unittest.TestCase):
             profession = Field('varchar(255)')
             age = Field("int")
 
-        keys = ['id', 'name', 'profession', 'age']
+        keys = ['name', 'profession', 'age']
         ckey = list(User.Meta._field_defs_.keys())
         print("> Class attribute definition order must be preserved (requires python 3.7+)")
         self.assertEqual(keys, ckey)

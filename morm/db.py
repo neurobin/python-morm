@@ -256,9 +256,12 @@ class ModelQuery():
         self.db = db
         self.model_class = model_class
         self._query_str_queue = collections.deque()
+        self.end_query_str = ''
+        self.start_query_str = ''
         self._prepared_args = []
         self._arg_count = 0
         self._named_args = {}
+        self.__filter_initiated = False
 
     def _update_args(self, q: str, *args, **kwargs) -> str:
         self._prepared_args.extend(args)
@@ -272,6 +275,17 @@ class ModelQuery():
                 self._arg_count += 1
         return q
 
+
+
+    def QR(self, q: str, *args, **kwargs):
+        q = self._update_args(q, *args, **kwargs)
+        self._query_str_queue.append(Q(q))
+        return self
+
+    def QL(self, q: str, *args, **kwargs):
+        q = self._update_args(q, *args, **kwargs)
+        self._query_str_queue.appendleft(Q(q))
+        return self
 
     def R(self, q: str, *args, **kwargs):
         q = self._update_args(q, *args, **kwargs)
@@ -291,6 +305,7 @@ class ModelQuery():
         """
         query = ' '.join(self._query_str_queue)
         self._query_str_queue = collections.deque([query])
+        query = f'{self.start_query_str} {query} {self.end_query_str}'
         return query, self._prepared_args
 
     async def fetch(self, timeout: float = None):
@@ -334,19 +349,15 @@ class ModelQuery():
         query, parepared_args = self.get_query()
         return await self.db.fetchval(query, *parepared_args, column=column, timeout=timeout)
 
-    async def execute(self, timeout: float = None):
-        """Execute a query and return status of the last SQL command.
-
-        Args:
-            timeout (float, optional): Timeout. Defaults to None.
-
-        Returns:
-            str: Status of the last SQL command
-        """
-        query, parepared_args = self.get_query()
-        return await self.db.execute(query, *parepared_args, timeout=timeout)
-
-    # async def filter(self):
+    def filter(self, left, cond, right):
+        if not self.__filter_initiated:
+            down_fields = ','.join([Q(x) for x in self.model_class._get_fields_(up=False)])
+            self.R(f'SELECT {down_fields} FROM "{self.model_class._get_db_table_()}" WHERE')
+            self.__filter_initiated = True
+            order_by = ','.join([' '.join(y) for y in self.model_class._get_ordering_(quote='"')])
+            if order_by:
+                self.end_query_str = 'ORDER BY ' + order_by
+        return self.R(f'{left} {cond} ${self._arg_count+1}', right)
 
 
 

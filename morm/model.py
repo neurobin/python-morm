@@ -116,6 +116,84 @@ class ModelType(type):
     def __delattr__(self, k):
         raise NotImplementedError("You can not delete model attributes outside model definition.")
 
+    def _is_valid_down_key_(self, k):
+        fields = self.Meta.fields_down
+        if k in self.Meta.exclude_down_keys: return False
+        if fields and k not in fields: return False
+        return True
+
+    def _is_valid_up_key_(self, k):
+        fields = self.Meta.fields_up
+        if k in self.Meta.exclude_up_keys: return False
+        if fields and k not in fields: return False
+        return True
+
+    def _is_valid_up_value_(self, v):
+        if v in self.Meta.exclude_up_values: return False
+        return True
+
+    def _is_valid_down_value_(self, v):
+        if v in self.Meta.exclude_down_values: return False
+        return True
+
+    def _get_fields_(self, up=False):
+        if up:
+            fields = self.Meta.fields_up
+            exclude_keys = self.Meta.exclude_up_keys
+        else:
+            fields = self.Meta.fields_down
+            exclude_keys = self.Meta.exclude_down_keys
+        all_fields = self.Meta._field_defs_
+        for k in all_fields:
+            if k in exclude_keys: continue
+            if fields and k not in fields: continue
+            yield k
+
+    def _get_data_for_valid_values_(self, data, up=False, gen=False):
+        if up:
+            exclude_values = self.Meta.exclude_up_values
+        else:
+            exclude_values = self.Meta.exclude_down_values
+        new_data = type(data)()
+        for k,v in data.items():
+            if v in exclude_values: continue
+            if gen:
+                yield k, v
+            else:
+                new_data[k] = v
+        if not gen:
+            return new_data
+
+    def _get_db_table_(self):
+        return self.Meta.db_table
+
+    def _is_abstract_(self):
+        return self.Meta.abstract
+
+    def _is_proxy_(self):
+        return self.Meta.proxy
+
+    def _get_pk_(self):
+        return self.Meta.pk
+
+    def _get_ordering_(self, quote='"'):
+        ordering = self.Meta.ordering
+        direction = 'ASC'
+        for o in ordering:
+            if o.startswith('-'):
+                direction = 'DESC'
+                o = o[1:]
+            elif o.startswith('+'):
+                o = o[1:]
+            o = f"{quote}{o}{quote}"
+            yield o, direction
+
+
+
+
+
+
+
 
 class ModelBase(metaclass=ModelType):
     """Base Model without any default fields.
