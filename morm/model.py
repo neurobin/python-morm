@@ -41,13 +41,13 @@ class ModelType(type):
         meta_attrs_inheritable = {
             'pk': 'id',
             'proxy': False,             # TODO: Implement in migration
-            'ordering': (),             # TODO: Implement in db util
-            'fields_up': (),            # TODO: Implement in db util
-            'fields_down': (),          # TODO: Implement in db util
-            'exclude_up_keys': (),      # TODO: Implement in db util
-            'exclude_down_keys': (),    # TODO: Implement in db util
-            'exclude_up_values': (),    # TODO: Implement in db util
-            'exclude_down_values': (),  # TODO: Implement in db util
+            'ordering': (),
+            'fields_up': (),
+            'fields_down': (),
+            'exclude_fields_up': (),
+            'exclude_fields_down': (),
+            'exclude_values_up': (),
+            'exclude_values_down': (),
         }
         meta_attrs_noninheritable = {
             'db_table': class_name,
@@ -118,31 +118,37 @@ class ModelType(type):
 
     def _is_valid_down_key_(self, k):
         fields = self.Meta.fields_down
-        if k in self.Meta.exclude_down_keys: return False
+        if k in self.Meta.exclude_fields_down: return False
         if fields and k not in fields: return False
         return True
 
     def _is_valid_up_key_(self, k):
         fields = self.Meta.fields_up
-        if k in self.Meta.exclude_up_keys: return False
+        if k in self.Meta.exclude_fields_up: return False
         if fields and k not in fields: return False
         return True
 
     def _is_valid_up_value_(self, v):
-        if v in self.Meta.exclude_up_values: return False
+        if v in self.Meta.exclude_values_up: return False
         return True
 
     def _is_valid_down_value_(self, v):
-        if v in self.Meta.exclude_down_values: return False
+        if v in self.Meta.exclude_values_down: return False
         return True
+
+    def _is_valid_down_(self, k, v):
+        return self._is_valid_down_key_(k) and self._is_valid_down_value_(v)
+
+    def _is_valid_up_(self, k, v):
+        return self._is_valid_up_key_(k) and self._is_valid_up_value_(v)
 
     def _get_fields_(self, up=False):
         if up:
             fields = self.Meta.fields_up
-            exclude_keys = self.Meta.exclude_up_keys
+            exclude_keys = self.Meta.exclude_fields_up
         else:
             fields = self.Meta.fields_down
-            exclude_keys = self.Meta.exclude_down_keys
+            exclude_keys = self.Meta.exclude_fields_down
         all_fields = self.Meta._field_defs_
         for k in all_fields:
             if k in exclude_keys: continue
@@ -151,9 +157,9 @@ class ModelType(type):
 
     def _get_data_for_valid_values_(self, data, up=False, gen=False):
         if up:
-            exclude_values = self.Meta.exclude_up_values
+            exclude_values = self.Meta.exclude_values_up
         else:
-            exclude_values = self.Meta.exclude_down_values
+            exclude_values = self.Meta.exclude_values_down
         new_data = type(data)()
         for k,v in data.items():
             if v in exclude_values: continue
@@ -220,10 +226,10 @@ class ModelBase(metaclass=ModelType):
         ordering = ()
         fields_up = ()
         fields_down = ()
-        exclude_up_keys = ()
-        exclude_down_keys = ()
-        exclude_up_values = ()
-        exclude_down_values = ()
+        exclude_fields_up = ()
+        exclude_fields_down = ()
+        exclude_values_up = ()
+        exclude_values_down = ()
 
 
     def __init__(self, *args, **kwargs):
@@ -248,7 +254,8 @@ class ModelBase(metaclass=ModelType):
             tuple: field_name, field_value
         """
         for k, f in self.Meta._fields_.items():
-            yield k, f.value
+            if self.__class__._is_valid_down_(k, f.value):
+                yield k, f.value
 
     def __delattr__(self, k):
         fields = self.Meta._fields_
@@ -260,7 +267,10 @@ class ModelBase(metaclass=ModelType):
     def __getattr__(self, k):
         fields = self.Meta._fields_
         if k in fields:
-            return fields[k].value
+            v = fields[k].value
+            if self.__class__._is_valid_down_(k, v):
+                return v
+            raise AttributeError(f'Invalid attempt to access field `{k}`. It is excluded using either exclude_fields_down or exclude_values_down in {self.__class__.__name__} Meta class')
         raise AttributeError
 
     def __setattr__(self, k, v):
@@ -269,7 +279,17 @@ class ModelBase(metaclass=ModelType):
             raise AttributeError(f"No such field ('{k}') in model '{self.__class__.__name__}''")
         # v = fields[k].clean(v)
         # super().__setattr__(k, v)
-        fields[k].value = v
+        if self.__class__._is_valid_up_(k, v):
+            fields[k].value = v
+        else:
+            raise AttributeError(f'Can not set field `{k}`. It is excluded using either exclude_fields_up or exclude_values_up in {self.__class__.__name__} Meta class ')
+
+    def __repr__(self):
+        reprs = []
+        for k, v in self:
+            reprs.append(f'{k}={repr(v)}')
+        body = ', '.join(reprs)
+        return f'{self.__class__.__name__}({body})'
 
 
 
@@ -359,13 +379,13 @@ class Model(ModelBase):
 #     _table_name_: typing.Optional[str] = None
 #     """_table_name_ will not be inherited in subclasses"""
 
-#     _exclude_up_keys_: tuple = ()
+#     _exclude_fields_up_: tuple = ()
 #     '''Exclude columns for these keys when saving the data to database'''
-#     _exclude_up_values_: tuple = ()
+#     _exclude_values_up_: tuple = ()
 #     '''Exclude columns for these values when saving the data to database'''
-#     _exclude_down_keys_ : tuple= ()    # TODO: implement in select
+#     _exclude_fields_down_ : tuple= ()    # TODO: implement in select
 #     '''Exclude columns for these keys when retrieving data from database'''
-#     _exclude_down_values: tuple = ()   # TODO: implement in select
+#     _exclude_values_down: tuple = ()   # TODO: implement in select
 #     '''Exclude columns for these values when retrieving data from database'''
 
 
@@ -473,7 +493,7 @@ class Model(ModelBase):
 #     def _active_fields_(self, exclude_values: tuple, exclude_keys: tuple):
 #         for k,field in self._fields_.items():   # type: ignore
 #             if k in exclude_keys \
-#                 or k in self._exclude_up_keys_:
+#                 or k in self._exclude_fields_up_:
 #                 continue
 #             v = getattr(self, k, Void)
 #             if v is Void or v is None:
@@ -482,7 +502,7 @@ class Model(ModelBase):
 #                 # we don't have any value for k
 #                 continue
 #             if v in exclude_values \
-#                 or v in self._exclude_up_values_:
+#                 or v in self._exclude_values_up_:
 #                 continue
 #             yield k, v, field
 

@@ -8,6 +8,7 @@ import inspect
 from morm.db import Pool, DB, Transaction
 import morm.model as mdl
 import morm.meta as mt
+from morm.types import Void
 
 
 LOGGER_NAME = 'morm-test-model-'
@@ -49,14 +50,25 @@ class User(Model):
 class BigUser(Model):
     class Meta:
         ordering = ('name', '-profession', '+age')
+        exclude_fields_down = ('age',)
+        exclude_values_down = ('developer',)
     name = Field('varchar(255)')
     profession = Field('varchar(255)')
     age = Field("int")
+    hobby = Field('varchar(255)')
+    status = Field('varchar(255)')
+    salary = Field('varchar(255)')
 
 class BigUser2(Model):
+    class Meta:
+        fields_down = ('name', 'profession')
+        exclude_values_down = ('developer',)
     name = Field('varchar(255)')
     profession = Field('varchar(255)')
     age = Field("int")
+    hobby = Field('varchar(255)')
+    status = Field('varchar(255)')
+    salary = Field('varchar(255)')
 
 
 class TestMethods(unittest.TestCase):
@@ -102,8 +114,37 @@ class TestMethods(unittest.TestCase):
     async def _test_db_filter_data(self):
         db = DB(SNORM_DB_POOL)
         mq = db(BigUser).filter('', '', True)
+        mq2 = db(BigUser2).filter('', '', True)
+        mqq = ' SELECT "name","profession","hobby","status","salary" FROM "BigUser" WHERE   $1 ORDER BY "name" ASC,"profession" DESC,"age" DESC'
+        mqq2 = ' SELECT "name","profession" FROM "BigUser2" WHERE   $1 '
+        print(mq2.get_query())
         res = await mq.fetch()
+        res2 = await mq2.fetch()
         print(res)
+        print('\n## Exclude fields and values\n')
+
+        print('* fields_down and exclude_fields_down control which fields will be retrieved from db and accessed from model object')
+        self.assertEqual(mq.get_query()[0], mqq)
+        self.assertEqual(mq2.get_query()[0], mqq2)
+        print('* keys excluded for down with field name can not be accessed')
+        with self.assertRaises(AttributeError):
+            res[0].age
+        print('* keys excluded for down with values can not be accessed')
+        with self.assertRaises(AttributeError):
+            res[0].profesion
+
+        print('* when fields_down is specified, only specified fields will be down')
+        res2[0].profession
+        res2[0].name
+        print('* when fields_down is specified, unspecified fields will not be accessible')
+        with self.assertRaises(AttributeError):
+            res2[0].age
+        with self.assertRaises(AttributeError):
+            res2[0].salary
+        with self.assertRaises(AttributeError):
+            res2[0].hobby
+        with self.assertRaises(AttributeError):
+            res2[0].status
 
 
     def test_filter_func(self):
