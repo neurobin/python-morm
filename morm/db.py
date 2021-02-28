@@ -6,6 +6,7 @@ __copyright__ = 'Copyright © Md Jahidul Hamid <https://github.com/neurobin/>'
 __license__ = '[BSD](http://www.opensource.org/licenses/bsd-license.php)'
 __version__ = '0.1.0'
 
+import collections
 import re
 import asyncio
 from contextlib import asynccontextmanager
@@ -245,16 +246,110 @@ class DB(object):
         pool = self.corp()
         return await pool.execute(query, *args, timeout=timeout)
 
+    def __call__(self, model_class: ModelType):
+        return ModelQuery(self, model_class)
+
+
 
 class ModelQuery():
     def __init__(self, db: DB, model_class: ModelType):
         self.db = db
         self.model_class = model_class
+        self._query_str_queue = collections.deque()
+        self._prepared_args = []
+        self._arg_count = 0
+        self._named_args = {}
+
+    def _update_args(self, q: str, *args, **kwargs) -> str:
+        self._prepared_args.extend(args)
+        self._arg_count += len(args)
+
+        self._named_args.update(kwargs)
+        for k,v in self._named_args.items():
+            q, mc = re.subn(f':{k}\\b', f'${self._arg_count+1}', q)
+            if mc > 0:
+                self._prepared_args.append(v)
+                self._arg_count += 1
+        return q
 
 
-    def select(self, what='*', where='true', prepared_args=()):
-        qb = QueryBuilder()
-        qb.R('SELECT')
+    def R(self, q: str, *args, **kwargs):
+        q = self._update_args(q, *args, **kwargs)
+        self._query_str_queue.append(q)
+        return self
+
+    def L(self, q: str, *args, **kwargs):
+        q = self._update_args(q, *args, **kwargs)
+        self._query_str_queue.appendleft(q)
+        return self
+
+    def get_query(self):
+        """Return query string and prepared arg list
+
+        Returns:
+            tuple: (str, list) : (query, parepared_args)
+        """
+        query = ' '.join(self._query_str_queue)
+        self._query_str_queue = collections.deque([query])
+        return query, self._prepared_args
+
+    async def fetch(self, timeout: float = None):
+        """Run query method `fetch` that returns the results in model class objects
+
+        Returns the results in model class objects
+
+        Args:
+            timeout (float, optional): Timeout in seconds. Defaults to None.
+
+        Returns:
+            List[Model]: List of model instances.
+        """
+        query, parepared_args = self.get_query()
+        return await self.db.fetch(query, *parepared_args, timeout=timeout, model_class=self.model_class)
+
+    async def fetchrow(self, timeout: float = None):
+        """Make a query and get the first row.
+
+        Resultant record is mapped to model_class object.
+
+        Args:
+            timeout (float, optional): Timeout value. Defaults to None.
+
+        Returns:
+            model_clas object or None if no rows were selected.
+        """
+        query, parepared_args = self.get_query()
+        return await self.db.fetchrow(query, *parepared_args, timeout=timeout, model_class=self.model_class)
+
+    async def fetchval(self, column: int = 0, timeout: float = None):
+        """Run the query and return a column value in the first row.
+
+        Args:
+            column (int, optional): Column index. Defaults to 0.
+            timeout (float, optional): Timeout. Defaults to None.
+
+        Returns:
+            Any: Coulmn (indentified by index) value of first row.
+        """
+        query, parepared_args = self.get_query()
+        return await self.db.fetchval(query, *parepared_args, column=column, timeout=timeout)
+
+    async def execute(self, timeout: float = None):
+        """Execute a query and return status of the last SQL command.
+
+        Args:
+            timeout (float, optional): Timeout. Defaults to None.
+
+        Returns:
+            str: Status of the last SQL command
+        """
+        query, parepared_args = self.get_query()
+        return await self.db.execute(query, *parepared_args, timeout=timeout)
+
+    # async def filter(self):
+
+
+
 
 
 class Transaction():
