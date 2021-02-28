@@ -35,7 +35,9 @@ SNORM_DB_POOL = Pool(
     max_size=90,
 )
 
-from morm import Model, Field
+from morm import Field
+# from morm.model import ModelBase as Model
+from morm.model import Model
 
 def mprint(*args, **kwargs):
     print("-"*80)
@@ -64,10 +66,11 @@ class BigUser(Model):
 
 class BigUser2(Model):
     class Meta:
-        fields_down = ('name', 'profession')
+        fields_down = ('id', 'name', 'profession')
         exclude_values_down = {
             '': ('developer',)
             }
+    id = Field('SERIAL NOT NULL')
     name = Field('varchar(255)')
     profession = Field('varchar(255)')
     age = Field("int")
@@ -118,20 +121,26 @@ class TestMethods(unittest.TestCase):
 
     async def _test_db_filter_data(self):
         db = DB(SNORM_DB_POOL)
-        mq = db(BigUser).filter('', '', True)
-        mq2 = db(BigUser2).filter('', '', True)
-        mqq = ' SELECT "name","profession","hobby","status","salary" FROM "BigUser" WHERE   $1 ORDER BY "name" ASC,"profession" DESC,"age" DESC'
-        mqq2 = ' SELECT "name","profession" FROM "BigUser2" WHERE   $1 '
-        print(mq2.get_query())
+        mq = db(BigUser).filter().qc('', '$1', True)
+        mq2 = db(BigUser2).filter().qc('', '$1', True)
+        mqq = ' SELECT "name","profession","hobby","status","salary" FROM "BigUser" WHERE $1 ORDER BY "name" ASC,"profession" DESC,"age" DESC'
+        mqq2 = ' SELECT "id","name","profession" FROM "BigUser2" WHERE $1 '
+        print(mq2.qget())
         res = await mq.fetch()
         res2 = await mq2.fetch()
+        big_user1 = await db(BigUser2).get(2)
+        self.assertEqual(big_user1.id, 2)
         print(res)
         print(res2)
+        print(big_user1)
+        big_user3 = await db(BigUser2).get('dev', col='profession')
+        self.assertEqual(big_user3.profession, 'dev')
+        print(big_user3)
         print('\n## Exclude fields and values\n')
 
         print('* fields_down and exclude_fields_down control which fields will be retrieved from db and accessed from model object')
-        self.assertEqual(mq.get_query()[0], mqq)
-        self.assertEqual(mq2.get_query()[0], mqq2)
+        self.assertEqual(mq.qget()[0], mqq)
+        self.assertEqual(mq2.qget()[0], mqq2)
         print('* keys excluded for down with field name can not be accessed')
         with self.assertRaises(AttributeError):
             res[0].age
@@ -156,7 +165,7 @@ class TestMethods(unittest.TestCase):
 
     def test_filter_func(self):
         db = DB(SNORM_DB_POOL)
-        q = db(BigUser).filter('', '', True).get_query()
+        q = db(BigUser).filter().qc('', '$1', True).qget()
         print(q)
         asyncio.get_event_loop().run_until_complete(self._test_db_filter_data())
 

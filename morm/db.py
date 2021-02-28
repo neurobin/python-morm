@@ -32,6 +32,7 @@ def record_to_model(record: Record, model_class: ModelType) -> Model:
     """
     new_record = model_class()
     for k,v in record.items():
+        print(k,v)
         setattr(new_record, k, v)
     return new_record
 
@@ -255,7 +256,7 @@ class ModelQuery():
     def __init__(self, db: DB, model_class: ModelType):
         self.db = db
         self.model_class = model_class
-        self._query_str_queue = collections.deque()
+        self._query_str_queue = []
         self.end_query_str = ''
         self.start_query_str = ''
         self._prepared_args = []
@@ -275,29 +276,91 @@ class ModelQuery():
                 self._arg_count += 1
         return q
 
+    def q(self, q: str, *args, **kwargs):
+        """Add a query as given (SQL).
 
+        Use $1, $2 etc. for prepared arguments
+        and :field_name for keyword arguments.
 
-    def QR(self, q: str, *args, **kwargs):
-        q = self._update_args(q, *args, **kwargs)
-        self._query_str_queue.append(Q(q))
-        return self
+        Args:
+            q (str): query string (SQL)
 
-    def QL(self, q: str, *args, **kwargs):
-        q = self._update_args(q, *args, **kwargs)
-        self._query_str_queue.appendleft(Q(q))
-        return self
-
-    def R(self, q: str, *args, **kwargs):
+        Returns:
+            ModelQuery: returns `self` to enable method chaining
+        """
         q = self._update_args(q, *args, **kwargs)
         self._query_str_queue.append(q)
         return self
 
-    def L(self, q: str, *args, **kwargs):
-        q = self._update_args(q, *args, **kwargs)
-        self._query_str_queue.appendleft(q)
+    def qq(self, quote_q: str):
+        """Quote and add a name.
+
+        Enable to add names with auto-quote. For example, if the name
+        for a field value is `status`, it can be added to the query
+        with auto-quoting, i.e for postgresql it will be added
+        as `"status"`.
+
+        Args:
+            quote_q (str): the name that needs to be added with quote.
+
+        Returns:
+            ModelQuery: returns `self` to enable method chaining
+        """
+        if quote_q:
+            self._query_str_queue.append(Q(quote_q))
         return self
 
-    def get_query(self):
+
+    def qc(self, word: str, rest: str, *args, **kwargs):
+        """Add query by quoting `word` while adding the `rest` as is.
+
+        This is a shorthand for making where clause conditions.
+        For example: `qc('price', '>=$1', 34)` is a safe way to write
+        a where condition like: `"price" >=34`.
+
+        The same can be achieved by using a combination of
+        `qq()` and `q()` or manually quoting and using
+        with `q()`
+
+        Args:
+            word (str): left part of query that needs to be quoted
+            rest (str): right part of query that does not need to be quoted
+
+        Returns:
+            ModelQuery: returns `self` to enable method chaining
+        """
+        return self.qq(word).q(rest, *args, **kwargs)
+
+    def o(self, order: str):
+        """Convert `-field_name,` to proper order_by criteria and add to query.
+
+        Example: `-field_name,` will become: `"field_name" DESC,`
+
+        * `+` at beginning means ascending order (default)
+        * `-` at beginning means descending order
+        * `,` at end means you will add more order criteria
+
+        Ommit the comma (`,`) when it is the last ordering criteria.
+
+        Args:
+            order (str): order criteria in the format `+/-field_name,`
+
+        Returns:
+            ModelQuery: returns `self` to enable method chaining
+        """
+        direction = 'ASC'
+        if order.startswith('-'):
+            order = order[1:]
+            direction = 'DESC'
+        elif order.startswith('+'):
+            order = order[1:]
+        if order.endswith(','):
+            order = order[0:-1]
+            direction += ','
+        return self.qq(order).q(direction)
+
+
+    def qget(self):
         """Return query string and prepared arg list
 
         Returns:
@@ -311,7 +374,7 @@ class ModelQuery():
     async def fetch(self, timeout: float = None):
         """Run query method `fetch` that returns the results in model class objects
 
-        Returns the results in model class objects
+        Returns the results in model class objects.
 
         Args:
             timeout (float, optional): Timeout in seconds. Defaults to None.
@@ -319,7 +382,7 @@ class ModelQuery():
         Returns:
             List[Model]: List of model instances.
         """
-        query, parepared_args = self.get_query()
+        query, parepared_args = self.qget()
         return await self.db.fetch(query, *parepared_args, timeout=timeout, model_class=self.model_class)
 
     async def fetchrow(self, timeout: float = None):
@@ -333,7 +396,7 @@ class ModelQuery():
         Returns:
             model_clas object or None if no rows were selected.
         """
-        query, parepared_args = self.get_query()
+        query, parepared_args = self.qget()
         return await self.db.fetchrow(query, *parepared_args, timeout=timeout, model_class=self.model_class)
 
     async def fetchval(self, column: int = 0, timeout: float = None):
@@ -346,18 +409,42 @@ class ModelQuery():
         Returns:
             Any: Coulmn (indentified by index) value of first row.
         """
-        query, parepared_args = self.get_query()
+        query, parepared_args = self.qget()
         return await self.db.fetchval(query, *parepared_args, column=column, timeout=timeout)
 
-    def filter(self, left, cond, right):
+    def filter(self):
         if not self.__filter_initiated:
             down_fields = ','.join([Q(x) for x in self.model_class._get_fields_(up=False)])
-            self.R(f'SELECT {down_fields} FROM "{self.model_class._get_db_table_()}" WHERE')
+            self.q(f'SELECT {down_fields} FROM "{self.model_class._get_db_table_()}" WHERE')
             self.__filter_initiated = True
             order_by = ','.join([' '.join(y) for y in self.model_class._get_ordering_(quote='"')])
             if order_by:
                 self.end_query_str = 'ORDER BY ' + order_by
-        return self.R(f'{left} {cond} ${self._arg_count+1}', right)
+        else:
+            ValueError(f"Filter is already initiated for this {self.__class__.__name__} object: {self}")
+        return self
+
+    async def get(self, *args, col='', comp='=$1'):
+        """Get the first row found by column and value.
+
+        If column is not given, it defaults to the primary key of
+        the model.
+
+        If comparison is not given, it defaults to `=$1`
+
+        Args:
+            *args (any): Values to compare. Must be referenced with $1, $2 etc.. in `comp`.
+            col (str, optional): Column name. Defaults to ''.
+            comp (str, optional): Comparison. Defaults to '=$1'.
+
+        Returns:
+            model_clas object or None if no rows were selected.
+        """
+        if not col:
+            col = self.model_class.Meta.pk
+        return await self.filter().qc(col, comp, *args).fetchrow()
+
+
 
 
 

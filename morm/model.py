@@ -9,6 +9,7 @@ __version__ = '0.0.1'
 import inspect
 import typing
 from collections import OrderedDict
+import copy
 from abc import ABCMeta
 from asyncpg import Record # type: ignore
 from morm.exceptions import ItemDoesNotExistError
@@ -30,7 +31,7 @@ class ModelType(type):
             return super().__new__(mcs, class_name, bases, attrs)
 
         classcell = attrs.pop('__classcell__', None)
-        class _Meta_(mt.Meta): pass
+        class _Meta_(): pass
         meta = attrs.pop('Meta', _Meta_)
         if not inspect.isclass(meta): #TEST: Meta is restricted as a class
             raise TypeError(f"Name 'Meta' is reserved for a class to pass configuration or metadata of a model. Error in model '{class_name}'")
@@ -75,7 +76,9 @@ class ModelType(type):
                 except AttributeError:
                     if inherit:
                         v = getattr(BaseMeta, k, v)
-                        meta_attrs[k] = v
+                        # here deepcopy fixes a bug
+                        # mutable values can be changed by other class meta change
+                        meta_attrs[k] = copy.deepcopy(v)
                     else:
                         meta_attrs[k] = v
         set_meta_attrs(meta, meta_attrs_inheritable, inherit=True)
@@ -234,8 +237,8 @@ class ModelBase(metaclass=ModelType):
         fields_down = ()
         exclude_fields_up = ()
         exclude_fields_down = ()
-        exclude_values_up = ()
-        exclude_values_down = ()
+        exclude_values_up = {'':()}
+        exclude_values_down = {'':()}
 
 
     def __init__(self, *args, **kwargs):
