@@ -16,7 +16,7 @@ from asyncpg import Record, Connection # type: ignore
 from typing import Optional, List, Tuple
 
 from morm import exceptions
-from morm.model import ModelType, Model
+from morm.model import ModelType, Model, ModelBase
 from morm.q import Q, QueryBuilder
 
 
@@ -31,8 +31,8 @@ def record_to_model(record: Record, model_class: ModelType) -> Model:
         Model: Model instance.
     """
     new_record = model_class()
+    new_record.Meta._fromdb_ = True
     for k,v in record.items():
-        print(k,v)
         setattr(new_record, k, v)
     return new_record
 
@@ -247,8 +247,26 @@ class DB(object):
         pool = self.corp()
         return await pool.execute(query, *args, timeout=timeout)
 
-    def __call__(self, model_class: ModelType = None):
-        return ModelQuery(self, model_class)
+    def __call__(self, model_or_object: ModelType = None):
+        """Return a ModelQuery for model or ObjectQuery for object
+
+        If None is passed it will give a ModelQuery without setting
+        self.model
+
+        Args:
+            model_or_object (ModelType, optional): model class or model object. Defaults to None.
+
+        Raises:
+            TypeError: If invalid model type or object type is passed
+
+        Returns:
+            ModelQuery|ObjectQuery
+        """
+        if isinstance(model_or_object, ModelType) or model_or_object is None:
+            return ModelQuery(self, model_or_object)
+        elif isinstance(model_or_object, ModelBase):
+            return ObjectQuery(ModelQuery(self, model_or_object.__class__), model_or_object)
+        raise TypeError(f"Invalid model or model object: {model_or_object}")
 
 
 
@@ -596,6 +614,88 @@ class ModelQuery():
         if not col:
             col = self.model.Meta.pk
         return await self.filter().qc(col, comp, *args).fetchrow()
+
+class ObjectQuery():
+    def __init__(self, mq: ModelQuery, mob: ModelBase):
+        """Initiate object query
+
+        Args:
+            mq (ModelQuery): ModelQuery object
+            mob (ModelBase): Model object
+        """
+        self.mq = mq
+        self.mob = mob
+        self.model = self.mq.model
+
+    def get_insert_query(self):
+        """Get insert query for the model object with the current data
+
+        Returns:
+            (str, list): query, prepared_args
+        """
+        data = self.mob.Meta._fields_
+        new_data_gen = self.model._get_FieldValue_data_valid_(data, up=True)
+        columns = []
+        values = []
+        markers = []
+        c = 0
+        for n,v in new_data_gen:
+            c += 1
+            columns.append(n)
+            values.append(v.value)
+            markers.append(f'${c}')
+
+        column_q = '","'.join(columns)
+        if column_q:
+            column_q = f'"{column_q}"'
+        marker_q = ', '.join(markers)
+        query = f'INSERT INTO "{self.mq.table}" ({column_q}) VALUES ({marker_q}) RETURNING "{self.mq.pk}"'
+        return query, values
+
+    def get_update_query(self):
+        data = self.mob.Meta._fields_
+        new_data_gen = self.model._get_FieldValue_data_valid_(data, up=True)
+        colval = []
+        values = []
+        c = 0
+        for n,v in new_data_gen:
+            print(v.value_change_count)
+            if v.value_change_count > 1:
+                c += 1
+                colval.append(f'"{n}"=${c}')
+                values.append(v.value)
+                # v._value_change_count = 0
+
+        where = f'"{self.mq.pk}"=${c+1}'
+        values.append(getattr(self.mob, self.mq.pk))
+
+        colval_q = ', '.join(colval)
+        if colval_q:
+            query = f'UPDATE "{self.mq.table}" SET {colval_q} WHERE {where}'
+        else:
+            query = ''
+        return query, values
+
+
+    async def insert(self):
+        """Insert the current data state into db
+
+        Returns:
+            Value of primary key of the inserted row
+        """
+        query, args = self.get_insert_query()
+        pkval = await self.mq.db.fetchval(query, *args)
+        if pkval is not None:
+            setattr(self.mob, self.mq.pk, pkval)
+        return pkval
+
+    async def save(self):
+        if self.mob.Meta._fromdb_:
+            # exists
+            return None
+        else:
+            return await self.insert()
+
 
 
 

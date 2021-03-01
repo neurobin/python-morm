@@ -124,8 +124,7 @@ class FieldValue(object):
             field (Field): Field object
         """
         self._field = field
-        self.default_value = field.get_default()
-        self._value = self.default_value
+        self._value = Void
         self._value_change_count = 0
 
     @property
@@ -144,7 +143,10 @@ class FieldValue(object):
         Returns:
             Any: value or default
         """
-        return self._value
+        if self._value is not Void:
+            return self._value
+        else:
+            return self._field.get_default()
 
     @value.setter
     def value(self, v):
@@ -165,12 +167,13 @@ class FieldValue(object):
             fallback (bool, optional): Whether to fallback to default value if v is invalid. Defaults to False.
         """
         self._value = self._field.clean(v, fallback=fallback)
-        self._value_change_count += 1 # This must be the last line
+        self._value_change_count = self._value_change_count + 1 # This must be the last line
         # when the clean method raises exception, it will not be counted as
         # a successful value assignment.
+        print('called with k,v',self._field.name, v, 'counter', self.value_change_count, self)
 
     def delete_value(self):
         """Return the value to its initial state.
         """
-        self._value = self.default_value
+        self._value = Void
         self._value_change_count = 0

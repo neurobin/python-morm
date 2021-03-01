@@ -164,6 +164,14 @@ class TestMethods(unittest.TestCase):
         with self.assertRaises(AttributeError):
             res2[0].status
 
+        user5 = BigUser2(name='Jahidul Hamid', age=31)
+        print(db(user5).get_insert_query())
+        # print(await db(user5).insert())
+        user6 = await db(BigUser2).get(6)
+        # user6.hobby = 'something'
+        # user6.hobby = 'something2'
+        print(db(user6).get_update_query())
+
 
     def test_filter_func(self):
         db = DB(SNORM_DB_POOL)

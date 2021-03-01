@@ -113,24 +113,26 @@ class ModelType(type):
             new_attrs['__classcell__'] = classcell
         return super().__new__(mcs, class_name, bases, new_attrs)
 
-    def __setattr__(self, k, v):
+    def __setattr__(cls, k, v):
         raise NotImplementedError("You can not set model attributes outside model definition.")
 
-    def __delattr__(self, k):
+    def __delattr__(cls, k):
         raise NotImplementedError("You can not delete model attributes outside model definition.")
 
-    def __is_valid_key(self, k, fields, exclude_keys):
+    def _is_valid_key_(cls, k, fields, exclude_keys):
         if k in exclude_keys: return False
         if fields and k not in fields: return False
         return True
 
-    def _is_valid_down_key_(self, k):
-        return self.__is_valid_key(k, self.Meta.fields_down, self.Meta.exclude_fields_down)
+    def _is_valid_down_key_(cls, k):
+        return cls._is_valid_key_(k, cls.Meta.fields_down, cls.Meta.exclude_fields_down)
 
-    def _is_valid_up_key_(self, k):
-        return self.__is_valid_key(k, self.Meta.fields_up, self.Meta.exclude_fields_up)
+    def _is_valid_up_key_(cls, k):
+        return cls._is_valid_key_(k, cls.Meta.fields_up, cls.Meta.exclude_fields_up)
 
-    def __is_valid_value(self, k, v, exclude_values):
+    def _is_valid_value_(cls, k, v, exclude_values):
+        if v is Void:
+            return False
         if k in exclude_values:
             if v in exclude_values[k]:
                 return False
@@ -138,22 +140,22 @@ class ModelType(type):
             return False
         return True
 
-    def _is_valid_up_value_(self, k, v):
-        return self.__is_valid_value(k, v, self.Meta.exclude_values_up)
+    def _is_valid_up_value_(cls, k, v):
+        return cls._is_valid_value_(k, v, cls.Meta.exclude_values_up)
 
-    def _is_valid_down_value_(self, k, v):
-        return self.__is_valid_value(k, v, self.Meta.exclude_values_down)
+    def _is_valid_down_value_(cls, k, v):
+        return cls._is_valid_value_(k, v, cls.Meta.exclude_values_down)
 
-    def _is_valid_down_(self, k, v):
-        return self._is_valid_down_key_(k) and self._is_valid_down_value_(k, v)
+    def _is_valid_down_(cls, k, v):
+        return cls._is_valid_down_key_(k) and cls._is_valid_down_value_(k, v)
 
-    def _is_valid_up_(self, k, v):
-        return self._is_valid_up_key_(k) and self._is_valid_up_value_(k, v)
+    def _is_valid_up_(cls, k, v):
+        return cls._is_valid_up_key_(k) and cls._is_valid_up_value_(k, v)
 
-    def _get_all_fields_(self):
-        return self.Meta._field_defs_
+    def _get_all_fields_(cls):
+        return cls.Meta._field_defs_
 
-    def _get_fields_(self, up=False):
+    def _get_fields_(cls, up=False):
         """Generator
 
         [extended_summary]
@@ -165,25 +167,43 @@ class ModelType(type):
             [type]: [description]
         """
         if up:
-            fields = self.Meta.fields_up
-            exclude_keys = self.Meta.exclude_fields_up
+            fields = cls.Meta.fields_up
+            exclude_keys = cls.Meta.exclude_fields_up
         else:
-            fields = self.Meta.fields_down
-            exclude_keys = self.Meta.exclude_fields_down
-        all_fields = self._get_all_fields_()
+            fields = cls.Meta.fields_down
+            exclude_keys = cls.Meta.exclude_fields_down
+        all_fields = cls._get_all_fields_()
         for k in all_fields:
-            if not self.__is_valid_key(k, fields, exclude_keys):
+            if not cls._is_valid_key_(k, fields, exclude_keys):
                 continue
             yield k
 
-    def _get_data_for_valid_values_(self, data, up=False, gen=False):
+    def _get_FieldValue_data_valid_(cls, data, up=False):
         if up:
-            exclude_values = self.Meta.exclude_values_up
+            exclude_values = cls.Meta.exclude_values_up
+            fields = cls.Meta.fields_up
+            exclude_fields = cls.Meta.exclude_fields_up
         else:
-            exclude_values = self.Meta.exclude_values_down
+            exclude_values = cls.Meta.exclude_values_down
+            fields = cls.Meta.fields_down
+            exclude_fields = cls.Meta.exclude_fields_down
+        # new_data = type(data)()
+        for k,v in data.items():
+            if not cls._is_valid_key_(k, fields, exclude_fields):
+                continue
+            if not cls._is_valid_value_(k, v.value, exclude_values):
+                continue
+            yield k, v
+
+
+    def _get_data_for_valid_values_(cls, data, up=False, gen=False):
+        if up:
+            exclude_values = cls.Meta.exclude_values_up
+        else:
+            exclude_values = cls.Meta.exclude_values_down
         new_data = type(data)()
         for k,v in data.items():
-            if not self.__is_valid_value(k, v, exclude_values):
+            if not cls._is_valid_value_(k, v, exclude_values):
                 continue
             if gen:
                 yield k, v
@@ -192,20 +212,20 @@ class ModelType(type):
         if not gen:
             return new_data
 
-    def _get_db_table_(self):
-        return self.Meta.db_table
+    def _get_db_table_(cls):
+        return cls.Meta.db_table
 
-    def _is_abstract_(self):
-        return self.Meta.abstract
+    def _is_abstract_(cls):
+        return cls.Meta.abstract
 
-    def _is_proxy_(self):
-        return self.Meta.proxy
+    def _is_proxy_(cls):
+        return cls.Meta.proxy
 
-    def _get_pk_(self):
-        return self.Meta.pk
+    def _get_pk_(cls):
+        return cls.Meta.pk
 
-    def _get_ordering_(self, quote='"'):
-        ordering = self.Meta.ordering
+    def _get_ordering_(cls, quote='"'):
+        ordering = cls.Meta.ordering
         direction = 'ASC'
         for o in ordering:
             if o.startswith('-'):
@@ -257,6 +277,7 @@ class ModelBase(metaclass=ModelType):
     def __init__(self, *args, **kwargs):
         class Meta(object): pass
         super(ModelBase, self).__setattr__('Meta', Meta)
+        self.Meta._fromdb_ = False
         self.Meta._fields_ = {}
         for k, v in self.__class__.Meta._field_defs_.items():
             self.Meta._fields_[k] = FieldValue(v)
