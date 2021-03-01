@@ -168,9 +168,14 @@ class TestMethods(unittest.TestCase):
         print(db(user5).get_insert_query())
         # print(await db(user5).insert())
         user6 = await db(BigUser2).get(6)
-        # user6.hobby = 'something'
+        user6.hobby = 'something4'
         # user6.hobby = 'something2'
+        # print(db(user6).get_update_query())
+        # print(db(user6).get_update_query())
+        print(await db(user6).save())
         print(db(user6).get_update_query())
+        usern = BigUser2(name='dummy john', profession='Student', age=23, hobby='collection', salary='0')
+        print(await db(usern).save())
 
 
     def test_filter_func(self):

@@ -18,6 +18,7 @@ from typing import Optional, List, Tuple
 from morm import exceptions
 from morm.model import ModelType, Model, ModelBase
 from morm.q import Q, QueryBuilder
+from morm.types import Void
 
 
 def record_to_model(record: Record, model_class: ModelType) -> Model:
@@ -31,9 +32,9 @@ def record_to_model(record: Record, model_class: ModelType) -> Model:
         Model: Model instance.
     """
     new_record = model_class()
-    new_record.Meta._fromdb_ = True
     for k,v in record.items():
         setattr(new_record, k, v)
+        new_record.Meta._fromdb_.append(k)
     return new_record
 
 
@@ -626,6 +627,7 @@ class ObjectQuery():
         self.mq = mq
         self.mob = mob
         self.model = self.mq.model
+        self.DATA_NO_CHANGE = 'DATA_NO_CHANGE_TRIGGERED'
 
     def get_insert_query(self):
         """Get insert query for the model object with the current data
@@ -649,25 +651,41 @@ class ObjectQuery():
         if column_q:
             column_q = f'"{column_q}"'
         marker_q = ', '.join(markers)
-        query = f'INSERT INTO "{self.mq.table}" ({column_q}) VALUES ({marker_q}) RETURNING "{self.mq.pk}"'
+        if column_q:
+            query = f'INSERT INTO "{self.mq.table}" ({column_q}) VALUES ({marker_q}) RETURNING "{self.mq.pk}"'
+        else:
+            query = ''
         return query, values
 
     def get_update_query(self):
+        """Get the update query for the changed data in the model object
+
+        Raises:
+            AttributeError: If primary key does not exists i.e if not updatable
+
+        Returns:
+            str, args: tuple of query, prepared_args
+        """
+        pkval = getattr(self.mob, self.mq.pk) #save method depends on this
         data = self.mob.Meta._fields_
         new_data_gen = self.model._get_FieldValue_data_valid_(data, up=True)
         colval = []
         values = []
         c = 0
         for n,v in new_data_gen:
-            print(v.value_change_count)
-            if v.value_change_count > 1:
+            if n == self.mq.pk: continue
+            if n in self.mob.Meta._fromdb_:
+                countover = 1
+            else:
+                countover = 0
+            if v.value_change_count > countover:
                 c += 1
                 colval.append(f'"{n}"=${c}')
                 values.append(v.value)
-                # v._value_change_count = 0
+                v._value_change_count = 0
 
         where = f'"{self.mq.pk}"=${c+1}'
-        values.append(getattr(self.mob, self.mq.pk))
+        values.append(pkval)
 
         colval_q = ', '.join(colval)
         if colval_q:
@@ -689,11 +707,33 @@ class ObjectQuery():
             setattr(self.mob, self.mq.pk, pkval)
         return pkval
 
+    async def update(self):
+        """Update the current changed data onto db
+
+        Raises:
+            AttributeError: If primary key does not exists.
+
+        Returns:
+            str: status of last sql command
+        """
+        query, args = self.get_update_query()
+        if query:
+            return await self.mq.db.execute(query, *args)
+        return self.DATA_NO_CHANGE
+
+
     async def save(self):
-        if self.mob.Meta._fromdb_:
-            # exists
-            return None
-        else:
+        """Insert if not exists and update if exists.
+
+        update is tried first, if fails, insert is called.
+
+        Returns:
+            int or str: The value of the primary key for insert or
+                            status for update operation.
+        """
+        try:
+            return await self.update()
+        except AttributeError:
             return await self.insert()
 
 

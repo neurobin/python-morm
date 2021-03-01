@@ -277,7 +277,7 @@ class ModelBase(metaclass=ModelType):
     def __init__(self, *args, **kwargs):
         class Meta(object): pass
         super(ModelBase, self).__setattr__('Meta', Meta)
-        self.Meta._fromdb_ = False
+        self.Meta._fromdb_ = []
         self.Meta._fields_ = {}
         for k, v in self.__class__.Meta._field_defs_.items():
             self.Meta._fields_[k] = FieldValue(v)
