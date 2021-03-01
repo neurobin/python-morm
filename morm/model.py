@@ -150,14 +150,27 @@ class ModelType(type):
     def _is_valid_up_(self, k, v):
         return self._is_valid_up_key_(k) and self._is_valid_up_value_(k, v)
 
+    def _get_all_fields_(self):
+        return self.Meta._field_defs_
+
     def _get_fields_(self, up=False):
+        """Generator
+
+        [extended_summary]
+
+        Args:
+            up (bool, optional): [description]. Defaults to False.
+
+        Yields:
+            [type]: [description]
+        """
         if up:
             fields = self.Meta.fields_up
             exclude_keys = self.Meta.exclude_fields_up
         else:
             fields = self.Meta.fields_down
             exclude_keys = self.Meta.exclude_fields_down
-        all_fields = self.Meta._field_defs_
+        all_fields = self._get_all_fields_()
         for k in all_fields:
             if not self.__is_valid_key(k, fields, exclude_keys):
                 continue

@@ -50,13 +50,6 @@ class User(Model):
     profession = Field('varchar(255)')
 
 class BigUser(Model):
-    class Meta:
-        ordering = ('name', '-profession', '+age')
-        exclude_fields_down = ('age',)
-        exclude_values_down = {
-            '': (Void,),
-            'profession': ('developer',)
-            }
     name = Field('varchar(255)')
     profession = Field('varchar(255)')
     age = Field("int")
@@ -64,12 +57,15 @@ class BigUser(Model):
     status = Field('varchar(255)')
     salary = Field('varchar(255)')
 
-class BigUser2(Model):
     class Meta:
-        fields_down = ('id', 'name', 'profession')
+        ordering = ('name', '-profession', '+age')
+        exclude_fields_down = ('age',)
         exclude_values_down = {
-            '': ('developer',)
+            '': (Void,),
+            'profession': ('developer',)
             }
+
+class BigUser2(Model):
     id = Field('SERIAL NOT NULL')
     name = Field('varchar(255)')
     profession = Field('varchar(255)')
@@ -77,6 +73,12 @@ class BigUser2(Model):
     hobby = Field('varchar(255)')
     status = Field('varchar(255)')
     salary = Field('varchar(255)')
+
+    class Meta:
+        fields_down = ('id', 'name', 'profession')
+        exclude_values_down = {
+            '': ('developer',)
+            }
 
 
 class TestMethods(unittest.TestCase):
@@ -168,6 +170,36 @@ class TestMethods(unittest.TestCase):
         q = db(BigUser).filter().qc('', '$1', True).qget()
         print(q)
         asyncio.get_event_loop().run_until_complete(self._test_db_filter_data())
+
+    def test_q_qq(self):
+        db = DB(SNORM_DB_POOL)
+        buq = db(BigUser2)
+        self.assertEqual(buq.q(
+            f'SELECT * FROM {buq.table} WHERE {buq.pk}=$1 AND "{buq.fn.profession}" = :profession', 2, profession='developer').qget(),
+            (' SELECT * FROM BigUser2 WHERE id=$1 AND "profession" = $2 ', [2, 'developer'])
+        )
+
+        print('* Misspelling will produce AttributeError')
+        with self.assertRaises(AttributeError):
+            buq\
+                .q(f'SELECT * FROM {buq.table} WHERE {buq.pk}=$1 AND "{buq.fn.profesion}" = :profession', 2, profession='developer')\
+                .qget()
+
+        self.assertEqual(
+            buq.reset()\
+                .q(f'SELECT')\
+                .qq('age')\
+                .q(f', "{buq.fn.profession}", "{buq.fn.hobby}", "{buq.fn.status}"')\
+                .q(f'FROM {buq.table} WHERE')\
+                .q(f'"{buq.fn.age}" >= ${buq.c} AND "{buq.fn.status}" = :status', 13, status='OK')\
+                #fdsfd
+                .q(f'AND status=:status')\
+                .q(f'AND hobby=${buq.c}', 'gardening', hobby='Teaching')\
+                .q(f'AND "{buq.fn.salary}"=:status')\
+                .q(f'AND "{buq.fn.hobby}"=:hobby')\
+                .qget(),
+            (' SELECT "age" , "profession", "hobby", "status" FROM BigUser2 WHERE "age" >= $1 AND "status" = $2 AND status=$2 AND hobby=$3 AND "salary"=$2 AND "hobby"=$4 ', [13, 'OK', 'gardening', 'Teaching'])
+        )
 
 
     # def _test_something(self):

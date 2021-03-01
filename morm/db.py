@@ -247,40 +247,148 @@ class DB(object):
         pool = self.corp()
         return await pool.execute(query, *args, timeout=timeout)
 
-    def __call__(self, model_class: ModelType):
+    def __call__(self, model_class: ModelType = None):
         return ModelQuery(self, model_class)
 
 
 
 class ModelQuery():
     def __init__(self, db: DB, model_class: ModelType):
+        self.reset()
         self.db = db
-        self.model_class = model_class
+        self.model = model_class # can be None
+        class FieldNameMap: pass
+        self._fn = FieldNameMap
+        if self.model:
+            fields = self.model._get_all_fields_() #dict
+            for n in fields:
+                setattr(self._fn, n, n)
+
+    def reset(self):
+        """Reset the model query by returning it to its initial state.
+
+        Returns:
+            self (Enables method chaining)
+        """
         self._query_str_queue = []
         self.end_query_str = ''
         self.start_query_str = ''
         self._prepared_args = []
         self._arg_count = 0
         self._named_args = {}
+        self._named_args_mapper = {}
         self.__filter_initiated = False
+        self._ordering = ''
+
+        return self
+
+
+
+
+    @property
+    def c(self):
+        """Current available argument position in the query
+
+        arg_count + 1 i.e if $1 and $2 has been used so far, then
+        self.c is 3 so that you can use it to make $3.
+
+        Returns:
+            self
+        """
+        return self._arg_count + 1
+
+    @property
+    def table(self):
+        """Table name of the model
+        """
+        return self.model._get_db_table_()
+
+    @property
+    def pk(self):
+        """Primary key name
+        """
+        return self.model._get_pk_()
+
+    @property
+    def ordering(self):
+        if not self._ordering:
+            self._ordering = ','.join([' '.join(y) for y in self.model._get_ordering_(quote='"')])
+        return self._ordering
+
+    @property
+    def fn(self):
+        """Field name container that contains field names
+
+        It can be used to avoid spelling mistakes in writing query.
+        Example:
+
+        query: `'select "profesion" from "table_name"'`
+
+        will only produce error after actually running the query against
+        a correctly spelled column 'profession'.
+
+        while,
+
+        query: `f'select "{self.fn.profesion}" from "{self.table}"'`
+
+        will throw python exception telling you that there is no
+        misspelled 'profesion' field.
+
+        Note: you have to change `self` in above to the current
+        ModelQuery instance
+
+        """
+        return self._fn
 
     def _update_args(self, q: str, *args, **kwargs) -> str:
         self._prepared_args.extend(args)
         self._arg_count += len(args)
 
+        # TODO: improvents need to be done
+        # 1. needs to handle only unquoted keyword :field_name
+        #    and ignore ':field_name' or ":field_name"
         self._named_args.update(kwargs)
         for k,v in self._named_args.items():
-            q, mc = re.subn(f':{k}\\b', f'${self._arg_count+1}', q)
-            if mc > 0:
-                self._prepared_args.append(v)
-                self._arg_count += 1
+            if k in self._named_args_mapper:
+                q, mc = re.subn(f':{k}\\b', f'${self._named_args_mapper[k]}', q)
+            else:
+                q, mc = re.subn(f':{k}\\b', f'${self._arg_count+1}', q)
+                if mc > 0:
+                    self._prepared_args.append(v)
+                    self._arg_count += 1
+                    self._named_args_mapper[k] = self._arg_count
         return q
 
     def q(self, q: str, *args, **kwargs):
         """Add a query as given (SQL).
 
-        Use $1, $2 etc. for prepared arguments
-        and :field_name for keyword arguments.
+        Use $1, $2 etc. for prepared arguments and :field_name for
+        keyword arguments. :field_name is converted to positional
+        arguments.
+
+        Use self.c (instance property, use fstring) to get the current
+        available prepared argument position.
+
+
+        Example:
+
+        ```python
+        mq = db(SomeModel)
+        mq\
+        .q('SELECT * FROM "table" WHERE $1', True)\
+        .q('AND "price" >= $2', 33)\
+        .q(f'OR "price" = ${mq.c}', 0) # mq.c=3 (now)\
+        .q('OR "status" = :status', status='OK')\
+        # :status is $4:
+        .q('OR "active" = $5', 0)\
+        .q('AND "status" = :status')\
+        # status='OK' from previous call
+        .q('OR "price" = $2')\
+        # $2=33 from previous call
+        #using format string and mq.c to get the argument position:
+        .q(f'OR "price" > ${mq.c} OR "quantity" > ${mq.c+1}', 12, 3)
+        #               mq.c=6 ^
+        ```
 
         Args:
             q (str): query string (SQL)
@@ -292,22 +400,28 @@ class ModelQuery():
         self._query_str_queue.append(q)
         return self
 
-    def qq(self, quote_q: str):
-        """Quote and add a name.
+    def qq(self, word: str):
+        """Quote and add a word.
 
         Enable to add names with auto-quote. For example, if the name
         for a field value is `status`, it can be added to the query
         with auto-quoting, i.e for postgresql it will be added
         as `"status"`.
 
+        Example:
+
+        ```python
+        .qq('price').q('>= $1',34)
+        ```
+
         Args:
-            quote_q (str): the name that needs to be added with quote.
+            word (str): the word that needs to be added with quote.
 
         Returns:
             ModelQuery: returns `self` to enable method chaining
         """
-        if quote_q:
-            self._query_str_queue.append(Q(quote_q))
+        if word:
+            self._query_str_queue.append(Q(word))
         return self
 
 
@@ -322,16 +436,24 @@ class ModelQuery():
         `qq()` and `q()` or manually quoting and using
         with `q()`
 
+        Example:
+
+        ```python
+        .qc('price', '>= $1', 34)
+        ```
+
         Args:
             word (str): left part of query that needs to be quoted
             rest (str): right part of query that does not need to be quoted
+            *args (any): prepared args
+            *kwargs: prepared keyword args
 
         Returns:
             ModelQuery: returns `self` to enable method chaining
         """
         return self.qq(word).q(rest, *args, **kwargs)
 
-    def o(self, order: str):
+    def qo(self, order: str):
         """Convert `-field_name,` to proper order_by criteria and add to query.
 
         Example: `-field_name,` will become: `"field_name" DESC,`
@@ -383,7 +505,7 @@ class ModelQuery():
             List[Model]: List of model instances.
         """
         query, parepared_args = self.qget()
-        return await self.db.fetch(query, *parepared_args, timeout=timeout, model_class=self.model_class)
+        return await self.db.fetch(query, *parepared_args, timeout=timeout, model_class=self.model)
 
     async def fetchrow(self, timeout: float = None):
         """Make a query and get the first row.
@@ -397,7 +519,7 @@ class ModelQuery():
             model_clas object or None if no rows were selected.
         """
         query, parepared_args = self.qget()
-        return await self.db.fetchrow(query, *parepared_args, timeout=timeout, model_class=self.model_class)
+        return await self.db.fetchrow(query, *parepared_args, timeout=timeout, model_class=self.model)
 
     async def fetchval(self, column: int = 0, timeout: float = None):
         """Run the query and return a column value in the first row.
@@ -412,13 +534,44 @@ class ModelQuery():
         query, parepared_args = self.qget()
         return await self.db.fetchval(query, *parepared_args, column=column, timeout=timeout)
 
-    def filter(self):
+    async def execute(self, timeout: float = None):
+        """Execute the query.
+
+        Args:
+            timeout (float, optional): Timeout. Defaults to None.
+
+        Returns:
+            str: Status of the last SQL command
+        """
+        query, parepared_args = self.qget()
+        return await self.db.execute(query, *parepared_args, timeout=timeout)
+
+    def filter(self, no_ordering=False):
+        """Initiate a filter.
+
+        This initiates a SELECT query upto WHERE. You can then use the
+        `qc()` method to add conditions and finally execute the `fetch()`
+        method to get all results or execute the `fetchrow()` method
+        to get single row.
+
+        Example:
+
+        ```python
+        .filter().qc('price', '>=$1 AND', 45).qc('status', '=$1')
+        ```
+
+        Args:
+            no_ordering (bool): Whether to remove the default ordering SQL. Defaults to `False`.
+
+        Returns:
+            ModelQuery: returns `self` to enable method chaining
+        """
         if not self.__filter_initiated:
-            down_fields = ','.join([Q(x) for x in self.model_class._get_fields_(up=False)])
-            self.q(f'SELECT {down_fields} FROM "{self.model_class._get_db_table_()}" WHERE')
+            down_fields = ','.join([Q(x) for x in self.model._get_fields_(up=False)])
+            self.q(f'SELECT {down_fields} FROM "{self.model._get_db_table_()}" WHERE')
             self.__filter_initiated = True
-            order_by = ','.join([' '.join(y) for y in self.model_class._get_ordering_(quote='"')])
-            if order_by:
+            order_by = self.ordering
+            if order_by and not no_ordering:
                 self.end_query_str = 'ORDER BY ' + order_by
         else:
             ValueError(f"Filter is already initiated for this {self.__class__.__name__} object: {self}")
@@ -441,7 +594,7 @@ class ModelQuery():
             model_clas object or None if no rows were selected.
         """
         if not col:
-            col = self.model_class.Meta.pk
+            col = self.model.Meta.pk
         return await self.filter().qc(col, comp, *args).fetchrow()
 
 
