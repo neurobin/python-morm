@@ -317,7 +317,7 @@ class ModelQuery():
 
     @property
     def fn(self):
-        """Field name container that contains field names
+        """Field name container
 
         It can be used to avoid spelling mistakes in writing query.
         Example:
@@ -362,11 +362,11 @@ class ModelQuery():
     def q(self, q: str, *args, **kwargs):
         """Add a query as given (SQL).
 
-        Use $1, $2 etc. for prepared arguments and :field_name for
-        keyword arguments. :field_name is converted to positional
+        Use `$1`, `$2` etc. for prepared arguments and `:field_name` for
+        keyword arguments. `:field_name` is converted to positional
         arguments.
 
-        Use self.c (instance property, use fstring) to get the current
+        Use `self.c` (instance property, use fstring) to get the current
         available prepared argument position.
 
 
