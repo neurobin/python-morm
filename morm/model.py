@@ -155,6 +155,12 @@ class ModelType(type):
     def _get_all_fields_(cls):
         return cls.Meta._field_defs_
 
+    def _get_field_name_(cls, n):
+        try:
+            return cls.Meta._field_defs_[n].name
+        except KeyError:
+            raise AttributeError(f"No such field `{n}` in model `{cls.__name__}`")
+
     def _get_fields_(cls, up=False):
         """Generator
 

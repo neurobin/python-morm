@@ -127,7 +127,7 @@ class TestMethods(unittest.TestCase):
         mq2 = db(BigUser2).filter().qc('', '$1', True)
         mqq = ' SELECT "name","profession","hobby","status","salary" FROM "BigUser" WHERE $1 ORDER BY "name" ASC,"profession" DESC,"age" DESC'
         mqq2 = ' SELECT "id","name","profession" FROM "BigUser2" WHERE $1 '
-        print(mq2.qget())
+        print(mq2.getq())
         res = await mq.fetch()
         res2 = await mq2.fetch()
         big_user1 = await db(BigUser2).get(2)
@@ -141,8 +141,8 @@ class TestMethods(unittest.TestCase):
         print('\n## Exclude fields and values\n')
 
         print('* fields_down and exclude_fields_down control which fields will be retrieved from db and accessed from model object')
-        self.assertEqual(mq.qget()[0], mqq)
-        self.assertEqual(mq2.qget()[0], mqq2)
+        self.assertEqual(mq.getq()[0], mqq)
+        self.assertEqual(mq2.getq()[0], mqq2)
         print('* keys excluded for down with field name can not be accessed')
         with self.assertRaises(AttributeError):
             res[0].age
@@ -180,37 +180,37 @@ class TestMethods(unittest.TestCase):
 
     def test_filter_func(self):
         db = DB(SNORM_DB_POOL)
-        q = db(BigUser).filter().qc('', '$1', True).qget()
+        q = db(BigUser).filter().qc('', '$1', True).getq()
         print(q)
         asyncio.get_event_loop().run_until_complete(self._test_db_filter_data())
 
     def test_q_qq(self):
         db = DB(SNORM_DB_POOL)
         buq = db(BigUser2)
-        self.assertEqual(buq.q(
-            f'SELECT * FROM {buq.table} WHERE {buq.pk}=$1 AND "{buq.fn.profession}" = :profession', 2, profession='developer').qget(),
+        self.assertEqual(buq.q_(
+            f'SELECT * FROM {buq.table} WHERE {buq.pk}=$1 AND "{buq.f.profession}" = :profession', 2, profession='developer').getq(),
             (' SELECT * FROM BigUser2 WHERE id=$1 AND "profession" = $2 ', [2, 'developer'])
         )
 
         print('* Misspelling will produce AttributeError')
         with self.assertRaises(AttributeError):
             buq\
-                .q(f'SELECT * FROM {buq.table} WHERE {buq.pk}=$1 AND "{buq.fn.profesion}" = :profession', 2, profession='developer')\
-                .qget()
+                .q_(f'SELECT * FROM {buq.table} WHERE {buq.pk}=$1 AND "{buq.f.profesion}" = :profession', 2, profession='developer')\
+                .getq()
 
         self.assertEqual(
             buq.reset()\
                 .q(f'SELECT')\
                 .qq('age')\
-                .q(f', "{buq.fn.profession}", "{buq.fn.hobby}", "{buq.fn.status}"')\
+                .q(f', "{buq.f.profession}", "{buq.f.hobby}", "{buq.f.status}"')\
                 .q(f'FROM {buq.table} WHERE')\
-                .q(f'"{buq.fn.age}" >= ${buq.c} AND "{buq.fn.status}" = :status', 13, status='OK')\
+                .q_(f'"{buq.f.age}" >= ${buq.c} AND "{buq.f.status}" = :status', 13, status='OK')\
                 #fdsfd
-                .q(f'AND status=:status')\
-                .q(f'AND hobby=${buq.c}', 'gardening', hobby='Teaching')\
-                .q(f'AND "{buq.fn.salary}"=:status')\
-                .q(f'AND "{buq.fn.hobby}"=:hobby')\
-                .qget(),
+                .q_(f'AND status=:status')\
+                .q_(f'AND hobby=${buq.c}', 'gardening', hobby='Teaching')\
+                .q_(f'AND "{buq.f.salary}"=:status')\
+                .q_(f'AND "{buq.f.hobby}"=:hobby')\
+                .getq(),
             (' SELECT "age" , "profession", "hobby", "status" FROM BigUser2 WHERE "age" >= $1 AND "status" = $2 AND status=$2 AND hobby=$3 AND "salary"=$2 AND "hobby"=$4 ', [13, 'OK', 'gardening', 'Teaching'])
         )
 

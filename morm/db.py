@@ -273,15 +273,39 @@ class DB(object):
 
 class ModelQuery():
     def __init__(self, db: DB, model_class: ModelType):
+        """Query builder for model class.
+
+        The `q` family of methods (`q, qc, qu etc..`) can be used to
+        build a query step by step. These methods can be chained
+        together to break down the query building in multiple steps.
+
+        Several properties are available to get information of the model
+        such as table name (`self.table`), ordering (`self.ordering`),
+        field names (`self.f.<field_name>`) etc..
+
+        `self.c` is a counter that gives an integer representing the
+        last existing argument position plus 1.
+
+        `reset()` can be called to reset the query to start a new.
+
+        To execute a query, you need to run one of the execution methods
+        : `fetch, fetchrow, fetchval, execute`.
+
+        Notable convenience methods:
+
+        * `update(data)`: Initialize a update query for data
+        * `filter()`: Initialize a filter query upto WHERE clasue.
+        * `get(pkval)`: Get an item by primary key.
+
+        Args:
+            db (DB): DB object
+            model_class (ModelType): model
+        """
         self.reset()
         self.db = db
         self.model = model_class # can be None
-        class FieldNameMap: pass
-        self._fn = FieldNameMap
-        if self.model:
-            fields = self.model._get_all_fields_() #dict
-            for n in fields:
-                setattr(self._fn, n, n)
+        self._f = None # no reset
+        self._f_ = None # no reset
 
     def reset(self):
         """Reset the model query by returning it to its initial state.
@@ -299,10 +323,7 @@ class ModelQuery():
         self.__filter_initiated = False
         self._ordering = ''
         self.__update_initiated = False
-
         return self
-
-
 
 
     @property
@@ -324,10 +345,22 @@ class ModelQuery():
         return self.model._get_db_table_()
 
     @property
+    def table_(self):
+        """Table name of the model (quoted)
+        """
+        return Q(self.model._get_db_table_())
+
+    @property
     def pk(self):
         """Primary key name
         """
         return self.model._get_pk_()
+
+    @property
+    def pk_(self):
+        """Primary key name (quoted)
+        """
+        return Q(self.model._get_pk_())
 
     @property
     def ordering(self):
@@ -339,8 +372,18 @@ class ModelQuery():
             self._ordering = ','.join([' '.join(y) for y in self.model._get_ordering_(quote='"')])
         return self._ordering
 
+    def _get_GetFieldName_object(self, func):
+        class _GetFieldName():
+            def __getattr__(self, k):
+                return func(k)
+
+            def __setattr__(self, k, v):
+                raise NotImplementedError
+        return _GetFieldName()
+
+
     @property
-    def fn(self):
+    def f(self):
         """Field name container
 
         It can be used to avoid spelling mistakes in writing query.
@@ -362,7 +405,21 @@ class ModelQuery():
         ModelQuery instance
 
         """
-        return self._fn
+        if not self._f:
+            def func(k):
+                return self.model._get_field_name_(k)
+            self._f = self._get_GetFieldName_object(func)
+        return self._f
+
+    @property
+    def f_(self):
+        """Field name container where names are quoted.
+        """
+        if not self._f_:
+            def func(k):
+                return self.model._get_field_name_(Q(k))
+            self._f = self._get_GetFieldName_object(func)
+        return self._f_
 
     def _process_positional_args(self, *args):
         if args:
@@ -386,12 +443,37 @@ class ModelQuery():
                     self._named_args_mapper[k] = self._arg_count
         return q
 
-    def q_(self, q: str, *args):
-        """Add raw query without parsing to check for keyword arguments
+    def q(self, q: str, *args):
+        """Add raw query stub without parsing to check for keyword arguments
+
+        Use `$1`, `$2` etc. for prepared arguments.
+
+        Use `self.c` (instance property, use fstring) to get the current
+        available prepared argument position.
 
         This is an efficient way to add query that do not have any
-        keyword arguments to handle, compared to `q()` which checks for
+        keyword arguments to handle, compared to `q_()` which checks for
         keyword arguments everytime it is called.
+
+        Example:
+
+        ```python
+        mq = db(SomeModel)
+        mq\
+        .q('SELECT * FROM "table" WHERE $1', True)\
+        .q('AND "price" >= $2', 33)\
+        .q(f'OR "price" = ${mq.c}', 0) # mq.c=3 (now)\
+        .q_('OR "status" = :status', status='OK')\
+        # :status is $4:
+        .q('OR "active" = $5', 0)\
+        .q_('AND "status" = :status')\
+        # status='OK' from previous call
+        .q('OR "price" = $2')\
+        # $2=33 from previous call
+        #using format string and mq.c to get the argument position:
+        .q(f'OR "price" > ${mq.c} OR "quantity" > ${mq.c+1}', 12, 3)
+        #               mq.c=6 ^
+        ```
 
         Args:
             q (str): raw query string
@@ -404,36 +486,14 @@ class ModelQuery():
         return self
 
 
-    def q(self, q: str, *args, **kwargs):
-        """Add a query as given (SQL).
+    def q_(self, q: str, *args, **kwargs):
+        """Add a query stub having keyword params.
 
-        Use `$1`, `$2` etc. for prepared arguments and `:field_name` for
-        keyword arguments. `:field_name` is converted to positional
-        arguments.
+        Use the format `:field_name` for keyword parameter.
+        `:field_name` is converted to positional parameter (`$n`).
 
-        Use `self.c` (instance property, use fstring) to get the current
-        available prepared argument position.
-
-
-        Example:
-
-        ```python
-        mq = db(SomeModel)
-        mq\
-        .q('SELECT * FROM "table" WHERE $1', True)\
-        .q('AND "price" >= $2', 33)\
-        .q(f'OR "price" = ${mq.c}', 0) # mq.c=3 (now)\
-        .q('OR "status" = :status', status='OK')\
-        # :status is $4:
-        .q('OR "active" = $5', 0)\
-        .q('AND "status" = :status')\
-        # status='OK' from previous call
-        .q('OR "price" = $2')\
-        # $2=33 from previous call
-        #using format string and mq.c to get the argument position:
-        .q(f'OR "price" > ${mq.c} OR "quantity" > ${mq.c+1}', 12, 3)
-        #               mq.c=6 ^
-        ```
+        This method checks the query against all keyword arguments
+        that has been added so far with other `q*()` methods.
 
         Args:
             q (str): query string (SQL)
@@ -447,7 +507,7 @@ class ModelQuery():
         return self
 
     def qq(self, word: str):
-        """Quote and add a word.
+        """Quote and add a word to the query.
 
         Enable to add names with auto-quote. For example, if the name
         for a field value is `status`, it can be added to the query
@@ -471,7 +531,7 @@ class ModelQuery():
         return self
 
 
-    def qc(self, word: str, rest: str, *args, **kwargs):
+    def qc(self, word: str, rest: str, *args):
         """Add query by quoting `word` while adding the `rest` as is.
 
         This is a shorthand for making where clause conditions.
@@ -492,12 +552,29 @@ class ModelQuery():
             word (str): left part of query that needs to be quoted
             rest (str): right part of query that does not need to be quoted
             *args (any): prepared args
+
+        Returns:
+            ModelQuery: returns `self` to enable method chaining
+        """
+        return self.qq(word).q(rest, *args)
+
+
+    def qc_(self, word: str, rest: str, *args, **kwargs):
+        """Add query by quoting `word` while adding the `rest` as is.
+
+        Same as `qc()` except this method parses the `rest` query string
+        for keyword params in the format: `:field_name`
+
+        Args:
+            word (str): left part of query that needs to be quoted
+            rest (str): right part of query that does not need to be quoted
+            *args (any): prepared args
             *kwargs: prepared keyword args
 
         Returns:
             ModelQuery: returns `self` to enable method chaining
         """
-        return self.qq(word).q(rest, *args, **kwargs)
+        return self.qq(word).q_(rest, *args, **kwargs)
 
     def qo(self, order: str):
         """Convert `-field_name,` to proper order_by criteria and add to query.
@@ -525,9 +602,26 @@ class ModelQuery():
         if order.endswith(','):
             order = order[0:-1]
             direction += ','
-        return self.qq(order).q_(direction)
+        return self.qq(order).q(direction)
 
-    def q_returning(self, *args):
+    def qu(self, data: dict):
+        """Convert data to "column"=$n query with prepared args as the
+            values and add to the main query.
+
+        The counter of positional arguments increases by the number of
+        items in `data`. Make use of `self.c` counter to add more
+        queries after using this method.
+
+        Args:
+            data (dict): data in format: `{'column': value}`
+
+        Returns:
+            ModelQuery: returns `self` to enable method chaining
+        """
+        setq = ', '.join([f'"{c}"=${i}' for i,c in enumerate(data, self.c)])
+        return self.q(setq, *data.values())
+
+    def qreturning(self, *args):
         """Convenience to add a `RETURNING` clause.
 
         Args:
@@ -539,26 +633,9 @@ class ModelQuery():
         q = '","'.join(args)
         if q:
             q = f'"{q}"'
-        return self.q_(q)
+        return self.q(q)
 
-    def qu(self, data: dict):
-        """Convert data to "column"=$n query with prepared args as the
-            values and add to the main query.
-
-        The counter of positional arguments increases by the number of items
-        in `data`. Make use of `self.c` counter to add more queries
-        after using this method.
-
-        Args:
-            data (dict): data in format: `{'column': value}`
-
-        Returns:
-            ModelQuery: returns `self` to enable method chaining
-        """
-        setq = ', '.join([f'"{c}"=${i}' for i,c in enumerate(data, self.c)])
-        return self.q_(setq, *data.values())
-
-    def where(self):
+    def qwhere(self):
         """Convenience to add 'WHERE' to the main query.
 
         Make use of `qc()` method to add conditions.
@@ -566,10 +643,10 @@ class ModelQuery():
         Returns:
             ModelQuery: returns `self` to enable method chaining
         """
-        return self.q_('WHERE')
+        return self.q('WHERE')
 
 
-    def qget(self):
+    def getq(self):
         """Return query string and prepared arg list
 
         Returns:
@@ -591,7 +668,7 @@ class ModelQuery():
         Returns:
             List[Model]: List of model instances.
         """
-        query, parepared_args = self.qget()
+        query, parepared_args = self.getq()
         return await self.db.fetch(query, *parepared_args, timeout=timeout, model_class=self.model)
 
     async def fetchrow(self, timeout: float = None):
@@ -605,7 +682,7 @@ class ModelQuery():
         Returns:
             model_clas object or None if no rows were selected.
         """
-        query, parepared_args = self.qget()
+        query, parepared_args = self.getq()
         return await self.db.fetchrow(query, *parepared_args, timeout=timeout, model_class=self.model)
 
     async def fetchval(self, column: int = 0, timeout: float = None):
@@ -618,7 +695,7 @@ class ModelQuery():
         Returns:
             Any: Coulmn (indentified by index) value of first row.
         """
-        query, parepared_args = self.qget()
+        query, parepared_args = self.getq()
         return await self.db.fetchval(query, *parepared_args, column=column, timeout=timeout)
 
     async def execute(self, timeout: float = None):
@@ -630,7 +707,7 @@ class ModelQuery():
         Returns:
             str: Status of the last SQL command
         """
-        query, parepared_args = self.qget()
+        query, parepared_args = self.getq()
         return await self.db.execute(query, *parepared_args, timeout=timeout)
 
     def filter(self, no_ordering=False):
@@ -655,7 +732,7 @@ class ModelQuery():
         """
         if not self.__filter_initiated:
             down_fields = ','.join([Q(x) for x in self.model._get_fields_(up=False)])
-            self.q_(f'SELECT {down_fields} FROM "{self.model._get_db_table_()}" WHERE')
+            self.q(f'SELECT {down_fields} FROM "{self.model._get_db_table_()}" WHERE')
             self.__filter_initiated = True
             order_by = self.ordering
             if order_by and not no_ordering:
@@ -664,17 +741,17 @@ class ModelQuery():
             ValueError(f"Filter is already initiated for this {self.__class__.__name__} query object: {self}")
         return self
 
-    async def get(self, *args, col='', comp='=$1'):
+    async def get(self, *vals, col='', comp='=$1'):
         """Get the first row found by column and value.
 
-        If column is not given, it defaults to the primary key of
+        If `col` is not given, it defaults to the primary key (`pk`) of
         the model.
 
         If comparison is not given, it defaults to `=$1`
 
         Args:
-            *args (any): Values to compare. Must be referenced with $1, $2 etc.. in `comp`.
-            col (str, optional): Column name. Defaults to ''.
+            *vals (any): Values to compare. Must be referenced with $1, $2 etc.. in `comp`.
+            col (str, optional): Column name. Defaults to the primary key.
             comp (str, optional): Comparison. Defaults to '=$1'.
 
         Returns:
@@ -682,7 +759,7 @@ class ModelQuery():
         """
         if not col:
             col = self.model.Meta.pk
-        return await self.filter().qc(col, comp, *args).fetchrow()
+        return await self.filter().qc(col, comp, *vals).fetchrow()
 
 
     def update(self, data: dict):
@@ -702,7 +779,7 @@ class ModelQuery():
             ModelQuery: returns `self` to enable method chaining
         """
         if not self.__update_initiated:
-            self.q_(f'UPDATE {self.table} SET').qu(data).where()
+            self.q(f'UPDATE {self.table} SET').qu(data).qwhere()
             self.__update_initiated = True
         else:
             ValueError(f"update is already initiated for this {self.__class__.__name__} query: {self}")
