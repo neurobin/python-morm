@@ -3,15 +3,17 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
-<meta name="generator" content="pdoc 0.7.5" />
+<meta name="generator" content="pdoc 0.9.2" />
 <title>morm.model API documentation</title>
 <meta name="description" content="Model." />
-<link href='https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.0/normalize.min.css' rel='stylesheet'>
-<link href='https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/8.0.0/sanitize.min.css' rel='stylesheet'>
-<link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css" rel="stylesheet">
-<style>.flex{display:flex !important}body{line-height:1.5em}#content{padding:20px}#sidebar{padding:30px;overflow:hidden}.http-server-breadcrumbs{font-size:130%;margin:0 0 15px 0}#footer{font-size:.75em;padding:5px 30px;border-top:1px solid #ddd;text-align:right}#footer p{margin:0 0 0 1em;display:inline-block}#footer p:last-child{margin-right:30px}h1,h2,h3,h4,h5{font-weight:300}h1{font-size:2.5em;line-height:1.1em}h2{font-size:1.75em;margin:1em 0 .50em 0}h3{font-size:1.4em;margin:25px 0 10px 0}h4{margin:0;font-size:105%}a{color:#058;text-decoration:none;transition:color .3s ease-in-out}a:hover{color:#e82}.title code{font-weight:bold}h2[id^="header-"]{margin-top:2em}.ident{color:#900}pre code{background:#f8f8f8;font-size:.8em;line-height:1.4em}code{background:#f2f2f1;padding:1px 4px;overflow-wrap:break-word}h1 code{background:transparent}pre{background:#f8f8f8;border:0;border-top:1px solid #ccc;border-bottom:1px solid #ccc;margin:1em 0;padding:1ex}#http-server-module-list{display:flex;flex-flow:column}#http-server-module-list div{display:flex}#http-server-module-list dt{min-width:10%}#http-server-module-list p{margin-top:0}.toc ul,#index{list-style-type:none;margin:0;padding:0}#index code{background:transparent}#index h3{border-bottom:1px solid #ddd}#index ul{padding:0}#index h4{font-weight:bold}#index h4 + ul{margin-bottom:.6em}@media (min-width:200ex){#index .two-column{column-count:2}}@media (min-width:300ex){#index .two-column{column-count:3}}dl{margin-bottom:2em}dl dl:last-child{margin-bottom:4em}dd{margin:0 0 1em 3em}#header-classes + dl > dd{margin-bottom:3em}dd dd{margin-left:2em}dd p{margin:10px 0}.name{background:#eee;font-weight:bold;font-size:.85em;padding:5px 10px;display:inline-block;min-width:40%}.name:hover{background:#e0e0e0}.name > span:first-child{white-space:nowrap}.name.class > span:nth-child(2){margin-left:.4em}.inherited{color:#999;border-left:5px solid #eee;padding-left:1em}.inheritance em{font-style:normal;font-weight:bold}.desc h2{font-weight:400;font-size:1.25em}.desc h3{font-size:1em}.desc dt code{background:inherit}.source summary,.git-link-div{color:#666;text-align:right;font-weight:400;font-size:.8em;text-transform:uppercase}.source summary > *{white-space:nowrap;cursor:pointer}.git-link{color:inherit;margin-left:1em}.source pre{max-height:500px;overflow:auto;margin:0}.source pre code{font-size:12px;overflow:visible}.hlist{list-style:none}.hlist li{display:inline}.hlist li:after{content:',\2002'}.hlist li:last-child:after{content:none}.hlist .hlist{display:inline;padding-left:1em}img{max-width:100%}.admonition{padding:.1em .5em;margin-bottom:1em}.admonition-title{font-weight:bold}.admonition.note,.admonition.info,.admonition.important{background:#aef}.admonition.todo,.admonition.versionadded,.admonition.tip,.admonition.hint{background:#dfd}.admonition.warning,.admonition.versionchanged,.admonition.deprecated{background:#fd4}.admonition.error,.admonition.danger,.admonition.caution{background:lightpink}</style>
-<style media="screen and (min-width: 700px)">@media screen and (min-width:700px){#sidebar{width:30%}#content{width:70%;max-width:100ch;padding:3em 4em;border-left:1px solid #ddd}pre code{font-size:1em}.item .name{font-size:1em}main{display:flex;flex-direction:row-reverse;justify-content:flex-end}.toc ul ul,#index ul{padding-left:1.5em}.toc > ul > li{margin-top:.5em}}</style>
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
+<link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin>
+<style>:root{--highlight-color:#fe9}.flex{display:flex !important}body{line-height:1.5em}#content{padding:20px}#sidebar{padding:30px;overflow:hidden}#sidebar > *:last-child{margin-bottom:2cm}.http-server-breadcrumbs{font-size:130%;margin:0 0 15px 0}#footer{font-size:.75em;padding:5px 30px;border-top:1px solid #ddd;text-align:right}#footer p{margin:0 0 0 1em;display:inline-block}#footer p:last-child{margin-right:30px}h1,h2,h3,h4,h5{font-weight:300}h1{font-size:2.5em;line-height:1.1em}h2{font-size:1.75em;margin:1em 0 .50em 0}h3{font-size:1.4em;margin:25px 0 10px 0}h4{margin:0;font-size:105%}h1:target,h2:target,h3:target,h4:target,h5:target,h6:target{background:var(--highlight-color);padding:.2em 0}a{color:#058;text-decoration:none;transition:color .3s ease-in-out}a:hover{color:#e82}.title code{font-weight:bold}h2[id^="header-"]{margin-top:2em}.ident{color:#900}pre code{background:#f8f8f8;font-size:.8em;line-height:1.4em}code{background:#f2f2f1;padding:1px 4px;overflow-wrap:break-word}h1 code{background:transparent}pre{background:#f8f8f8;border:0;border-top:1px solid #ccc;border-bottom:1px solid #ccc;margin:1em 0;padding:1ex}#http-server-module-list{display:flex;flex-flow:column}#http-server-module-list div{display:flex}#http-server-module-list dt{min-width:10%}#http-server-module-list p{margin-top:0}.toc ul,#index{list-style-type:none;margin:0;padding:0}#index code{background:transparent}#index h3{border-bottom:1px solid #ddd}#index ul{padding:0}#index h4{margin-top:.6em;font-weight:bold}@media (min-width:200ex){#index .two-column{column-count:2}}@media (min-width:300ex){#index .two-column{column-count:3}}dl{margin-bottom:2em}dl dl:last-child{margin-bottom:4em}dd{margin:0 0 1em 3em}#header-classes + dl > dd{margin-bottom:3em}dd dd{margin-left:2em}dd p{margin:10px 0}.name{background:#eee;font-weight:bold;font-size:.85em;padding:5px 10px;display:inline-block;min-width:40%}.name:hover{background:#e0e0e0}dt:target .name{background:var(--highlight-color)}.name > span:first-child{white-space:nowrap}.name.class > span:nth-child(2){margin-left:.4em}.inherited{color:#999;border-left:5px solid #eee;padding-left:1em}.inheritance em{font-style:normal;font-weight:bold}.desc h2{font-weight:400;font-size:1.25em}.desc h3{font-size:1em}.desc dt code{background:inherit}.source summary,.git-link-div{color:#666;text-align:right;font-weight:400;font-size:.8em;text-transform:uppercase}.source summary > *{white-space:nowrap;cursor:pointer}.git-link{color:inherit;margin-left:1em}.source pre{max-height:500px;overflow:auto;margin:0}.source pre code{font-size:12px;overflow:visible}.hlist{list-style:none}.hlist li{display:inline}.hlist li:after{content:',\2002'}.hlist li:last-child:after{content:none}.hlist .hlist{display:inline;padding-left:1em}img{max-width:100%}td{padding:0 .5em}.admonition{padding:.1em .5em;margin-bottom:1em}.admonition-title{font-weight:bold}.admonition.note,.admonition.info,.admonition.important{background:#aef}.admonition.todo,.admonition.versionadded,.admonition.tip,.admonition.hint{background:#dfd}.admonition.warning,.admonition.versionchanged,.admonition.deprecated{background:#fd4}.admonition.error,.admonition.danger,.admonition.caution{background:lightpink}</style>
+<style media="screen and (min-width: 700px)">@media screen and (min-width:700px){#sidebar{width:30%;height:100vh;overflow:auto;position:sticky;top:0}#content{width:70%;max-width:100ch;padding:3em 4em;border-left:1px solid #ddd}pre code{font-size:1em}.item .name{font-size:1em}main{display:flex;flex-direction:row-reverse;justify-content:flex-end}.toc ul ul,#index ul{padding-left:1.5em}.toc > ul > li{margin-top:.5em}}</style>
 <style media="print">@media print{#sidebar h1{page-break-before:always}.source{display:none}}@media print{*{background:transparent !important;color:#000 !important;box-shadow:none !important;text-shadow:none !important}a[href]:after{content:" (" attr(href) ")";font-size:90%}a[href][title]:after{content:none}abbr[title]:after{content:" (" attr(title) ")"}.ir a:after,a[href^="javascript:"]:after,a[href^="#"]:after{content:""}pre,blockquote{border:1px solid #999;page-break-inside:avoid}thead{display:table-header-group}tr,img{page-break-inside:avoid}img{max-width:100% !important}@page{margin:0.5cm}p,h2,h3{orphans:3;widows:3}h1,h2,h3,h4,h5,h6{page-break-after:avoid}}</style>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/highlight.min.js" integrity="sha256-Uv3H6lx7dJmRfRvH8TH6kJD1TSK1aFcwgx+mdg3epi8=" crossorigin></script>
+<script>window.addEventListener('DOMContentLoaded', () => hljs.initHighlighting())</script>
 </head>
 <body>
 <main>
@@ -33,369 +35,483 @@ __copyright__ = &#39;Copyright © Md Jahidul Hamid &lt;https://github.com/neurob
 __license__ = &#39;[BSD](http://www.opensource.org/licenses/bsd-license.php)&#39;
 __version__ = &#39;0.0.1&#39;
 
+import inspect
 import typing
+from typing import Optional, Dict, List, Tuple, TypeVar, Union, Any, Iterator
+from collections import OrderedDict
+import copy
 from abc import ABCMeta
+from asyncpg import Record # type: ignore
 from morm.exceptions import ItemDoesNotExistError
-from morm.fields import Field
+from morm.fields.field import Field, FieldValue
 from morm.types import Void
-from morm.db import DB
+import morm.meta as mt      # for internal use
+
+# morm.db must not be imported here.
+
+Meta = mt.Meta  # For client use
 
 
-class _ModelMeta_(ABCMeta):
-    def __new__(mcs, class_name, bases, attrs):
+class FieldNames():
+    &#34;&#34;&#34;Access field names
+    &#34;&#34;&#34;
+    def __init__(self, func):
+        self.__dict__[&#39;func&#39;] = func
+
+    def __getattr__(self, k):
+        return self.__dict__[&#39;func&#39;](k)
+
+    def __setattr__(self, k, v):
+        raise NotImplementedError
+
+
+class ModelType(type):
+    Meta: typing.ClassVar # fixing mypy error: &#34;ModelType&#34; has no attribute &#34;Meta&#34;
+    def __new__(mcs, class_name: str, bases: tuple, attrs: dict):
+        # Ensure initialization is only performed for subclasses of Model
+        # excluding Model class itself.
+        parents = tuple(b for b in bases if isinstance(b, ModelType))
+        if not parents:
+            return super().__new__(mcs, class_name, bases, attrs)
+
         classcell = attrs.pop(&#39;__classcell__&#39;, None)
-        new_bases = tuple(base._class_ for base in bases if hasattr(base, &#39;_class_&#39;))
-        _class_ = super().__new__(mcs, &#39;x_&#39; + class_name, new_bases, attrs)
-        _fields_ = getattr(_class_, &#39;_fields_&#39;, {})
+        class _Meta_(mt.Meta): pass
+        meta = attrs.pop(&#39;Meta&#39;, _Meta_)
+        if not inspect.isclass(meta): #TEST: Meta is restricted as a class
+            raise TypeError(f&#34;Name &#39;Meta&#39; is reserved for a class to pass configuration or metadata of a model. Error in model &#39;{class_name}&#39;&#34;)
+        _class_ = super().__new__(mcs, &#39;x_&#39; + class_name, parents, attrs)
+        BaseMeta = getattr(_class_, &#39;Meta&#39;, _Meta_)
+
+        meta_attrs = {}
+        def _set_meta_attr(k, v, mutable=False, inherit=True, internal=False):
+            try:
+                given_value = getattr(meta, k)
+                if internal:
+                    raise ValueError(f&#34;&#39;{k}&#39; is a reserved attribute for class Meta. Error in model &#39;{class_name}&#39;&#34;)
+                given_type = type(given_value)
+                required_type = type(v)
+                if not given_type is required_type:
+                    raise TypeError(f&#34;Invalid type {given_type} given for attribute &#39;{k}&#39; in class &#39;{class_name}.Meta&#39;. Required {required_type}.&#34;)
+                meta_attrs[k] = given_value
+            except AttributeError:
+                if inherit:
+                    v = getattr(BaseMeta, k, v)
+                # mutable values can be changed by other class meta change
+                if mutable:
+                    meta_attrs[k] = copy.deepcopy(v)
+                else:
+                    meta_attrs[k] = v
+
+        _set_meta_attr(&#39;proxy&#39;, False)
+        _set_meta_attr(&#39;pk&#39;, &#39;id&#39;)
+        _set_meta_attr(&#39;ordering&#39;, ())
+        _set_meta_attr(&#39;fields_up&#39;, ())
+        _set_meta_attr(&#39;fields_down&#39;, ())
+        _set_meta_attr(&#39;exclude_fields_up&#39;, ())
+        _set_meta_attr(&#39;exclude_fields_down&#39;, ())
+        _set_meta_attr(&#39;exclude_values_up&#39;, {&#39;&#39;:()}, mutable=True)
+        _set_meta_attr(&#39;exclude_values_down&#39;, {&#39;&#39;:()}, mutable=True)
+        _set_meta_attr(&#39;_field_defs_&#39;, {}, internal=True, mutable=True)
+
+        if meta_attrs[&#39;proxy&#39;]:
+            #proxy model inherits everything
+            try:
+                meta_attrs[&#39;db_table&#39;] = BaseMeta.db_table
+                meta_attrs[&#39;abstract&#39;] = BaseMeta.abstract
+            except AttributeError:
+                raise TypeError(f&#34;This model &#39;{class_name}&#39; can not be a proxy model. It does not have a valid base or super base non-proxy model&#34;)
+        else:
+            _set_meta_attr(&#39;abstract&#39;, False, inherit=False)
+            if meta_attrs[&#39;abstract&#39;]:
+                meta_attrs[&#39;db_table&#39;] = Void
+            else:
+                _set_meta_attr(&#39;db_table&#39;, class_name, inherit=False)
 
         new_attrs = {}
-        db_instance_given = False
-        for n in dir(_class_):
-            v = getattr(_class_, n)
+
+        # https://www.python.org/dev/peps/pep-0520
+        # PEP 520 says: dir() will not depend on __definition_order__
+        # Even though as of python 3.8.3 we see dir() also preserves order
+        # but let&#39;s be safe.
+        # for n in dir(_class_):
+        #     v = getattr(_class_, n)
+        for n, v in _class_.__dict__.items():
             if isinstance(v, Field):
-                if n.startswith(&#39;_&#39;) and n.endswith(&#39;_&#39;):
+                if n.startswith(&#39;__&#39;) and n.endswith(&#39;__&#39;):
                     raise AttributeError(f&#34;Invalid field name &#39;{n}&#39; in model &#39;{class_name}&#39;. \
-                        Field name must not start and end with an underscore.&#34;)
+                        Field name must not start and end with double underscore.&#34;)
+                if meta_attrs[&#39;proxy&#39;] and n in attrs:
+                    raise ValueError(f&#34;Proxy model &#39;{class_name}&#39; can not define new field: {n}&#34;)
                 v.name = n
-                _fields_[n] = v
+                meta_attrs[&#39;_field_defs_&#39;][n] = v
             elif n in attrs:
                 new_attrs[n] = attrs[n]
-            if n == &#39;_db_&#39; and v:
-                db_instance_given = True
 
-        new_attrs[&#39;_fields_&#39;] = _fields_
-        new_attrs[&#39;_class_&#39;] = _class_
+        # we do this after finalizing meta_attr
+        def _get_field_name(n: str) -&gt; str:
+            if n in meta_attrs[&#39;_field_defs_&#39;]:
+                return n
+            else:
+                raise AttributeError(f&#34;No such field &#39;{n}&#39; in model &#39;{class_name}&#39;&#34;)
+        meta_attrs[&#39;f&#39;] = FieldNames(_get_field_name)
 
-        if not &#39;_table_name_&#39; in new_attrs:
-            new_attrs[&#39;_table_name_&#39;] = None
-        if not &#39;_db_no_check_&#39; in new_attrs:
-            new_attrs[&#39;_db_no_check_&#39;] = False
-        if not db_instance_given and not new_attrs[&#39;_db_no_check_&#39;]:
-            raise AttributeError(f&#34;Attribute: _db_ must be given in class {class_name}&#34;)
+        MetaClass = mt.MetaType(&#39;Meta&#39;, (mt.Meta,), meta_attrs)
+        new_attrs[&#39;Meta&#39;] = MetaClass
+
         if classcell is not None:
             new_attrs[&#39;__classcell__&#39;] = classcell
         return super().__new__(mcs, class_name, bases, new_attrs)
 
+    def __setattr__(self, k, v):
+        raise NotImplementedError(&#34;You can not set model attributes outside model definition.&#34;)
 
+    def __delattr__(self, k):
+        raise NotImplementedError(&#34;You can not delete model attributes outside model definition.&#34;)
 
-class _Model_(metaclass=_ModelMeta_):
-    _db_no_check_: bool = True # internal use only
+    def _is_valid_key_(self, k:str, fields:Tuple[str], exclude_keys:Tuple[str]) -&gt; bool:
+        &#34;&#34;&#34;Returns True if the key is valid considering include/exclude keys
+        &#34;&#34;&#34;
+        if k in exclude_keys: return False
+        if fields and k not in fields: return False
+        return True
 
-    _db_: typing.Optional[DB] = None
-    &#39;&#39;&#39;_db_ will be inherited in subclasses&#39;&#39;&#39;
-    _table_name_: typing.Optional[str] = None
-    &#34;&#34;&#34;_table_name_ will not be inherited in subclasses&#34;&#34;&#34;
+    def _is_valid_down_key_(self, k: str) -&gt; bool:
+        &#34;&#34;&#34;Returns True if the key is valid considering include/exclude down keys
+        &#34;&#34;&#34;
+        return self._is_valid_key_(k, self.Meta.fields_down, self.Meta.exclude_fields_down)
 
-    _exclude_up_keys_: tuple = ()
-    &#39;&#39;&#39;Exclude columns for these keys when saving the data to database&#39;&#39;&#39;
-    _exclude_up_values_: tuple = ()
-    &#39;&#39;&#39;Exclude columns for these values when saving the data to database&#39;&#39;&#39;
-    _exclude_down_keys_ : tuple= ()    # TODO: implement in select
-    &#39;&#39;&#39;Exclude columns for these keys when retrieving data from database&#39;&#39;&#39;
-    _exclude_down_values: tuple = ()   # TODO: implement in select
-    &#39;&#39;&#39;Exclude columns for these values when retrieving data from database&#39;&#39;&#39;
+    def _is_valid_up_key_(self, k: str) -&gt; bool:
+        &#34;&#34;&#34;Returns True if the key is valid considering include/exclude up keys
+        &#34;&#34;&#34;
+        return self._is_valid_key_(k, self.Meta.fields_up, self.Meta.exclude_fields_up)
 
+    def _is_valid_value_(self, k: str, v: Any, exclude_values: Dict[str, Tuple[Any]]) -&gt; bool:
+        &#34;&#34;&#34;Returns True if the value for the key is valid considering exclude values
+        &#34;&#34;&#34;
+        if v is Void:
+            return False
+        if k in exclude_values:
+            if v in exclude_values[k]:
+                return False
+        if &#39;&#39; in exclude_values and v in exclude_values[&#39;&#39;]:
+            return False
+        return True
 
+    def _is_valid_up_value_(self, k: str, v: Any) -&gt; bool:
+        &#34;&#34;&#34;Returns True if the value for the key is valid considering exclude up values
+        &#34;&#34;&#34;
+        return self._is_valid_value_(k, v, self.Meta.exclude_values_up)
 
-    @classmethod
-    def _get_table_name_(cls):
-        if cls._table_name_:
-            return cls._table_name_
+    def _is_valid_down_value_(self, k: str, v: Any) -&gt; bool:
+        &#34;&#34;&#34;Returns True if the value for the key is valid considering exclude down values
+        &#34;&#34;&#34;
+        return self._is_valid_value_(k, v, self.Meta.exclude_values_down)
+
+    def _is_valid_down_(self, k: str, v: Any) -&gt; bool:
+        &#34;&#34;&#34;Check whether the key and value is valid for down (data retrieval)
+        &#34;&#34;&#34;
+        return self._is_valid_down_key_(k) and self._is_valid_down_value_(k, v)
+
+    def _is_valid_up_(self, k: str, v: Any) -&gt; bool:
+        &#34;&#34;&#34;Check whether the key and value is valid for up (data update)
+        &#34;&#34;&#34;
+        return self._is_valid_up_key_(k) and self._is_valid_up_value_(k, v)
+
+    def _get_all_fields_(self) -&gt; Dict[str, Field]:
+        &#34;&#34;&#34;Get all fields on model without applying any restriction.
+
+        Returns:
+            Dict[str, Field]: Dictionary of all fields
+        &#34;&#34;&#34;
+        return self.Meta._field_defs_
+
+    def _check_field_name_(self, n: str) -&gt; str:
+        &#34;&#34;&#34;Return the field name if exists else raise AttributeError
+
+        Args:
+            n (str): field name
+
+        Raises:
+            AttributeError: if field name does not exist
+
+        Returns:
+            str: field name
+        &#34;&#34;&#34;
+        if n in self.Meta._field_defs_:
+            return n
         else:
-            return cls.__name__
+            raise AttributeError(f&#34;No such field `{n}` in model `{self.__name__}`&#34;)
 
-    @classmethod
-    def _get_db_(cls):
-        return cls._db_
-
-    @classmethod
-    async def _select_(cls, what=&#39;*&#39;, where=&#39;true&#39;, prepared_args=None):
-        &#34;&#34;&#34;Make a select query for this model.
+    def _get_fields_(self, up=False) -&gt; Iterator[str]:
+        &#34;&#34;&#34;Yields field names that pass include/exclude criteria
 
         Args:
-            what (str, optional): Columns. Defaults to &#39;*&#39;.
-            where (str, optional): Where conditon (sql). Defaults to &#39;true&#39;.
-            prepared_args (list, optional): prepared arguments. Defaults to None.
+            up (bool, optional): up criteria or down criteria. Defaults to False (down).
 
-        Returns:
-            list: List of model instances
+        Yields:
+            str: field name
         &#34;&#34;&#34;
-        if not prepared_args: prepared_args = []
-        query = &#39;SELECT %s FROM &#34;%s&#34; WHERE %s&#39; % (what, cls._get_table_name_(), where)
-        return await cls._get_db_().fetch(query, *prepared_args, model_class=cls)
-
-    @classmethod
-    async def _filter_(cls, where=&#39;true&#39;, prepared_args=None):
-        &#34;&#34;&#34;Filter according to where condition
-
-        e.g: &#34;name like &#39;%dummy%&#39; and profession=&#39;teacher&#39;&#34;
-
-        Args:
-            where (str, optional): where condition. Defaults to &#39;true&#39;.
-            prepared_args (list, optional): prepared arguments. Defaults to None.
-
-        Returns:
-            list: List of model instances.
-        &#34;&#34;&#34;
-        return await cls._select_(where=where, prepared_args=prepared_args)
-
-    @classmethod
-    async def _select1_(cls, what=&#39;*&#39;, where=&#39;true&#39;, prepared_args=None):
-        &#34;&#34;&#34;Make a select query to retrieve one item from this model.
-
-        &#39;LIMIT 1&#39; is added at the end of the query.
-
-        Args:
-            what (str, optional): Columns. Defaults to &#39;*&#39;.
-            where (str, optional): Where condition. Defaults to &#39;true&#39;.
-            prepared_args (list, optional): prepared arguments. Defaults to None.
-
-        Returns:
-            Model: A model instance.
-        &#34;&#34;&#34;
-        if not prepared_args: prepared_args = []
-        query = &#39;SELECT %s FROM &#34;%s&#34; WHERE %s LIMIT 1&#39; % (what, cls._get_table_name_(), where)
-        return await cls._get_db_().fetchrow(query, *prepared_args, model_class=cls)
-
-    @classmethod
-    async def _get_(cls, where=&#39;true&#39;, prepared_args=None):
-        &#34;&#34;&#34;Get the first item that matches the where condition
-
-        e.g: &#34;name like &#39;%dummy%&#39; and profession=&#39;teacher&#39;&#34;
-
-        Args:
-            where (str, optional): where condition. Defaults to &#39;true&#39;.
-            prepared_args (list, optional): prepared args. Defaults to None.
-
-        Returns:
-            Model: A model instance
-        &#34;&#34;&#34;
-        return await cls._select1_(where=where, prepared_args=prepared_args)
-
-    def _active_fields_(self, exclude_values: tuple, exclude_keys: tuple):
-        for k,field in self._fields_.items():   # type: ignore
-            if k in exclude_keys \
-                or k in self._exclude_up_keys_:
+        if up:
+            fields = self.Meta.fields_up
+            exclude_keys = self.Meta.exclude_fields_up
+        else:
+            fields = self.Meta.fields_down
+            exclude_keys = self.Meta.exclude_fields_down
+        all_fields = self._get_all_fields_()
+        for k in all_fields:
+            if not self._is_valid_key_(k, fields, exclude_keys):
                 continue
-            v = getattr(self, k, Void)
-            if v is Void or v is None:
-                v = field.get_default()
-            if v is Void:
-                # we don&#39;t have any value for k
+            yield k
+
+    def _get_FieldValue_data_valid_(self, data: dict, up=False) -&gt; Iterator[Tuple[str, Any]]:
+        &#34;&#34;&#34;Yields valid key,value pairs from data.
+
+        Validity is checked against include/exclude key/value criteria.
+
+        Args:
+            data (dict): data to be validated.
+            up (bool, optional): whether up (data update) or down (data retrieval). Defaults to False.
+
+        Yields:
+            Iterator[Tuple[str, Any]]: Yields key, value pair
+        &#34;&#34;&#34;
+        if up:
+            exclude_values = self.Meta.exclude_values_up
+            fields = self.Meta.fields_up
+            exclude_fields = self.Meta.exclude_fields_up
+        else:
+            exclude_values = self.Meta.exclude_values_down
+            fields = self.Meta.fields_down
+            exclude_fields = self.Meta.exclude_fields_down
+        # new_data = type(data)()
+        for k,v in data.items():
+            if not self._is_valid_key_(k, fields, exclude_fields):
                 continue
-            if v in exclude_values \
-                or v in self._exclude_up_values_:
+            if not self._is_valid_value_(k, v.value, exclude_values):
                 continue
-            yield k, v, field
+            yield k, v
 
-    def _get_insert_query_(self, exclude_values=(), exclude_keys=()):
-        pk = self._pk_     # type: ignore
-        table = self.__class__._get_table_name_()
-        query = f&#34;INSERT INTO \&#34;{table}\&#34;&#34;
-        columns = &#39;(&#39;
-        values = &#39;(&#39;
-        args = []
-        c = 0
-        for k, v, field in self._active_fields_(exclude_values, exclude_keys):
-            c = c + 1
-            columns = f&#34;{columns} \&#34;{k}\&#34;,&#34;
-            values = f&#34;{values} ${c},&#34;
-            args.append(v)
-        columns = columns.strip(&#39;,&#39;)
-        values = values.strip(&#39;,&#39;)
 
-        query = f&#34;{query} {columns}) VALUES {values})  RETURNING {pk}&#34;
-        return query, args
+    # def _get_data_for_valid_values_(self, data, up=False, gen=False):
+    #     if up:
+    #         exclude_values = self.Meta.exclude_values_up
+    #     else:
+    #         exclude_values = self.Meta.exclude_values_down
+    #     new_data = type(data)()
+    #     for k,v in data.items():
+    #         if not self._is_valid_value_(k, v, exclude_values):
+    #             continue
+    #         if gen:
+    #             yield k, v
+    #         else:
+    #             new_data[k] = v
+    #     if not gen:
+    #         return new_data
 
-    def _get_update_query_(self, exclude_values=(), exclude_keys=()):
-        table = self.__class__._get_table_name_()
-        pk = self._pk_     # type: ignore
-        try:
-            pkval = getattr(self, pk)
-            if not pkval:
-                raise ItemDoesNotExistError(&#34;Can not update. Item does not exist.&#34;)
-        except AttributeError:
-            raise ItemDoesNotExistError(&#34;Can not update. Item does not exist.&#34;)
-        query = f&#34;UPDATE \&#34;{table}\&#34; SET &#34;
-        args = []
-        c = 0
-        for k, v, field in self._active_fields_(exclude_values, exclude_keys):
-            c = c + 1
-            query = f&#34;{query} \&#34;{k}\&#34;=${c},&#34;
-            args.append(v)
-        query = query.strip(&#39;,&#39;)
+    def _get_db_table_(self) -&gt; str:
+        &#34;&#34;&#34;Get db table name for model
+        &#34;&#34;&#34;
+        return self.Meta.db_table
 
-        c = c + 1
-        query = f&#34;{query} WHERE {pk}=${c}&#34;
-        args.append(pkval)
+    def _is_abstract_(self) -&gt; bool:
+        &#34;&#34;&#34;Whether it&#39;s an abstract model or not
+        &#34;&#34;&#34;
+        return self.Meta.abstract
 
-        return query, args
+    def _is_proxy_(self) -&gt; bool:
+        &#34;&#34;&#34;Whether its is proxy model or not
+        &#34;&#34;&#34;
+        return self.Meta.proxy
 
-    async def _insert_(self, exclude_values=(), exclude_keys=()):
-        &#34;&#34;&#34;Attempt an insert with the data on this model instance.
+    def _get_pk_(self) -&gt; str:
+        &#34;&#34;&#34;Get primary column name
+        &#34;&#34;&#34;
+        return self.Meta.pk
+
+    def _get_ordering_(self, quote: str) -&gt; Iterator[Tuple[str, str]]:
+        &#34;&#34;&#34;Yield each ordering from model parsed and converted to column, direction
+
+        direction is either `ASC` or `DESC`
 
         Args:
-            exclude_values (tuple, optional): Exclude columns that matches one of these values. Defaults to ().
-            exclude_keys (tuple, optional): Exclude columns that matches one of these keys. Defaults to ().
+            quote (str): Quote to apply to the column
+
+        Yields:
+            Iterator[Tuple[str, str]]: Yields column, direction
         &#34;&#34;&#34;
-        query, args = self._get_insert_query_(exclude_values=exclude_values, exclude_keys=exclude_keys)
-        cls = self.__class__
-        pkval = await cls._get_db_().fetchval(query, *args)
-        setattr(self, self._pk_, pkval)
+        ordering = self.Meta.ordering
+        direction = &#39;ASC&#39;
+        for o in ordering:
+            if o.startswith(&#39;-&#39;):
+                direction = &#39;DESC&#39;
+                o = o[1:]
+            elif o.startswith(&#39;+&#39;):
+                o = o[1:]
+            o = f&#34;{quote}{o}{quote}&#34;
+            yield o, direction
 
-    async def _update_(self, exclude_values=(), exclude_keys=()):
-        &#34;&#34;&#34;Attempt an update with the data on this model instance.
 
-        Args:
-            exclude_values (tuple, optional): Exclude columns that matches one of these values. Defaults to ().
-            exclude_keys (tuple, optional): Exclude columns that matches one of these keys. Defaults to ().
+
+
+
+
+
+
+class ModelBase(metaclass=ModelType):
+    &#34;&#34;&#34;Base Model without any default fields.
+
+    Use Model instead, if you are not an advanced user.
+
+    Meta.pk is set to &#39;id&#39;, you must specify a new primary key and change
+    it accordingly if you use this model as your base model.
+
+    Raises:
+        TypeError: When invalid typeis encountered
+        AttributeError: When misspelled fields are tried to set.
+    &#34;&#34;&#34;
+    class Meta:
+        &#34;&#34;&#34;Meta that holds metadata for model
         &#34;&#34;&#34;
-        query, args = self._get_update_query_(exclude_values=exclude_values, exclude_keys=exclude_keys)
-        cls = self.__class__
-        await cls._get_db_().fetchrow(query, *args, model_class=cls)
+        # The following needs to be defined here, not in meta.Meta
+        # meta.Meta is used in client Models, thus everything
+        # included there will be blindly inherited, while these are passed
+        # through the metaclasses __new__ methods and processed accordingly
+        # to determine which one should be inherited and which one should not.
+        pk = &#39;id&#39;
+        &#39;&#39;&#39;Primary key&#39;&#39;&#39;
+        db_table = Void
+        abstract = True
+        proxy = False
+        ordering = ()
+        fields_up = ()
+        fields_down = ()
+        exclude_fields_up = ()
+        exclude_fields_down = ()
+        exclude_values_up = {&#39;&#39;:()}
+        exclude_values_down = {&#39;&#39;:()}
 
-    async def _save_(self, exclude_values=(), exclude_keys=()):
-        &#34;&#34;&#34;Attempt to save the data on this model instance.
+        #internal
+        _fields_: Dict[str, FieldValue]
+        _fromdb_: List[str]
+        _field_defs_: Dict[str, Field]
 
-        If pk exists, the data is updated and if pk does not exist,
-        the data is inserted.
 
-        Args:
-            exclude_values (tuple, optional): Exclude columns that matches one of these values. Defaults to ().
-            exclude_keys (tuple, optional): Exclude columns that matches one of these keys. Defaults to ().
+    def __init__(self, *args, **kwargs):
+        class Meta: pass
+        super(ModelBase, self).__setattr__(&#39;Meta&#39;, Meta)
+        self.Meta._fromdb_ = []
+        self.Meta._fields_ = {}
+        for k, v in self.__class__.Meta._field_defs_.items():
+            self.Meta._fields_[k] = FieldValue(v)
+        for arg in args:
+            try:
+                for k,v in arg.items():
+                    setattr(self, k, v)
+            except AttributeError:
+                raise TypeError(f&#34;Invalid argument type ({type(arg)}) to Model __init__ method. Expected: dictionary or keyword argument&#34;)
+        for k,v in kwargs.items():
+            setattr(self, k, v)
+
+    def __iter__(self):
+        &#34;&#34;&#34;Iter through k, v where k is field name and v is field value
+
+        Yields:
+            tuple: field_name, field_value
         &#34;&#34;&#34;
-        try:
-            await self._update_(exclude_values=exclude_values, exclude_keys=exclude_keys)
-        except ItemDoesNotExistError:
-            await self._insert_(exclude_values=exclude_values, exclude_keys=exclude_keys)
+        for k, f in self.Meta._fields_.items():
+            if self.__class__._is_valid_down_(k, f.value):
+                yield k, f.value
+
+    def __delattr__(self, k):
+        fields = self.Meta._fields_
+        if k in fields:
+            fields[k].delete_value()
+        else:
+            super().__delattr__(k)
+
+    def __getattr__(self, k):
+        fields = self.Meta._fields_
+        if k in fields:
+            v = fields[k].value
+            if self.__class__._is_valid_down_(k, v):
+                return v
+            raise AttributeError(f&#39;Invalid attempt to access field `{k}`. It is excluded using either exclude_fields_down or exclude_values_down in {self.__class__.__name__} Meta class&#39;)
+        raise AttributeError
+
+    def __setattr__(self, k, v):
+        fields = self.Meta._fields_
+        if k not in fields:
+            raise AttributeError(f&#34;No such field (&#39;{k}&#39;) in model &#39;{self.__class__.__name__}&#39;&#39;&#34;)
+        # v = fields[k].clean(v)
+        # super().__setattr__(k, v)
+        if self.__class__._is_valid_up_(k, v):
+            fields[k].value = v
+        else:
+            raise AttributeError(f&#39;Can not set field `{k}`. It is excluded using either exclude_fields_up or exclude_values_up in {self.__class__.__name__} Meta class &#39;)
+
+    def __repr__(self):
+        reprs = []
+        for k, v in self:
+            reprs.append(f&#39;{k}={repr(v)}&#39;)
+        body = &#39;, &#39;.join(reprs)
+        return f&#39;{self.__class__.__name__}({body})&#39;
 
 
 
-class Model(_Model_):
-    &#34;&#34;&#34;Base model class that must be inherited to make a model.
+class Model(ModelBase):
+    &#34;&#34;&#34;Base model to be inherited by other models.
 
-    example model classes would look like:
+    It&#39;s more than a good practice to define a Base model first:
 
     ```python
-    from morm import Model, Field
-    from morm.db import DB, Pool
+    import morm.model as mdl
 
-    class Base(Model):
-        _db_ = DB(MORM_DB_POOL)
-        # we generally will not create any table for this model.
+    class Base(mdl.Model):
+        class Meta:
+            pk = &#39;id&#39; # setting primary key, it is defaulted to &#39;id&#39;
+            abstract = True
+
+        id = Field(&#39;SERIAL NOT NULL PRIMARY KEY&#39;) #postgresql example
+    ```
+
+    Then a minimal model could look like this:
+
+    ```python
+    class User(Base):
+        name = Field(&#39;varchar(65)&#39;)
+        email = Field(&#39;varchar(255)&#39;)
+        password = Field(&#39;varchar(255)&#39;)
+    ```
+
+    An advanced model could look like:
+
+    ```python
+    import random
+
+    def get_rand():
+        return random.randint(1, 9)
 
     class User(Base):
-        _table_name_ = &#39;User&#39; # if not given, class name will be table name.
+        class Meta:
+            db_table = &#39;myapp_user&#39;
+            abstract = False    # default is False
+            proxy = False       # default is False
+            # ... etc...
 
-        name = Field(&#39;varchar(100)&#39;)
-        email = Field(&#39;varchar(256)&#39;)
-        password = Field(&#39;varchar(256)&#39;)
+        name = Field(&#39;varchar(65)&#39;)
+        email = Field(&#39;varchar(255)&#39;)
+        password = Field(&#39;varchar(255)&#39;)
+        profession = Field(&#39;varchar(255)&#39;, default=&#39;Unknown&#39;)
+        random = Field(&#39;int&#39;, default=get_rand) # function can be default
     ```
-
-    `MORM_DB_POOL` is a `Pool` object with database settings. Example:
-
-    ```python
-    MORM_DB_POOL = Pool(
-        dsn=&#39;postgres://&#39;,
-        host=&#39;localhost&#39;,
-        port=5432,
-        user=&#39;jahid&#39;,
-        password=&#39;jahid&#39;,
-        database=&#39;test&#39;,
-        min_size=10,
-        max_size=100,
-    )
-    ```
-
-    The default primary key is `id`. If you want to set a custom primary
-    key, you must define `_pk_` accordingly (`_pk_ = &#39;id&#39;` by default)
-
-    You must not use any custom name that starts with a single underscore and
-    ends with a single underscore. This naming convention is reserved by
-    Model class intself and all predefined variable names and method names
-    follow this rule.
-
-    For field names, do not start with an underscore. This way, you will
-    be protected from spelling mistakes. For example, if you have defined
-    a field named `name` and then try to do
-
-    ```python
-    user.namee = &#39;John Doe&#39; # throws AttributeError
-    ```
-
-    you will get an Attribute error.
-
-    # Handling data
-
-    ## Save/Update/Insert
-
-    ```python
-    user = User(name=&#39;John Doe&#39;, email=&#39;jd@ex.com&#39;)
-    user._save_() # saves the data in db (update if exists, otherwise insert)
-    # or you can directly call _insert_
-    user._insert_()
-    # or you can call _update_ if it already exists.
-    user.name = &#39;Jane Doe&#39;
-    user._update_()
-    ```
-
-    ## Select/Filter/Get
-
-    ### Select
-
-    ```python
-    users = User._select_(what=&#39;*&#39;, where=&#34;name like &#39;%Doe%&#39;&#34;)
-    # users is a list of User object
-    ```
-
-    ### Select one item (first item)
-
-    ```python
-    # LIMIT 1 is added to the where quey, do not add it explicitly
-    user = User._select1_(what=&#39;*&#39;, where=&#34;name like &#39;%Doe%&#39; order by name asc&#34;)
-    # user is a User object
-    ```
-
-    ### Filter
-
-    ```python
-    users = User._filter_(where=&#34;name like &#39;%Doe%&#39;&#34;)
-    # users is a list of User object
-    ```
-
-    ### Get
-
-    ```python
-    # LIMIT 1 is added to the where quey, do not add it explicitly
-    user = User._get_(where=&#39;id=3&#39;)
-    # user is a User object
-    ```
-
-    **where query accepts prepared statement**. All of the above methods
-    can take a keyword argument `prepared_args` which is a list (or tuple) of
-    prepared arguments. Example:
-
-    ```python
-    # LIMIT 1 is added to the where quey, do not add it explicitly
-    user = User._get_(where=&#39;id=$1&#39;, prepared_args=[3])
-    # user is a User object
-    ```
-
     &#34;&#34;&#34;
-
-    _db_no_check_: bool = True # internal use only
-
-    _db_: typing.Optional[DB] = None
-    &#39;&#39;&#39;_db_ will be inherited in subclasses&#39;&#39;&#39;
-
-    _table_name_: typing.Optional[str] = None
-    &#34;&#34;&#34;_table_name_ will not be inherited in subclasses&#34;&#34;&#34;
-
-    _pk_: str = &#39;id&#39;
-    &#39;&#39;&#39;If you use different primary key, you must define it accordingly&#39;&#39;&#39;
-
-    id = Field(&#39;SERIAL NOT NULL PRIMARY KEY&#39;)
-    &#39;&#39;&#39;Default primary key&#39;&#39;&#39;
+    class Meta:
+        # The following needs to be defined here, not in meta.Meta
+        # meta.Meta is used in client Models, thus everything
+        # included there will be blindly inherited, while these are passed
+        # through the metaclasses __new__ methods and processed accordingly
+        # to determine which one should be inherited and which one should not.
+        abstract = True
 
     def __init__(self, *args, **kwargs):
         &#34;&#34;&#34;# Initialize a model instance.
@@ -418,22 +534,387 @@ class Model(_Model_):
         Raises:
             TypeError: If invalid type of argument is provided.
         &#34;&#34;&#34;
-        for arg in args:
-            try:
-                for k,v in arg.items():
-                    setattr(self, k, v)
-            except AttributeError:
-                raise TypeError(&#34;Invalid argument type to Model __init__ method. Expected: dictionary or keyword argument&#34;)
-        for k,v in kwargs.items():
-            setattr(self, k, v)
+        super(Model, self).__init__(*args, **kwargs)
+
+# class _Model_(metaclass=ModelType):
+#     _db_no_check_: bool = True # internal use only
+
+#     _db_: typing.Any = None
+#     &#39;&#39;&#39;_db_ will be inherited in subclasses&#39;&#39;&#39;
+#     _table_name_: typing.Optional[str] = None
+#     &#34;&#34;&#34;_table_name_ will not be inherited in subclasses&#34;&#34;&#34;
+
+#     _exclude_fields_up_: tuple = ()
+#     &#39;&#39;&#39;Exclude columns for these keys when saving the data to database&#39;&#39;&#39;
+#     _exclude_values_up_: tuple = ()
+#     &#39;&#39;&#39;Exclude columns for these values when saving the data to database&#39;&#39;&#39;
+#     _exclude_fields_down_ : tuple= ()    # TODO: implement in select
+#     &#39;&#39;&#39;Exclude columns for these keys when retrieving data from database&#39;&#39;&#39;
+#     _exclude_values_down: tuple = ()   # TODO: implement in select
+#     &#39;&#39;&#39;Exclude columns for these values when retrieving data from database&#39;&#39;&#39;
 
 
-    def __setattr__(self, k, v):
-        if not k.startswith(&#39;_&#39;) and k not in self._fields_:
-            raise AttributeError(f&#34;No such attribute (&#39;{k}&#39;) in model &#39;{self.__class__.__name__}&#39;&#39;&#34;)
-        if k in self._fields_:
-            v = self._fields_[k].clean(v)
-        super().__setattr__(k, v)</code></pre>
+#     @classmethod
+#     def _get_table_name_(cls):
+#         if cls._table_name_:
+#             return cls._table_name_
+#         else:
+#             return cls.__name__
+
+#     @classmethod
+#     async def _select_(cls, what=&#39;*&#39;, where=&#39;true&#39;, prepared_args=(), con=None):
+#         &#34;&#34;&#34;Make a select query for this model.
+
+#         Args:
+#             what (str, optional): Columns. Defaults to &#39;*&#39;.
+#             where (str, optional): Where conditon (sql). Defaults to &#39;true&#39;.
+#             prepared_args (tuple, optional): prepared arguments. Defaults to ().
+#             con (asyncpg.Connection, optional): Defaults to None.
+
+#         Returns:
+#             list: List of model instances
+#         &#34;&#34;&#34;
+#         query = &#39;SELECT %s FROM &#34;%s&#34; WHERE %s&#39; % (what, cls._get_table_name_(), where)
+#         return await cls._db_.fetch(query, *prepared_args, model_class=cls, con=con)
+
+#     @classmethod
+#     async def _filter_(cls, where=&#39;true&#39;, prepared_args=(), con=None):
+#         &#34;&#34;&#34;Filter according to where condition
+
+#         e.g: &#34;name like &#39;%dummy%&#39; and profession=&#39;teacher&#39;&#34;
+
+#         Args:
+#             where (str, optional): where condition. Defaults to &#39;true&#39;.
+#             prepared_args (tuple, optional): prepared arguments. Defaults to ().
+#             con (asyncpg.Connection, optional): Defaults to None.
+
+#         Returns:
+#             list: List of model instances.
+#         &#34;&#34;&#34;
+#         return await cls._select_(where=where, prepared_args=prepared_args, con=con)
+
+#     @classmethod
+#     async def _select1_(cls, what=&#39;*&#39;, where=&#39;true&#39;, prepared_args=(), con=None):
+#         &#34;&#34;&#34;Make a select query to retrieve one item from this model.
+
+#         &#39;LIMIT 1&#39; is added at the end of the query.
+
+#         Args:
+#             what (str, optional): Columns. Defaults to &#39;*&#39;.
+#             where (str, optional): Where condition. Defaults to &#39;true&#39;.
+#             prepared_args (tuple, optional): prepared arguments. Defaults to ().
+#             con (asyncpg.Connection, optional): Defaults to None.
+
+#         Returns:
+#             Model: A model instance.
+#         &#34;&#34;&#34;
+#         query = &#39;SELECT %s FROM &#34;%s&#34; WHERE %s LIMIT 1&#39; % (what, cls._get_table_name_(), where)
+#         return await cls._db_.fetchrow(query, *prepared_args, model_class=cls, con=con)
+
+#     @classmethod
+#     async def _get_(cls, where=&#39;true&#39;, prepared_args=(), con=None):
+#         &#34;&#34;&#34;Get the first item that matches the where condition
+
+#         e.g: &#34;name like &#39;%dummy%&#39; and profession=&#39;teacher&#39;&#34;
+
+#         Args:
+#             where (str, optional): where condition. Defaults to &#39;true&#39;.
+#             prepared_args (tuple, optional): prepared args. Defaults to ().
+#             con (asyncpg.Connection, optional): Defaults to None.
+
+#         Returns:
+#             Model: A model instance
+#         &#34;&#34;&#34;
+#         return await cls._select1_(where=where, prepared_args=prepared_args, con=con)
+
+#     @classmethod
+#     async def _update_(cls, what: str = &#39;&#39;,
+#                         where: str = &#39;&#39;,
+#                         prepared_args=(),
+#                         returning_column=0,
+#                         con=None):
+#         &#34;&#34;&#34;Make an update query.
+
+#         Args:
+#             what (str, optional): what query, e.g &#34;name=&#39;John Doe&#39;&#34;. Defaults to &#39;&#39;.
+#             where (str, optional): where query, e.g &#34;id=2&#34;. Defaults to &#39;&#39;.
+#             prepared_args (tuple, optional): Defaults to ().
+#             returning_column (int, optional): index of column from the result to return. Defaults to 0.
+#             con (asyncpg.Connection, optional): Connection object. Defaults to None.
+
+#         Raises:
+#             ValueError: If what or where query is not given
+
+#         Returns:
+#             Any: value of the index &#39;column&#39; from the query result.
+#         &#34;&#34;&#34;
+#         if not what or not where:
+#             raise ValueError(&#34;what or where value missing.&#34;)
+#         query = &#39;UPDATE &#34;%s&#34; SET %s WHERE %s&#39; % (cls._get_table_name_(), what, where)
+#         return await cls._db_.fetchval(query, *prepared_args, column=returning_column, con=con) # type: ignore
+
+
+
+#     def _active_fields_(self, exclude_values: tuple, exclude_keys: tuple):
+#         for k,field in self._fields_.items():   # type: ignore
+#             if k in exclude_keys \
+#                 or k in self._exclude_fields_up_:
+#                 continue
+#             v = getattr(self, k, Void)
+#             if v is Void or v is None:
+#                 v = field.get_default()
+#             if v is Void:
+#                 # we don&#39;t have any value for k
+#                 continue
+#             if v in exclude_values \
+#                 or v in self._exclude_values_up_:
+#                 continue
+#             yield k, v, field
+
+#     def _get_insert_query_(self, exclude_values=(), exclude_keys=()):
+#         pk = self._pk_     # type: ignore
+#         table = self.__class__._get_table_name_()
+#         query = f&#34;INSERT INTO \&#34;{table}\&#34;&#34;
+#         columns = &#39;(&#39;
+#         values = &#39;(&#39;
+#         args = []
+#         c = 0
+#         for k, v, field in self._active_fields_(exclude_values, exclude_keys):
+#             c = c + 1
+#             columns = f&#34;{columns} \&#34;{k}\&#34;,&#34;
+#             values = f&#34;{values} ${c},&#34;
+#             args.append(v)
+#         columns = columns.strip(&#39;,&#39;)
+#         values = values.strip(&#39;,&#39;)
+
+#         query = f&#34;{query} {columns}) VALUES {values})  RETURNING {pk}&#34;
+#         return query, args
+
+#     def _get_update_query_(self, exclude_values=(), exclude_keys=()):
+#         table = self.__class__._get_table_name_()
+#         pk = self._pk_     # type: ignore
+#         try:
+#             pkval = getattr(self, pk)
+#             if not pkval:
+#                 raise ItemDoesNotExistError(&#34;Can not update. Item does not exist.&#34;)
+#         except AttributeError:
+#             raise ItemDoesNotExistError(&#34;Can not update. Item does not exist.&#34;)
+#         query = f&#34;UPDATE \&#34;{table}\&#34; SET &#34;
+#         args = []
+#         c = 0
+#         for k, v, field in self._active_fields_(exclude_values, exclude_keys):
+#             c = c + 1
+#             query = f&#34;{query} \&#34;{k}\&#34;=${c},&#34;
+#             args.append(v)
+#         query = query.strip(&#39;,&#39;)
+
+#         c = c + 1
+#         query = f&#34;{query} WHERE {pk}=${c}&#34;
+#         args.append(pkval)
+
+#         return query, args
+
+#     async def _insert_me_(self, exclude_values=(), exclude_keys=(), con=None):
+#         &#34;&#34;&#34;Attempt an insert with the data on this model instance.
+
+#         Args:
+#             exclude_values (tuple, optional): Exclude columns that matches one of these values. Defaults to ().
+#             exclude_keys (tuple, optional): Exclude columns that matches one of these keys. Defaults to ().
+#             con (asyncpg.Connection, optional): Defaults to None.
+#         &#34;&#34;&#34;
+#         query, args = self._get_insert_query_(exclude_values=exclude_values, exclude_keys=exclude_keys)
+#         cls = self.__class__
+#         pkval = await cls._db_.fetchval(query, *args, column=0, con=con)
+#         setattr(self, self._pk_, pkval)
+
+#     async def _update_me_(self, exclude_values=(), exclude_keys=(), con=None):
+#         &#34;&#34;&#34;Attempt an update with the data on this model instance.
+
+#         Args:
+#             exclude_values (tuple, optional): Exclude columns that matches one of these values. Defaults to ().
+#             exclude_keys (tuple, optional): Exclude columns that matches one of these keys. Defaults to ().
+#             con (asyncpg.Connection, optional): Defaults to None.
+#         &#34;&#34;&#34;
+#         query, args = self._get_update_query_(exclude_values=exclude_values, exclude_keys=exclude_keys)
+#         cls = self.__class__
+#         await cls._db_.fetchrow(query, *args, model_class=cls, con=con)
+
+#     async def _save_(self, exclude_values=(), exclude_keys=(), con=None):
+#         &#34;&#34;&#34;Attempt to save the data on this model instance.
+
+#         If pk exists, the data is updated and if pk does not exist,
+#         the data is inserted.
+
+#         Args:
+#             exclude_values (tuple, optional): Exclude columns that matches one of these values. Defaults to ().
+#             exclude_keys (tuple, optional): Exclude columns that matches one of these keys. Defaults to ().
+#             con (asyncpg.Connection, optional): Defaults to None.
+#         &#34;&#34;&#34;
+#         try:
+#             await self._update_me_(exclude_values=exclude_values, exclude_keys=exclude_keys, con=con)
+#         except ItemDoesNotExistError:
+#             await self._insert_me_(exclude_values=exclude_values, exclude_keys=exclude_keys, con=con)
+
+
+
+# class Model(_Model_):
+#     &#34;&#34;&#34;Base model class that must be inherited to make a model.
+
+#     example model classes would look like:
+
+#     ```python
+#     from morm import Model, Field
+#     from morm.db import DB, Pool
+
+#     class Base(Model):
+#         _db_ = DB(MORM_DB_POOL)
+#         # we generally will not create any table for this model.
+
+#     class User(Base):
+#         _table_name_ = &#39;User&#39; # if not given, class name will be table name.
+
+#         name = Field(&#39;varchar(100)&#39;)
+#         email = Field(&#39;varchar(256)&#39;)
+#         password = Field(&#39;varchar(256)&#39;)
+#     ```
+
+#     `MORM_DB_POOL` is a `Pool` object with database settings. Example:
+
+#     ```python
+#     MORM_DB_POOL = Pool(
+#         dsn=&#39;postgres://&#39;,
+#         host=&#39;localhost&#39;,
+#         port=5432,
+#         user=&#39;jahid&#39;,
+#         password=&#39;jahid&#39;,
+#         database=&#39;test&#39;,
+#         min_size=10,
+#         max_size=100,
+#     )
+#     ```
+
+#     The default primary key is `id`. If you want to set a custom primary
+#     key, you must define `_pk_` accordingly (`_pk_ = &#39;id&#39;` by default)
+
+#     You must not use any custom name that starts with a single underscore and
+#     ends with a single underscore. This naming convention is reserved by
+#     Model class intself and all predefined variable names and method names
+#     follow this rule.
+
+#     For field names, do not start with an underscore. This way, you will
+#     be protected from spelling mistakes. For example, if you have defined
+#     a field named `name` and then try to do
+
+#     ```python
+#     user.namee = &#39;John Doe&#39; # throws AttributeError
+#     ```
+
+#     you will get an Attribute error.
+
+#     # Handling data
+
+#     ## Save/Update/Insert
+
+#     ```python
+#     user = User(name=&#39;John Doe&#39;, email=&#39;jd@ex.com&#39;)
+#     user._save_() # saves the data in db (update if exists, otherwise insert)
+#     ```
+
+#     ## Select/Filter/Get
+
+#     ### Select
+
+#     ```python
+#     users = User._select_(what=&#39;*&#39;, where=&#34;name like &#39;%Doe%&#39;&#34;)
+#     # users is a list of User object
+#     ```
+
+#     ### Select one item (first item)
+
+#     ```python
+#     # LIMIT 1 is added to the where quey, do not add it explicitly
+#     user = User._select1_(what=&#39;*&#39;, where=&#34;name like &#39;%Doe%&#39; order by name asc&#34;)
+#     # user is a User object
+#     ```
+
+#     ### Filter
+
+#     ```python
+#     users = User._filter_(where=&#34;name like &#39;%Doe%&#39;&#34;)
+#     # users is a list of User object
+#     ```
+
+#     ### Get
+
+#     ```python
+#     # LIMIT 1 is added to the where quey, do not add it explicitly
+#     user = User._get_(where=&#39;id=3&#39;)
+#     # user is a User object
+#     ```
+
+#     **where query accepts prepared statement**. All of the above methods
+#     can take a keyword argument `prepared_args` which is a list (or tuple) of
+#     prepared arguments. Example:
+
+#     ```python
+#     # LIMIT 1 is added to the where quey, do not add it explicitly
+#     user = User._get_(where=&#39;id=$1&#39;, prepared_args=[3])
+#     # user is a User object
+#     ```
+
+#     &#34;&#34;&#34;
+
+#     _db_no_check_: bool = True # internal use only
+
+#     _db_: typing.Any = None
+#     &#39;&#39;&#39;_db_ will be inherited in subclasses&#39;&#39;&#39;
+
+#     _table_name_: typing.Optional[str] = None
+#     &#34;&#34;&#34;_table_name_ will not be inherited in subclasses&#34;&#34;&#34;
+
+#     _pk_: str = &#39;id&#39;
+#     &#39;&#39;&#39;If you use different primary key, you must define it accordingly&#39;&#39;&#39;
+
+#     id = Field(&#39;SERIAL NOT NULL PRIMARY KEY&#39;)
+#     &#39;&#39;&#39;Default primary key&#39;&#39;&#39;
+
+#     def __init__(self, *args, **kwargs):
+#         &#34;&#34;&#34;# Initialize a model instance.
+
+#         keyword arguments initialize corresponding fields according to
+#         the keys.
+
+#         Positional arguments must be dictionaries of
+#         keys and values.
+
+#         Example:
+
+#         ```
+#         Model(name=&#39;John Doe&#39;, profession=&#39;Teacher&#39;)
+#         Model({&#39;name&#39;: &#39;John Doe&#39;, &#39;profession&#39;: &#39;Teacher&#39;})
+#         Model({&#39;name&#39;: &#39;John Doe&#39;, &#39;profession&#39;: &#39;Teacher&#39;}, age=34)
+#         Model({&#39;name&#39;: &#39;John Doe&#39;, &#39;profession&#39;: &#39;Teacher&#39;, &#39;active&#39;: True}, age=34)
+#         ```
+
+#         Raises:
+#             TypeError: If invalid type of argument is provided.
+#         &#34;&#34;&#34;
+#         for arg in args:
+#             try:
+#                 for k,v in arg.items():
+#                     setattr(self, k, v)
+#             except AttributeError:
+#                 raise TypeError(&#34;Invalid argument type to Model __init__ method. Expected: dictionary or keyword argument&#34;)
+#         for k,v in kwargs.items():
+#             setattr(self, k, v)
+
+
+#     def __setattr__(self, k, v):
+#         if not k.startswith(&#39;_&#39;) and k not in self._fields_:
+#             raise AttributeError(f&#34;No such attribute (&#39;{k}&#39;) in model &#39;{self.__class__.__name__}&#39;&#39;&#34;)
+#         if k in self._fields_:
+#             v = self._fields_[k].clean(v)
+#         super().__setattr__(k, v)</code></pre>
 </details>
 </section>
 <section>
@@ -445,86 +926,69 @@ class Model(_Model_):
 <section>
 <h2 class="section-title" id="header-classes">Classes</h2>
 <dl>
+<dt id="morm.model.FieldNames"><code class="flex name class">
+<span>class <span class="ident">FieldNames</span></span>
+<span>(</span><span>func)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Access field names</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class FieldNames():
+    &#34;&#34;&#34;Access field names
+    &#34;&#34;&#34;
+    def __init__(self, func):
+        self.__dict__[&#39;func&#39;] = func
+
+    def __getattr__(self, k):
+        return self.__dict__[&#39;func&#39;](k)
+
+    def __setattr__(self, k, v):
+        raise NotImplementedError</code></pre>
+</details>
+</dd>
 <dt id="morm.model.Model"><code class="flex name class">
 <span>class <span class="ident">Model</span></span>
 <span>(</span><span>*args, **kwargs)</span>
 </code></dt>
 <dd>
-<section class="desc"><p>Base model class that must be inherited to make a model.</p>
-<p>example model classes would look like:</p>
-<pre><code class="python">from morm import Model, Field
-from morm.db import DB, Pool
+<div class="desc"><p>Base model to be inherited by other models.</p>
+<p>It's more than a good practice to define a Base model first:</p>
+<pre><code class="language-python">import morm.model as mdl
 
-class Base(Model):
-    _db_ = DB(MORM_DB_POOL)
-    # we generally will not create any table for this model.
+class Base(mdl.Model):
+    class Meta:
+        pk = 'id' # setting primary key, it is defaulted to 'id'
+        abstract = True
+
+    id = Field('SERIAL NOT NULL PRIMARY KEY') #postgresql example
+</code></pre>
+<p>Then a minimal model could look like this:</p>
+<pre><code class="language-python">class User(Base):
+    name = Field('varchar(65)')
+    email = Field('varchar(255)')
+    password = Field('varchar(255)')
+</code></pre>
+<p>An advanced model could look like:</p>
+<pre><code class="language-python">import random
+
+def get_rand():
+    return random.randint(1, 9)
 
 class User(Base):
-    _table_name_ = 'User' # if not given, class name will be table name.
+    class Meta:
+        db_table = 'myapp_user'
+        abstract = False    # default is False
+        proxy = False       # default is False
+        # ... etc...
 
-    name = Field('varchar(100)')
-    email = Field('varchar(256)')
-    password = Field('varchar(256)')
-</code></pre>
-<p><code>MORM_DB_POOL</code> is a <code>Pool</code> object with database settings. Example:</p>
-<pre><code class="python">MORM_DB_POOL = Pool(
-    dsn='postgres://',
-    host='localhost',
-    port=5432,
-    user='jahid',
-    password='jahid',
-    database='test',
-    min_size=10,
-    max_size=100,
-)
-</code></pre>
-<p>The default primary key is <code>id</code>. If you want to set a custom primary
-key, you must define <code>_pk_</code> accordingly (<code>_pk_ = 'id'</code> by default)</p>
-<p>You must not use any custom name that starts with a single underscore and
-ends with a single underscore. This naming convention is reserved by
-Model class intself and all predefined variable names and method names
-follow this rule.</p>
-<p>For field names, do not start with an underscore. This way, you will
-be protected from spelling mistakes. For example, if you have defined
-a field named <code>name</code> and then try to do</p>
-<pre><code class="python">user.namee = 'John Doe' # throws AttributeError
-</code></pre>
-<p>you will get an Attribute error.</p>
-<h1 id="handling-data">Handling data</h1>
-<h2 id="saveupdateinsert">Save/Update/Insert</h2>
-<pre><code class="python">user = User(name='John Doe', email='jd@ex.com')
-user._save_() # saves the data in db (update if exists, otherwise insert)
-# or you can directly call _insert_
-user._insert_()
-# or you can call _update_ if it already exists.
-user.name = 'Jane Doe'
-user._update_()
-</code></pre>
-<h2 id="selectfilterget">Select/Filter/Get</h2>
-<h3 id="select">Select</h3>
-<pre><code class="python">users = User._select_(what='*', where=&quot;name like '%Doe%'&quot;)
-# users is a list of User object
-</code></pre>
-<h3 id="select-one-item-first-item">Select one item (first item)</h3>
-<pre><code class="python"># LIMIT 1 is added to the where quey, do not add it explicitly
-user = User._select1_(what='*', where=&quot;name like '%Doe%' order by name asc&quot;)
-# user is a User object
-</code></pre>
-<h3 id="filter">Filter</h3>
-<pre><code class="python">users = User._filter_(where=&quot;name like '%Doe%'&quot;)
-# users is a list of User object
-</code></pre>
-<h3 id="get">Get</h3>
-<pre><code class="python"># LIMIT 1 is added to the where quey, do not add it explicitly
-user = User._get_(where='id=3')
-# user is a User object
-</code></pre>
-<p><strong>where query accepts prepared statement</strong>. All of the above methods
-can take a keyword argument <code>prepared_args</code> which is a list (or tuple) of
-prepared arguments. Example:</p>
-<pre><code class="python"># LIMIT 1 is added to the where quey, do not add it explicitly
-user = User._get_(where='id=$1', prepared_args=[3])
-# user is a User object
+    name = Field('varchar(65)')
+    email = Field('varchar(255)')
+    password = Field('varchar(255)')
+    profession = Field('varchar(255)', default='Unknown')
+    random = Field('int', default=get_rand) # function can be default
 </code></pre>
 <h1 id="initialize-a-model-instance">Initialize a model instance.</h1>
 <p>keyword arguments initialize corresponding fields according to
@@ -539,138 +1003,67 @@ Model({'name': 'John Doe', 'profession': 'Teacher', 'active': True}, age=34)
 </code></pre>
 <h2 id="raises">Raises</h2>
 <dl>
-<dt><strong><code>TypeError</code></strong></dt>
+<dt><code>TypeError</code></dt>
 <dd>If invalid type of argument is provided.</dd>
-</dl></section>
+</dl></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">class Model(_Model_):
-    &#34;&#34;&#34;Base model class that must be inherited to make a model.
+<pre><code class="python">class Model(ModelBase):
+    &#34;&#34;&#34;Base model to be inherited by other models.
 
-    example model classes would look like:
+    It&#39;s more than a good practice to define a Base model first:
 
     ```python
-    from morm import Model, Field
-    from morm.db import DB, Pool
+    import morm.model as mdl
 
-    class Base(Model):
-        _db_ = DB(MORM_DB_POOL)
-        # we generally will not create any table for this model.
+    class Base(mdl.Model):
+        class Meta:
+            pk = &#39;id&#39; # setting primary key, it is defaulted to &#39;id&#39;
+            abstract = True
+
+        id = Field(&#39;SERIAL NOT NULL PRIMARY KEY&#39;) #postgresql example
+    ```
+
+    Then a minimal model could look like this:
+
+    ```python
+    class User(Base):
+        name = Field(&#39;varchar(65)&#39;)
+        email = Field(&#39;varchar(255)&#39;)
+        password = Field(&#39;varchar(255)&#39;)
+    ```
+
+    An advanced model could look like:
+
+    ```python
+    import random
+
+    def get_rand():
+        return random.randint(1, 9)
 
     class User(Base):
-        _table_name_ = &#39;User&#39; # if not given, class name will be table name.
+        class Meta:
+            db_table = &#39;myapp_user&#39;
+            abstract = False    # default is False
+            proxy = False       # default is False
+            # ... etc...
 
-        name = Field(&#39;varchar(100)&#39;)
-        email = Field(&#39;varchar(256)&#39;)
-        password = Field(&#39;varchar(256)&#39;)
+        name = Field(&#39;varchar(65)&#39;)
+        email = Field(&#39;varchar(255)&#39;)
+        password = Field(&#39;varchar(255)&#39;)
+        profession = Field(&#39;varchar(255)&#39;, default=&#39;Unknown&#39;)
+        random = Field(&#39;int&#39;, default=get_rand) # function can be default
     ```
-
-    `MORM_DB_POOL` is a `Pool` object with database settings. Example:
-
-    ```python
-    MORM_DB_POOL = Pool(
-        dsn=&#39;postgres://&#39;,
-        host=&#39;localhost&#39;,
-        port=5432,
-        user=&#39;jahid&#39;,
-        password=&#39;jahid&#39;,
-        database=&#39;test&#39;,
-        min_size=10,
-        max_size=100,
-    )
-    ```
-
-    The default primary key is `id`. If you want to set a custom primary
-    key, you must define `_pk_` accordingly (`_pk_ = &#39;id&#39;` by default)
-
-    You must not use any custom name that starts with a single underscore and
-    ends with a single underscore. This naming convention is reserved by
-    Model class intself and all predefined variable names and method names
-    follow this rule.
-
-    For field names, do not start with an underscore. This way, you will
-    be protected from spelling mistakes. For example, if you have defined
-    a field named `name` and then try to do
-
-    ```python
-    user.namee = &#39;John Doe&#39; # throws AttributeError
-    ```
-
-    you will get an Attribute error.
-
-    # Handling data
-
-    ## Save/Update/Insert
-
-    ```python
-    user = User(name=&#39;John Doe&#39;, email=&#39;jd@ex.com&#39;)
-    user._save_() # saves the data in db (update if exists, otherwise insert)
-    # or you can directly call _insert_
-    user._insert_()
-    # or you can call _update_ if it already exists.
-    user.name = &#39;Jane Doe&#39;
-    user._update_()
-    ```
-
-    ## Select/Filter/Get
-
-    ### Select
-
-    ```python
-    users = User._select_(what=&#39;*&#39;, where=&#34;name like &#39;%Doe%&#39;&#34;)
-    # users is a list of User object
-    ```
-
-    ### Select one item (first item)
-
-    ```python
-    # LIMIT 1 is added to the where quey, do not add it explicitly
-    user = User._select1_(what=&#39;*&#39;, where=&#34;name like &#39;%Doe%&#39; order by name asc&#34;)
-    # user is a User object
-    ```
-
-    ### Filter
-
-    ```python
-    users = User._filter_(where=&#34;name like &#39;%Doe%&#39;&#34;)
-    # users is a list of User object
-    ```
-
-    ### Get
-
-    ```python
-    # LIMIT 1 is added to the where quey, do not add it explicitly
-    user = User._get_(where=&#39;id=3&#39;)
-    # user is a User object
-    ```
-
-    **where query accepts prepared statement**. All of the above methods
-    can take a keyword argument `prepared_args` which is a list (or tuple) of
-    prepared arguments. Example:
-
-    ```python
-    # LIMIT 1 is added to the where quey, do not add it explicitly
-    user = User._get_(where=&#39;id=$1&#39;, prepared_args=[3])
-    # user is a User object
-    ```
-
     &#34;&#34;&#34;
-
-    _db_no_check_: bool = True # internal use only
-
-    _db_: typing.Optional[DB] = None
-    &#39;&#39;&#39;_db_ will be inherited in subclasses&#39;&#39;&#39;
-
-    _table_name_: typing.Optional[str] = None
-    &#34;&#34;&#34;_table_name_ will not be inherited in subclasses&#34;&#34;&#34;
-
-    _pk_: str = &#39;id&#39;
-    &#39;&#39;&#39;If you use different primary key, you must define it accordingly&#39;&#39;&#39;
-
-    id = Field(&#39;SERIAL NOT NULL PRIMARY KEY&#39;)
-    &#39;&#39;&#39;Default primary key&#39;&#39;&#39;
+    class Meta:
+        # The following needs to be defined here, not in meta.Meta
+        # meta.Meta is used in client Models, thus everything
+        # included there will be blindly inherited, while these are passed
+        # through the metaclasses __new__ methods and processed accordingly
+        # to determine which one should be inherited and which one should not.
+        abstract = True
 
     def __init__(self, *args, **kwargs):
         &#34;&#34;&#34;# Initialize a model instance.
@@ -693,27 +1086,460 @@ Model({'name': 'John Doe', 'profession': 'Teacher', 'active': True}, age=34)
         Raises:
             TypeError: If invalid type of argument is provided.
         &#34;&#34;&#34;
+        super(Model, self).__init__(*args, **kwargs)</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="morm.model.ModelBase" href="#morm.model.ModelBase">ModelBase</a></li>
+</ul>
+<h3>Inherited members</h3>
+<ul class="hlist">
+<li><code><b><a title="morm.model.ModelBase" href="#morm.model.ModelBase">ModelBase</a></b></code>:
+<ul class="hlist">
+<li><code><a title="morm.model.ModelBase.Meta" href="#morm.model.ModelBase.Meta">Meta</a></code></li>
+</ul>
+</li>
+</ul>
+</dd>
+<dt id="morm.model.ModelBase"><code class="flex name class">
+<span>class <span class="ident">ModelBase</span></span>
+<span>(</span><span>*args, **kwargs)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Base Model without any default fields.</p>
+<p>Use Model instead, if you are not an advanced user.</p>
+<p>Meta.pk is set to 'id', you must specify a new primary key and change
+it accordingly if you use this model as your base model.</p>
+<h2 id="raises">Raises</h2>
+<dl>
+<dt><code>TypeError</code></dt>
+<dd>When invalid typeis encountered</dd>
+<dt><code>AttributeError</code></dt>
+<dd>When misspelled fields are tried to set.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class ModelBase(metaclass=ModelType):
+    &#34;&#34;&#34;Base Model without any default fields.
+
+    Use Model instead, if you are not an advanced user.
+
+    Meta.pk is set to &#39;id&#39;, you must specify a new primary key and change
+    it accordingly if you use this model as your base model.
+
+    Raises:
+        TypeError: When invalid typeis encountered
+        AttributeError: When misspelled fields are tried to set.
+    &#34;&#34;&#34;
+    class Meta:
+        &#34;&#34;&#34;Meta that holds metadata for model
+        &#34;&#34;&#34;
+        # The following needs to be defined here, not in meta.Meta
+        # meta.Meta is used in client Models, thus everything
+        # included there will be blindly inherited, while these are passed
+        # through the metaclasses __new__ methods and processed accordingly
+        # to determine which one should be inherited and which one should not.
+        pk = &#39;id&#39;
+        &#39;&#39;&#39;Primary key&#39;&#39;&#39;
+        db_table = Void
+        abstract = True
+        proxy = False
+        ordering = ()
+        fields_up = ()
+        fields_down = ()
+        exclude_fields_up = ()
+        exclude_fields_down = ()
+        exclude_values_up = {&#39;&#39;:()}
+        exclude_values_down = {&#39;&#39;:()}
+
+        #internal
+        _fields_: Dict[str, FieldValue]
+        _fromdb_: List[str]
+        _field_defs_: Dict[str, Field]
+
+
+    def __init__(self, *args, **kwargs):
+        class Meta: pass
+        super(ModelBase, self).__setattr__(&#39;Meta&#39;, Meta)
+        self.Meta._fromdb_ = []
+        self.Meta._fields_ = {}
+        for k, v in self.__class__.Meta._field_defs_.items():
+            self.Meta._fields_[k] = FieldValue(v)
         for arg in args:
             try:
                 for k,v in arg.items():
                     setattr(self, k, v)
             except AttributeError:
-                raise TypeError(&#34;Invalid argument type to Model __init__ method. Expected: dictionary or keyword argument&#34;)
+                raise TypeError(f&#34;Invalid argument type ({type(arg)}) to Model __init__ method. Expected: dictionary or keyword argument&#34;)
         for k,v in kwargs.items():
             setattr(self, k, v)
 
+    def __iter__(self):
+        &#34;&#34;&#34;Iter through k, v where k is field name and v is field value
+
+        Yields:
+            tuple: field_name, field_value
+        &#34;&#34;&#34;
+        for k, f in self.Meta._fields_.items():
+            if self.__class__._is_valid_down_(k, f.value):
+                yield k, f.value
+
+    def __delattr__(self, k):
+        fields = self.Meta._fields_
+        if k in fields:
+            fields[k].delete_value()
+        else:
+            super().__delattr__(k)
+
+    def __getattr__(self, k):
+        fields = self.Meta._fields_
+        if k in fields:
+            v = fields[k].value
+            if self.__class__._is_valid_down_(k, v):
+                return v
+            raise AttributeError(f&#39;Invalid attempt to access field `{k}`. It is excluded using either exclude_fields_down or exclude_values_down in {self.__class__.__name__} Meta class&#39;)
+        raise AttributeError
 
     def __setattr__(self, k, v):
-        if not k.startswith(&#39;_&#39;) and k not in self._fields_:
-            raise AttributeError(f&#34;No such attribute (&#39;{k}&#39;) in model &#39;{self.__class__.__name__}&#39;&#39;&#34;)
-        if k in self._fields_:
-            v = self._fields_[k].clean(v)
-        super().__setattr__(k, v)</code></pre>
+        fields = self.Meta._fields_
+        if k not in fields:
+            raise AttributeError(f&#34;No such field (&#39;{k}&#39;) in model &#39;{self.__class__.__name__}&#39;&#39;&#34;)
+        # v = fields[k].clean(v)
+        # super().__setattr__(k, v)
+        if self.__class__._is_valid_up_(k, v):
+            fields[k].value = v
+        else:
+            raise AttributeError(f&#39;Can not set field `{k}`. It is excluded using either exclude_fields_up or exclude_values_up in {self.__class__.__name__} Meta class &#39;)
+
+    def __repr__(self):
+        reprs = []
+        for k, v in self:
+            reprs.append(f&#39;{k}={repr(v)}&#39;)
+        body = &#39;, &#39;.join(reprs)
+        return f&#39;{self.__class__.__name__}({body})&#39;</code></pre>
+</details>
+<h3>Subclasses</h3>
+<ul class="hlist">
+<li><a title="morm.model.Model" href="#morm.model.Model">Model</a></li>
+</ul>
+<h3>Class variables</h3>
+<dl>
+<dt id="morm.model.ModelBase.Meta"><code class="name">var <span class="ident">Meta</span> : ClassVar</code></dt>
+<dd>
+<div class="desc"><p>Meta that holds metadata for model</p></div>
+</dd>
+</dl>
+</dd>
+<dt id="morm.model.ModelType"><code class="flex name class">
+<span>class <span class="ident">ModelType</span></span>
+<span>(</span><span>*args, **kwargs)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>type(object_or_name, bases, dict)
+type(object) -&gt; the object's type
+type(name, bases, dict) -&gt; a new type</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class ModelType(type):
+    Meta: typing.ClassVar # fixing mypy error: &#34;ModelType&#34; has no attribute &#34;Meta&#34;
+    def __new__(mcs, class_name: str, bases: tuple, attrs: dict):
+        # Ensure initialization is only performed for subclasses of Model
+        # excluding Model class itself.
+        parents = tuple(b for b in bases if isinstance(b, ModelType))
+        if not parents:
+            return super().__new__(mcs, class_name, bases, attrs)
+
+        classcell = attrs.pop(&#39;__classcell__&#39;, None)
+        class _Meta_(mt.Meta): pass
+        meta = attrs.pop(&#39;Meta&#39;, _Meta_)
+        if not inspect.isclass(meta): #TEST: Meta is restricted as a class
+            raise TypeError(f&#34;Name &#39;Meta&#39; is reserved for a class to pass configuration or metadata of a model. Error in model &#39;{class_name}&#39;&#34;)
+        _class_ = super().__new__(mcs, &#39;x_&#39; + class_name, parents, attrs)
+        BaseMeta = getattr(_class_, &#39;Meta&#39;, _Meta_)
+
+        meta_attrs = {}
+        def _set_meta_attr(k, v, mutable=False, inherit=True, internal=False):
+            try:
+                given_value = getattr(meta, k)
+                if internal:
+                    raise ValueError(f&#34;&#39;{k}&#39; is a reserved attribute for class Meta. Error in model &#39;{class_name}&#39;&#34;)
+                given_type = type(given_value)
+                required_type = type(v)
+                if not given_type is required_type:
+                    raise TypeError(f&#34;Invalid type {given_type} given for attribute &#39;{k}&#39; in class &#39;{class_name}.Meta&#39;. Required {required_type}.&#34;)
+                meta_attrs[k] = given_value
+            except AttributeError:
+                if inherit:
+                    v = getattr(BaseMeta, k, v)
+                # mutable values can be changed by other class meta change
+                if mutable:
+                    meta_attrs[k] = copy.deepcopy(v)
+                else:
+                    meta_attrs[k] = v
+
+        _set_meta_attr(&#39;proxy&#39;, False)
+        _set_meta_attr(&#39;pk&#39;, &#39;id&#39;)
+        _set_meta_attr(&#39;ordering&#39;, ())
+        _set_meta_attr(&#39;fields_up&#39;, ())
+        _set_meta_attr(&#39;fields_down&#39;, ())
+        _set_meta_attr(&#39;exclude_fields_up&#39;, ())
+        _set_meta_attr(&#39;exclude_fields_down&#39;, ())
+        _set_meta_attr(&#39;exclude_values_up&#39;, {&#39;&#39;:()}, mutable=True)
+        _set_meta_attr(&#39;exclude_values_down&#39;, {&#39;&#39;:()}, mutable=True)
+        _set_meta_attr(&#39;_field_defs_&#39;, {}, internal=True, mutable=True)
+
+        if meta_attrs[&#39;proxy&#39;]:
+            #proxy model inherits everything
+            try:
+                meta_attrs[&#39;db_table&#39;] = BaseMeta.db_table
+                meta_attrs[&#39;abstract&#39;] = BaseMeta.abstract
+            except AttributeError:
+                raise TypeError(f&#34;This model &#39;{class_name}&#39; can not be a proxy model. It does not have a valid base or super base non-proxy model&#34;)
+        else:
+            _set_meta_attr(&#39;abstract&#39;, False, inherit=False)
+            if meta_attrs[&#39;abstract&#39;]:
+                meta_attrs[&#39;db_table&#39;] = Void
+            else:
+                _set_meta_attr(&#39;db_table&#39;, class_name, inherit=False)
+
+        new_attrs = {}
+
+        # https://www.python.org/dev/peps/pep-0520
+        # PEP 520 says: dir() will not depend on __definition_order__
+        # Even though as of python 3.8.3 we see dir() also preserves order
+        # but let&#39;s be safe.
+        # for n in dir(_class_):
+        #     v = getattr(_class_, n)
+        for n, v in _class_.__dict__.items():
+            if isinstance(v, Field):
+                if n.startswith(&#39;__&#39;) and n.endswith(&#39;__&#39;):
+                    raise AttributeError(f&#34;Invalid field name &#39;{n}&#39; in model &#39;{class_name}&#39;. \
+                        Field name must not start and end with double underscore.&#34;)
+                if meta_attrs[&#39;proxy&#39;] and n in attrs:
+                    raise ValueError(f&#34;Proxy model &#39;{class_name}&#39; can not define new field: {n}&#34;)
+                v.name = n
+                meta_attrs[&#39;_field_defs_&#39;][n] = v
+            elif n in attrs:
+                new_attrs[n] = attrs[n]
+
+        # we do this after finalizing meta_attr
+        def _get_field_name(n: str) -&gt; str:
+            if n in meta_attrs[&#39;_field_defs_&#39;]:
+                return n
+            else:
+                raise AttributeError(f&#34;No such field &#39;{n}&#39; in model &#39;{class_name}&#39;&#34;)
+        meta_attrs[&#39;f&#39;] = FieldNames(_get_field_name)
+
+        MetaClass = mt.MetaType(&#39;Meta&#39;, (mt.Meta,), meta_attrs)
+        new_attrs[&#39;Meta&#39;] = MetaClass
+
+        if classcell is not None:
+            new_attrs[&#39;__classcell__&#39;] = classcell
+        return super().__new__(mcs, class_name, bases, new_attrs)
+
+    def __setattr__(self, k, v):
+        raise NotImplementedError(&#34;You can not set model attributes outside model definition.&#34;)
+
+    def __delattr__(self, k):
+        raise NotImplementedError(&#34;You can not delete model attributes outside model definition.&#34;)
+
+    def _is_valid_key_(self, k:str, fields:Tuple[str], exclude_keys:Tuple[str]) -&gt; bool:
+        &#34;&#34;&#34;Returns True if the key is valid considering include/exclude keys
+        &#34;&#34;&#34;
+        if k in exclude_keys: return False
+        if fields and k not in fields: return False
+        return True
+
+    def _is_valid_down_key_(self, k: str) -&gt; bool:
+        &#34;&#34;&#34;Returns True if the key is valid considering include/exclude down keys
+        &#34;&#34;&#34;
+        return self._is_valid_key_(k, self.Meta.fields_down, self.Meta.exclude_fields_down)
+
+    def _is_valid_up_key_(self, k: str) -&gt; bool:
+        &#34;&#34;&#34;Returns True if the key is valid considering include/exclude up keys
+        &#34;&#34;&#34;
+        return self._is_valid_key_(k, self.Meta.fields_up, self.Meta.exclude_fields_up)
+
+    def _is_valid_value_(self, k: str, v: Any, exclude_values: Dict[str, Tuple[Any]]) -&gt; bool:
+        &#34;&#34;&#34;Returns True if the value for the key is valid considering exclude values
+        &#34;&#34;&#34;
+        if v is Void:
+            return False
+        if k in exclude_values:
+            if v in exclude_values[k]:
+                return False
+        if &#39;&#39; in exclude_values and v in exclude_values[&#39;&#39;]:
+            return False
+        return True
+
+    def _is_valid_up_value_(self, k: str, v: Any) -&gt; bool:
+        &#34;&#34;&#34;Returns True if the value for the key is valid considering exclude up values
+        &#34;&#34;&#34;
+        return self._is_valid_value_(k, v, self.Meta.exclude_values_up)
+
+    def _is_valid_down_value_(self, k: str, v: Any) -&gt; bool:
+        &#34;&#34;&#34;Returns True if the value for the key is valid considering exclude down values
+        &#34;&#34;&#34;
+        return self._is_valid_value_(k, v, self.Meta.exclude_values_down)
+
+    def _is_valid_down_(self, k: str, v: Any) -&gt; bool:
+        &#34;&#34;&#34;Check whether the key and value is valid for down (data retrieval)
+        &#34;&#34;&#34;
+        return self._is_valid_down_key_(k) and self._is_valid_down_value_(k, v)
+
+    def _is_valid_up_(self, k: str, v: Any) -&gt; bool:
+        &#34;&#34;&#34;Check whether the key and value is valid for up (data update)
+        &#34;&#34;&#34;
+        return self._is_valid_up_key_(k) and self._is_valid_up_value_(k, v)
+
+    def _get_all_fields_(self) -&gt; Dict[str, Field]:
+        &#34;&#34;&#34;Get all fields on model without applying any restriction.
+
+        Returns:
+            Dict[str, Field]: Dictionary of all fields
+        &#34;&#34;&#34;
+        return self.Meta._field_defs_
+
+    def _check_field_name_(self, n: str) -&gt; str:
+        &#34;&#34;&#34;Return the field name if exists else raise AttributeError
+
+        Args:
+            n (str): field name
+
+        Raises:
+            AttributeError: if field name does not exist
+
+        Returns:
+            str: field name
+        &#34;&#34;&#34;
+        if n in self.Meta._field_defs_:
+            return n
+        else:
+            raise AttributeError(f&#34;No such field `{n}` in model `{self.__name__}`&#34;)
+
+    def _get_fields_(self, up=False) -&gt; Iterator[str]:
+        &#34;&#34;&#34;Yields field names that pass include/exclude criteria
+
+        Args:
+            up (bool, optional): up criteria or down criteria. Defaults to False (down).
+
+        Yields:
+            str: field name
+        &#34;&#34;&#34;
+        if up:
+            fields = self.Meta.fields_up
+            exclude_keys = self.Meta.exclude_fields_up
+        else:
+            fields = self.Meta.fields_down
+            exclude_keys = self.Meta.exclude_fields_down
+        all_fields = self._get_all_fields_()
+        for k in all_fields:
+            if not self._is_valid_key_(k, fields, exclude_keys):
+                continue
+            yield k
+
+    def _get_FieldValue_data_valid_(self, data: dict, up=False) -&gt; Iterator[Tuple[str, Any]]:
+        &#34;&#34;&#34;Yields valid key,value pairs from data.
+
+        Validity is checked against include/exclude key/value criteria.
+
+        Args:
+            data (dict): data to be validated.
+            up (bool, optional): whether up (data update) or down (data retrieval). Defaults to False.
+
+        Yields:
+            Iterator[Tuple[str, Any]]: Yields key, value pair
+        &#34;&#34;&#34;
+        if up:
+            exclude_values = self.Meta.exclude_values_up
+            fields = self.Meta.fields_up
+            exclude_fields = self.Meta.exclude_fields_up
+        else:
+            exclude_values = self.Meta.exclude_values_down
+            fields = self.Meta.fields_down
+            exclude_fields = self.Meta.exclude_fields_down
+        # new_data = type(data)()
+        for k,v in data.items():
+            if not self._is_valid_key_(k, fields, exclude_fields):
+                continue
+            if not self._is_valid_value_(k, v.value, exclude_values):
+                continue
+            yield k, v
+
+
+    # def _get_data_for_valid_values_(self, data, up=False, gen=False):
+    #     if up:
+    #         exclude_values = self.Meta.exclude_values_up
+    #     else:
+    #         exclude_values = self.Meta.exclude_values_down
+    #     new_data = type(data)()
+    #     for k,v in data.items():
+    #         if not self._is_valid_value_(k, v, exclude_values):
+    #             continue
+    #         if gen:
+    #             yield k, v
+    #         else:
+    #             new_data[k] = v
+    #     if not gen:
+    #         return new_data
+
+    def _get_db_table_(self) -&gt; str:
+        &#34;&#34;&#34;Get db table name for model
+        &#34;&#34;&#34;
+        return self.Meta.db_table
+
+    def _is_abstract_(self) -&gt; bool:
+        &#34;&#34;&#34;Whether it&#39;s an abstract model or not
+        &#34;&#34;&#34;
+        return self.Meta.abstract
+
+    def _is_proxy_(self) -&gt; bool:
+        &#34;&#34;&#34;Whether its is proxy model or not
+        &#34;&#34;&#34;
+        return self.Meta.proxy
+
+    def _get_pk_(self) -&gt; str:
+        &#34;&#34;&#34;Get primary column name
+        &#34;&#34;&#34;
+        return self.Meta.pk
+
+    def _get_ordering_(self, quote: str) -&gt; Iterator[Tuple[str, str]]:
+        &#34;&#34;&#34;Yield each ordering from model parsed and converted to column, direction
+
+        direction is either `ASC` or `DESC`
+
+        Args:
+            quote (str): Quote to apply to the column
+
+        Yields:
+            Iterator[Tuple[str, str]]: Yields column, direction
+        &#34;&#34;&#34;
+        ordering = self.Meta.ordering
+        direction = &#39;ASC&#39;
+        for o in ordering:
+            if o.startswith(&#39;-&#39;):
+                direction = &#39;DESC&#39;
+                o = o[1:]
+            elif o.startswith(&#39;+&#39;):
+                o = o[1:]
+            o = f&#34;{quote}{o}{quote}&#34;
+            yield o, direction</code></pre>
 </details>
 <h3>Ancestors</h3>
 <ul class="hlist">
-<li>morm.model._Model_</li>
+<li>builtins.type</li>
 </ul>
+<h3>Class variables</h3>
+<dl>
+<dt id="morm.model.ModelType.Meta"><code class="name">var <span class="ident">Meta</span> : ClassVar</code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+</dl>
 </dd>
 </dl>
 </section>
@@ -724,10 +1550,30 @@ Model({'name': 'John Doe', 'profession': 'Teacher', 'active': True}, age=34)
 <ul></ul>
 </div>
 <ul id="index">
+<li><h3>Super-module</h3>
+<ul>
+<li><code><a title="morm" href="index.html">morm</a></code></li>
+</ul>
+</li>
 <li><h3><a href="#header-classes">Classes</a></h3>
 <ul>
 <li>
+<h4><code><a title="morm.model.FieldNames" href="#morm.model.FieldNames">FieldNames</a></code></h4>
+</li>
+<li>
 <h4><code><a title="morm.model.Model" href="#morm.model.Model">Model</a></code></h4>
+</li>
+<li>
+<h4><code><a title="morm.model.ModelBase" href="#morm.model.ModelBase">ModelBase</a></code></h4>
+<ul class="">
+<li><code><a title="morm.model.ModelBase.Meta" href="#morm.model.ModelBase.Meta">Meta</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="morm.model.ModelType" href="#morm.model.ModelType">ModelType</a></code></h4>
+<ul class="">
+<li><code><a title="morm.model.ModelType.Meta" href="#morm.model.ModelType.Meta">Meta</a></code></li>
+</ul>
 </li>
 </ul>
 </li>
@@ -735,9 +1581,7 @@ Model({'name': 'John Doe', 'profession': 'Teacher', 'active': True}, age=34)
 </nav>
 </main>
 <footer id="footer">
-<p>Generated by <a href="https://pdoc3.github.io/pdoc"><cite>pdoc</cite> 0.7.5</a>.</p>
+<p>Generated by <a href="https://pdoc3.github.io/pdoc"><cite>pdoc</cite> 0.9.2</a>.</p>
 </footer>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
-<script>hljs.initHighlightingOnLoad()</script>
 </body>
 </html>

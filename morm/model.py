@@ -37,6 +37,7 @@ class FieldNames():
 
 
 class ModelType(type):
+    Meta: typing.ClassVar # fixing mypy error: "ModelType" has no attribute "Meta"
     def __new__(mcs, class_name: str, bases: tuple, attrs: dict):
         # Ensure initialization is only performed for subclasses of Model
         # excluding Model class itself.
@@ -45,7 +46,7 @@ class ModelType(type):
             return super().__new__(mcs, class_name, bases, attrs)
 
         classcell = attrs.pop('__classcell__', None)
-        class _Meta_(): pass
+        class _Meta_(mt.Meta): pass
         meta = attrs.pop('Meta', _Meta_)
         if not inspect.isclass(meta): #TEST: Meta is restricted as a class
             raise TypeError(f"Name 'Meta' is reserved for a class to pass configuration or metadata of a model. Error in model '{class_name}'")
@@ -66,17 +67,14 @@ class ModelType(type):
             except AttributeError:
                 if inherit:
                     v = getattr(BaseMeta, k, v)
-                    # here deepcopy fixes a bug
-                    # mutable values can be changed by other class meta change
-                    if mutable:
-                        meta_attrs[k] = copy.deepcopy(v)
-                    else:
-                        meta_attrs[k] = v
+                # mutable values can be changed by other class meta change
+                if mutable:
+                    meta_attrs[k] = copy.deepcopy(v)
                 else:
                     meta_attrs[k] = v
 
-        _set_meta_attr('pk', 'id')
         _set_meta_attr('proxy', False)
+        _set_meta_attr('pk', 'id')
         _set_meta_attr('ordering', ())
         _set_meta_attr('fields_up', ())
         _set_meta_attr('fields_down', ())
@@ -135,30 +133,30 @@ class ModelType(type):
             new_attrs['__classcell__'] = classcell
         return super().__new__(mcs, class_name, bases, new_attrs)
 
-    def __setattr__(cls, k, v):
+    def __setattr__(self, k, v):
         raise NotImplementedError("You can not set model attributes outside model definition.")
 
-    def __delattr__(cls, k):
+    def __delattr__(self, k):
         raise NotImplementedError("You can not delete model attributes outside model definition.")
 
-    def _is_valid_key_(cls, k:str, fields:Tuple[str], exclude_keys:Tuple[str]) -> bool:
+    def _is_valid_key_(self, k:str, fields:Tuple[str], exclude_keys:Tuple[str]) -> bool:
         """Returns True if the key is valid considering include/exclude keys
         """
         if k in exclude_keys: return False
         if fields and k not in fields: return False
         return True
 
-    def _is_valid_down_key_(cls, k: str) -> bool:
+    def _is_valid_down_key_(self, k: str) -> bool:
         """Returns True if the key is valid considering include/exclude down keys
         """
-        return cls._is_valid_key_(k, cls.Meta.fields_down, cls.Meta.exclude_fields_down)
+        return self._is_valid_key_(k, self.Meta.fields_down, self.Meta.exclude_fields_down)
 
-    def _is_valid_up_key_(cls, k: str) -> bool:
+    def _is_valid_up_key_(self, k: str) -> bool:
         """Returns True if the key is valid considering include/exclude up keys
         """
-        return cls._is_valid_key_(k, cls.Meta.fields_up, cls.Meta.exclude_fields_up)
+        return self._is_valid_key_(k, self.Meta.fields_up, self.Meta.exclude_fields_up)
 
-    def _is_valid_value_(cls, k: str, v: Any, exclude_values: Tuple[Any]) -> bool:
+    def _is_valid_value_(self, k: str, v: Any, exclude_values: Dict[str, Tuple[Any]]) -> bool:
         """Returns True if the value for the key is valid considering exclude values
         """
         if v is Void:
@@ -170,35 +168,35 @@ class ModelType(type):
             return False
         return True
 
-    def _is_valid_up_value_(cls, k: str, v: Any) -> bool:
+    def _is_valid_up_value_(self, k: str, v: Any) -> bool:
         """Returns True if the value for the key is valid considering exclude up values
         """
-        return cls._is_valid_value_(k, v, cls.Meta.exclude_values_up)
+        return self._is_valid_value_(k, v, self.Meta.exclude_values_up)
 
-    def _is_valid_down_value_(cls, k: str, v: Any) -> bool:
+    def _is_valid_down_value_(self, k: str, v: Any) -> bool:
         """Returns True if the value for the key is valid considering exclude down values
         """
-        return cls._is_valid_value_(k, v, cls.Meta.exclude_values_down)
+        return self._is_valid_value_(k, v, self.Meta.exclude_values_down)
 
-    def _is_valid_down_(cls, k: str, v: Any) -> bool:
+    def _is_valid_down_(self, k: str, v: Any) -> bool:
         """Check whether the key and value is valid for down (data retrieval)
         """
-        return cls._is_valid_down_key_(k) and cls._is_valid_down_value_(k, v)
+        return self._is_valid_down_key_(k) and self._is_valid_down_value_(k, v)
 
-    def _is_valid_up_(cls, k: str, v: Any) -> bool:
+    def _is_valid_up_(self, k: str, v: Any) -> bool:
         """Check whether the key and value is valid for up (data update)
         """
-        return cls._is_valid_up_key_(k) and cls._is_valid_up_value_(k, v)
+        return self._is_valid_up_key_(k) and self._is_valid_up_value_(k, v)
 
-    def _get_all_fields_(cls) -> Dict[str, Field]:
+    def _get_all_fields_(self) -> Dict[str, Field]:
         """Get all fields on model without applying any restriction.
 
         Returns:
             Dict[str, Field]: Dictionary of all fields
         """
-        return cls.Meta._field_defs_
+        return self.Meta._field_defs_
 
-    def _check_field_name_(cls, n: str) -> str:
+    def _check_field_name_(self, n: str) -> str:
         """Return the field name if exists else raise AttributeError
 
         Args:
@@ -210,12 +208,12 @@ class ModelType(type):
         Returns:
             str: field name
         """
-        if n in cls.Meta._field_defs_:
+        if n in self.Meta._field_defs_:
             return n
         else:
-            raise AttributeError(f"No such field `{n}` in model `{cls.__name__}`")
+            raise AttributeError(f"No such field `{n}` in model `{self.__name__}`")
 
-    def _get_fields_(cls, up=False) -> Iterator[str]:
+    def _get_fields_(self, up=False) -> Iterator[str]:
         """Yields field names that pass include/exclude criteria
 
         Args:
@@ -225,18 +223,18 @@ class ModelType(type):
             str: field name
         """
         if up:
-            fields = cls.Meta.fields_up
-            exclude_keys = cls.Meta.exclude_fields_up
+            fields = self.Meta.fields_up
+            exclude_keys = self.Meta.exclude_fields_up
         else:
-            fields = cls.Meta.fields_down
-            exclude_keys = cls.Meta.exclude_fields_down
-        all_fields = cls._get_all_fields_()
+            fields = self.Meta.fields_down
+            exclude_keys = self.Meta.exclude_fields_down
+        all_fields = self._get_all_fields_()
         for k in all_fields:
-            if not cls._is_valid_key_(k, fields, exclude_keys):
+            if not self._is_valid_key_(k, fields, exclude_keys):
                 continue
             yield k
 
-    def _get_FieldValue_data_valid_(cls, data: dict, up=False) -> Iterator[Tuple[str, Any]]:
+    def _get_FieldValue_data_valid_(self, data: dict, up=False) -> Iterator[Tuple[str, Any]]:
         """Yields valid key,value pairs from data.
 
         Validity is checked against include/exclude key/value criteria.
@@ -249,30 +247,30 @@ class ModelType(type):
             Iterator[Tuple[str, Any]]: Yields key, value pair
         """
         if up:
-            exclude_values = cls.Meta.exclude_values_up
-            fields = cls.Meta.fields_up
-            exclude_fields = cls.Meta.exclude_fields_up
+            exclude_values = self.Meta.exclude_values_up
+            fields = self.Meta.fields_up
+            exclude_fields = self.Meta.exclude_fields_up
         else:
-            exclude_values = cls.Meta.exclude_values_down
-            fields = cls.Meta.fields_down
-            exclude_fields = cls.Meta.exclude_fields_down
+            exclude_values = self.Meta.exclude_values_down
+            fields = self.Meta.fields_down
+            exclude_fields = self.Meta.exclude_fields_down
         # new_data = type(data)()
         for k,v in data.items():
-            if not cls._is_valid_key_(k, fields, exclude_fields):
+            if not self._is_valid_key_(k, fields, exclude_fields):
                 continue
-            if not cls._is_valid_value_(k, v.value, exclude_values):
+            if not self._is_valid_value_(k, v.value, exclude_values):
                 continue
             yield k, v
 
 
-    # def _get_data_for_valid_values_(cls, data, up=False, gen=False):
+    # def _get_data_for_valid_values_(self, data, up=False, gen=False):
     #     if up:
-    #         exclude_values = cls.Meta.exclude_values_up
+    #         exclude_values = self.Meta.exclude_values_up
     #     else:
-    #         exclude_values = cls.Meta.exclude_values_down
+    #         exclude_values = self.Meta.exclude_values_down
     #     new_data = type(data)()
     #     for k,v in data.items():
-    #         if not cls._is_valid_value_(k, v, exclude_values):
+    #         if not self._is_valid_value_(k, v, exclude_values):
     #             continue
     #         if gen:
     #             yield k, v
@@ -281,27 +279,27 @@ class ModelType(type):
     #     if not gen:
     #         return new_data
 
-    def _get_db_table_(cls) -> str:
+    def _get_db_table_(self) -> str:
         """Get db table name for model
         """
-        return cls.Meta.db_table
+        return self.Meta.db_table
 
-    def _is_abstract_(cls) -> bool:
+    def _is_abstract_(self) -> bool:
         """Whether it's an abstract model or not
         """
-        return cls.Meta.abstract
+        return self.Meta.abstract
 
-    def _is_proxy_(cls) -> bool:
+    def _is_proxy_(self) -> bool:
         """Whether its is proxy model or not
         """
-        return cls.Meta.proxy
+        return self.Meta.proxy
 
-    def _get_pk_(cls) -> str:
+    def _get_pk_(self) -> str:
         """Get primary column name
         """
-        return cls.Meta.pk
+        return self.Meta.pk
 
-    def _get_ordering_(cls, quote: str) -> Iterator[Tuple[str, str]]:
+    def _get_ordering_(self, quote: str) -> Iterator[Tuple[str, str]]:
         """Yield each ordering from model parsed and converted to column, direction
 
         direction is either `ASC` or `DESC`
@@ -312,7 +310,7 @@ class ModelType(type):
         Yields:
             Iterator[Tuple[str, str]]: Yields column, direction
         """
-        ordering = cls.Meta.ordering
+        ordering = self.Meta.ordering
         direction = 'ASC'
         for o in ordering:
             if o.startswith('-'):
@@ -342,7 +340,7 @@ class ModelBase(metaclass=ModelType):
         TypeError: When invalid typeis encountered
         AttributeError: When misspelled fields are tried to set.
     """
-    class Meta(mt.Meta):
+    class Meta:
         """Meta that holds metadata for model
         """
         # The following needs to be defined here, not in meta.Meta
@@ -351,7 +349,8 @@ class ModelBase(metaclass=ModelType):
         # through the metaclasses __new__ methods and processed accordingly
         # to determine which one should be inherited and which one should not.
         pk = 'id'
-        db_table = ''
+        '''Primary key'''
+        db_table = Void
         abstract = True
         proxy = False
         ordering = ()
@@ -362,9 +361,14 @@ class ModelBase(metaclass=ModelType):
         exclude_values_up = {'':()}
         exclude_values_down = {'':()}
 
+        #internal
+        _fields_: Dict[str, FieldValue]
+        _fromdb_: List[str]
+        _field_defs_: Dict[str, Field]
+
 
     def __init__(self, *args, **kwargs):
-        class Meta(object): pass
+        class Meta: pass
         super(ModelBase, self).__setattr__('Meta', Meta)
         self.Meta._fromdb_ = []
         self.Meta._fields_ = {}
@@ -472,7 +476,7 @@ class Model(ModelBase):
         random = Field('int', default=get_rand) # function can be default
     ```
     """
-    class Meta(mt.Meta):
+    class Meta:
         # The following needs to be defined here, not in meta.Meta
         # meta.Meta is used in client Models, thus everything
         # included there will be blindly inherited, while these are passed

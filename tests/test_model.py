@@ -8,6 +8,7 @@ import inspect
 from morm.db import Pool, DB, Transaction
 import morm.model as mdl
 import morm.meta as mt
+from morm.types import Void
 
 
 LOGGER_NAME = 'morm-test-model-'
@@ -97,10 +98,10 @@ class TestMethods(unittest.TestCase):
             'ordering': 23,
             'fields_up': 23,
             'fields_down': 23,
-            'exclude_up_keys': 23,
-            'exclude_down_keys': 23,
-            'exclude_up_values': 23,
-            'exclude_down_values': 23,
+            'exclude_fields_up': 23,
+            'exclude_fields_down': 23,
+            'exclude_values_up': 23,
+            'exclude_values_down': 23,
             'db_table': 23,
             'abstract': 23,
         }
@@ -123,10 +124,10 @@ class TestMethods(unittest.TestCase):
             'ordering': 23,
             'fields_up': 23,
             'fields_down': 23,
-            'exclude_up_keys': 23,
-            'exclude_down_keys': 23,
-            'exclude_up_values': 23,
-            'exclude_down_values': 23,
+            'exclude_fields_up': 23,
+            'exclude_fields_down': 23,
+            'exclude_values_up': 23,
+            'exclude_values_down': 23,
             'db_table': 23,
             'abstract': 23,
         }
@@ -155,10 +156,10 @@ class TestMethods(unittest.TestCase):
             'ordering': (),
             'fields_up': (),
             'fields_down': (),
-            'exclude_up_keys': (),
-            'exclude_down_keys': (),
-            'exclude_up_values': (),
-            'exclude_down_values': (),
+            'exclude_fields_up': (),
+            'exclude_fields_down': (),
+            'exclude_values_up': {'':()},
+            'exclude_values_down': {'':()},
         }
         for k, v in meta_attrs_defaults.items():
             gv = getattr(BigUser.Meta, k)
@@ -170,33 +171,33 @@ class TestMethods(unittest.TestCase):
 
     def test_Model_Meta_Attribute_Definition(self):
         class User(Model):
-            class Meta(mdl.Meta):
+            class Meta:
                 pk = 'column_id'
                 db_table = 'myapp_model_user'
                 abstract = True
-                proxy = True
+                proxy = False
                 ordering = ('id', 'name')
                 fields_up = ('id', 'name')
                 fields_down = ('id', 'name')
-                exclude_up_keys = ('updated_at',)
-                exclude_down_keys = ('password',)
-                exclude_up_values = ('', None)
-                exclude_down_values = ('', None)
+                exclude_fields_up = ('updated_at',)
+                exclude_fields_down = ('password',)
+                exclude_values_up = {'': ('', None)}
+                exclude_values_down = {'':('', None)}
 
         meta_attr_inh = {
             'pk': 'column_id',
-            'proxy': True,
+            'proxy': False,
             'ordering': ('id', 'name'),
             'fields_up': ('id', 'name'),
             'fields_down': ('id', 'name'),
-            'exclude_up_keys': ('updated_at',),
-            'exclude_down_keys': ('password',),
-            'exclude_up_values': ('', None),
-            'exclude_down_values': ('', None),
+            'exclude_fields_up': ('updated_at',),
+            'exclude_fields_down': ('password',),
+            'exclude_values_up': {'': ('', None)},
+            'exclude_values_down': {'': ('', None)},
         }
 
         meta_attrs_no_inh = {
-            'db_table': 'myapp_model_user',
+            'db_table': Void,
             'abstract': True,
         }
 
@@ -207,17 +208,17 @@ class TestMethods(unittest.TestCase):
             self.assertEqual(getattr(User.Meta, k), v)
 
         # checking Meta inheritance
-        class User2(Model):
-            class Meta(mdl.Meta):
+        class User2(User):
+            class Meta:
                 pk = 'column_id'
-                proxy = True
+                proxy = False
                 ordering = ('id', 'name')
                 fields_up = ('id', 'name')
                 fields_down = ('id', 'name')
-                exclude_up_keys = ('updated_at',)
-                exclude_down_keys = ('password',)
-                exclude_up_values = ('', None)
-                exclude_down_values = ('', None)
+                exclude_fields_up = ('updated_at',)
+                exclude_fields_down = ('password',)
+                exclude_values_up = {'': ('', None)}
+                exclude_values_down = {'': ('', None)}
 
         class User3(User): pass
 
@@ -237,33 +238,49 @@ class TestMethods(unittest.TestCase):
             print(f"> Meta attribute value for '{k}' must not be inherited and match the default value: {dv}")
             self.assertEqual(mv, dv)
 
+        ############################
+        # check proxy
+        ############################
+
+        meta_attr_inh = {
+            'pk': 'column_id',
+            'proxy': True,
+            'ordering': ('id', 'name'),
+            'fields_up': ('id', 'name'),
+            'fields_down': ('id', 'name'),
+            'exclude_fields_up': ('updated_at',),
+            'exclude_fields_down': ('password',),
+            'exclude_values_up': {'': ('', None)},
+            'exclude_values_down': {'': ('', None)},
+        }
+
+        meta_attrs_no_inh = {
+            'db_table': Void,
+            'abstract': True,
+        }
+
+        meta_attrs = {**meta_attr_inh, **meta_attrs_no_inh}
+
+        # checking Meta inheritance
+        class User2(User):
+            class Meta:
+                proxy = True
+
+        # class User3(User): pass
 
 
+        for k, v in meta_attr_inh.items():
+            print(f"> Proxy:True: Meta attribute value for '{k}' must match with inherited value: {v}")
+            self.assertEqual(getattr(User2.Meta, k), v)
 
-
-
-        # mprint(User.Meta._field_defs_)
-        # mprint(type(User.Meta._field_defs_))
-
-
-        # with self.assertRaises(TypeError):
-        #     class User(Model):
-        #         class Meta(mdl.Meta):
-        #             pk = 23
-        # with self.assertRaises(TypeError):
-        #     class User(Model):
-        #         class Meta(mdl.Meta):
-        #             proxy = 23
-        # with self.assertRaises(TypeError):
-        #     class User(Model):
-        #         class Meta(mdl.Meta):
-        #             ordering = 23
-        # with self.assertRaises(TypeError):
-        #     class User(Model):
-        #         class Meta(mdl.Meta):
-        #             ordering = 23
-
-
+        meta_attrs_no_inh_default = {
+            'db_table': Void,
+            'abstract': True,
+        }
+        for k, v in meta_attrs_no_inh.items():
+            mv = getattr(User2.Meta, k)
+            print(f"> Proxy:True: Meta attribute value for '{k}' must be inherited and match the value: {v}")
+            self.assertEqual(mv, v)
 
     def test_Model_Instance(self):
         class User(Model):

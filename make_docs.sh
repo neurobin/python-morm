@@ -1,7 +1,14 @@
 #!/bin/bash
 
 docs=(
-    'morm.model'
+#     'morm.model'
+#     'morm.types'
+#     'morm.db'
+#     'morm.exceptions'
+#     'morm.meta'
+#     'morm.q'
+#     'morm.version'
+    'morm'
 )
 
 print_chars(){

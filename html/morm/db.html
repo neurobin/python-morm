@@ -1,0 +1,3762 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
+<meta name="generator" content="pdoc 0.9.2" />
+<title>morm.db API documentation</title>
+<meta name="description" content="DB utilities." />
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
+<link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin>
+<style>:root{--highlight-color:#fe9}.flex{display:flex !important}body{line-height:1.5em}#content{padding:20px}#sidebar{padding:30px;overflow:hidden}#sidebar > *:last-child{margin-bottom:2cm}.http-server-breadcrumbs{font-size:130%;margin:0 0 15px 0}#footer{font-size:.75em;padding:5px 30px;border-top:1px solid #ddd;text-align:right}#footer p{margin:0 0 0 1em;display:inline-block}#footer p:last-child{margin-right:30px}h1,h2,h3,h4,h5{font-weight:300}h1{font-size:2.5em;line-height:1.1em}h2{font-size:1.75em;margin:1em 0 .50em 0}h3{font-size:1.4em;margin:25px 0 10px 0}h4{margin:0;font-size:105%}h1:target,h2:target,h3:target,h4:target,h5:target,h6:target{background:var(--highlight-color);padding:.2em 0}a{color:#058;text-decoration:none;transition:color .3s ease-in-out}a:hover{color:#e82}.title code{font-weight:bold}h2[id^="header-"]{margin-top:2em}.ident{color:#900}pre code{background:#f8f8f8;font-size:.8em;line-height:1.4em}code{background:#f2f2f1;padding:1px 4px;overflow-wrap:break-word}h1 code{background:transparent}pre{background:#f8f8f8;border:0;border-top:1px solid #ccc;border-bottom:1px solid #ccc;margin:1em 0;padding:1ex}#http-server-module-list{display:flex;flex-flow:column}#http-server-module-list div{display:flex}#http-server-module-list dt{min-width:10%}#http-server-module-list p{margin-top:0}.toc ul,#index{list-style-type:none;margin:0;padding:0}#index code{background:transparent}#index h3{border-bottom:1px solid #ddd}#index ul{padding:0}#index h4{margin-top:.6em;font-weight:bold}@media (min-width:200ex){#index .two-column{column-count:2}}@media (min-width:300ex){#index .two-column{column-count:3}}dl{margin-bottom:2em}dl dl:last-child{margin-bottom:4em}dd{margin:0 0 1em 3em}#header-classes + dl > dd{margin-bottom:3em}dd dd{margin-left:2em}dd p{margin:10px 0}.name{background:#eee;font-weight:bold;font-size:.85em;padding:5px 10px;display:inline-block;min-width:40%}.name:hover{background:#e0e0e0}dt:target .name{background:var(--highlight-color)}.name > span:first-child{white-space:nowrap}.name.class > span:nth-child(2){margin-left:.4em}.inherited{color:#999;border-left:5px solid #eee;padding-left:1em}.inheritance em{font-style:normal;font-weight:bold}.desc h2{font-weight:400;font-size:1.25em}.desc h3{font-size:1em}.desc dt code{background:inherit}.source summary,.git-link-div{color:#666;text-align:right;font-weight:400;font-size:.8em;text-transform:uppercase}.source summary > *{white-space:nowrap;cursor:pointer}.git-link{color:inherit;margin-left:1em}.source pre{max-height:500px;overflow:auto;margin:0}.source pre code{font-size:12px;overflow:visible}.hlist{list-style:none}.hlist li{display:inline}.hlist li:after{content:',\2002'}.hlist li:last-child:after{content:none}.hlist .hlist{display:inline;padding-left:1em}img{max-width:100%}td{padding:0 .5em}.admonition{padding:.1em .5em;margin-bottom:1em}.admonition-title{font-weight:bold}.admonition.note,.admonition.info,.admonition.important{background:#aef}.admonition.todo,.admonition.versionadded,.admonition.tip,.admonition.hint{background:#dfd}.admonition.warning,.admonition.versionchanged,.admonition.deprecated{background:#fd4}.admonition.error,.admonition.danger,.admonition.caution{background:lightpink}</style>
+<style media="screen and (min-width: 700px)">@media screen and (min-width:700px){#sidebar{width:30%;height:100vh;overflow:auto;position:sticky;top:0}#content{width:70%;max-width:100ch;padding:3em 4em;border-left:1px solid #ddd}pre code{font-size:1em}.item .name{font-size:1em}main{display:flex;flex-direction:row-reverse;justify-content:flex-end}.toc ul ul,#index ul{padding-left:1.5em}.toc > ul > li{margin-top:.5em}}</style>
+<style media="print">@media print{#sidebar h1{page-break-before:always}.source{display:none}}@media print{*{background:transparent !important;color:#000 !important;box-shadow:none !important;text-shadow:none !important}a[href]:after{content:" (" attr(href) ")";font-size:90%}a[href][title]:after{content:none}abbr[title]:after{content:" (" attr(title) ")"}.ir a:after,a[href^="javascript:"]:after,a[href^="#"]:after{content:""}pre,blockquote{border:1px solid #999;page-break-inside:avoid}thead{display:table-header-group}tr,img{page-break-inside:avoid}img{max-width:100% !important}@page{margin:0.5cm}p,h2,h3{orphans:3;widows:3}h1,h2,h3,h4,h5,h6{page-break-after:avoid}}</style>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/highlight.min.js" integrity="sha256-Uv3H6lx7dJmRfRvH8TH6kJD1TSK1aFcwgx+mdg3epi8=" crossorigin></script>
+<script>window.addEventListener('DOMContentLoaded', () => hljs.initHighlighting())</script>
+</head>
+<body>
+<main>
+<article id="content">
+<header>
+<h1 class="title">Module <code>morm.db</code></h1>
+</header>
+<section id="section-intro">
+<p>DB utilities.</p>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">&#34;&#34;&#34;DB utilities.
+&#34;&#34;&#34;
+
+__author__ = &#39;Md Jahidul Hamid &lt;jahidulhamid@yahoo.com&gt;&#39;
+__copyright__ = &#39;Copyright © Md Jahidul Hamid &lt;https://github.com/neurobin/&gt;&#39;
+__license__ = &#39;[BSD](http://www.opensource.org/licenses/bsd-license.php)&#39;
+__version__ = &#39;0.1.0&#39;
+
+import collections
+import re
+import asyncio
+from contextlib import asynccontextmanager
+
+import asyncpg # type: ignore
+from asyncpg import Record, Connection # type: ignore
+from typing import Optional, Dict, List, Tuple, TypeVar, Union, Any
+
+from morm import exceptions
+from morm.model import ModelType, Model, ModelBase, FieldNames
+from morm.q import Q
+from morm.types import Void
+
+
+def record_to_model(record: Record, model_class: ModelType) -&gt; Model:
+    &#34;&#34;&#34;Convert a Record object to Model object.
+
+    Args:
+        record (Record): Record object.
+        model_class (ModelType): Model class
+
+    Returns:
+        Model: Model instance.
+    &#34;&#34;&#34;
+    new_record = model_class()
+    for k,v in record.items():
+        setattr(new_record, k, v)
+        new_record.Meta._fromdb_.append(k)
+    return new_record
+
+
+class Pool(object):
+    def __init__(self, dsn: str = None,
+                 min_size: int = 10,
+                 max_size: int = 100,
+                 max_queries: int = 50000,
+                 max_inactive_connection_lifetime: float = 300.0,
+                 setup=None,
+                 init=None,
+                 loop=None,
+                 connection_class=Connection,
+                 **connect_kwargs):
+        &#34;&#34;&#34;DB connection pool.
+
+        The parameters are same as `asyncpg.create_pool` function.
+
+        Args:
+            dsn (str, optional): DSN string. Defaults to None.
+            min_size (int, optional): Minimum connection in the pool. Defaults to 10.
+            max_size (int, optional): Maximum connection in the pool. Defaults to 100.
+            max_queries (int, optional): Number of queries after a connection is closed and replaced with a new connection. Defaults to 50000.
+            max_inactive_connection_lifetime (float, optional): Number of seconds after which inactive connections in the pool will be closed.  Pass `0` to disable this mechanism. Defaults to 300.0.
+            setup ([type], optional): A coroutine to prepare a connection right before it is returned  from `Pool.acquire()`. Defaults to None.
+            init ([type], optional): A coroutine to initialize a connection when it is created. Defaults to None.
+            loop ([type], optional): Asyncio even loop instance. Defaults to None.
+            connection_class ([type], optional): The class to use for connections.  Must be a subclass of `asyncpg.connection.Connection`. Defaults to asyncpg.connection.Connection.
+        &#34;&#34;&#34;
+        self.dsn = dsn
+        self.min_size = min_size
+        self.max_size = max_size
+        self.max_queries = max_queries
+        self.max_inactive_connection_lifetime = max_inactive_connection_lifetime
+        self.setup = setup
+        self.init = init
+        self.loop = loop
+        self.connection_class = connection_class
+        self.connect_kwargs = connect_kwargs
+
+        self._pool = None
+        self.open()
+
+    @property
+    def pool(self) -&gt; asyncpg.pool.Pool:
+        &#34;&#34;&#34;Property pool that is an asyncpg.pool.Pool object
+        &#34;&#34;&#34;
+        return self._pool
+
+    async def __create_pool(self) -&gt; asyncpg.pool.Pool:
+        &#34;&#34;&#34;Create a asyncpg.pool.Pool for this Pool object.
+
+        Returns:
+            asyncpg.pool.Pool: Pool object (singleton)
+        &#34;&#34;&#34;
+        return await asyncpg.create_pool(
+                                        dsn=self.dsn,
+                                        min_size=self.min_size,
+                                        max_size=self.max_size,
+                                        max_queries=self.max_queries,
+                                        max_inactive_connection_lifetime=self.max_inactive_connection_lifetime,
+                                        setup=self.setup,
+                                        init=self.init,
+                                        loop=self.loop,
+                                        connection_class=self.connection_class,
+                                        **self.connect_kwargs)
+    def open(self):
+        &#34;&#34;&#34;Open the pool
+        &#34;&#34;&#34;
+        if not self._pool:
+            self._pool = asyncio.get_event_loop().run_until_complete(self.__create_pool())
+            print(&#34;Pool opened&#34;)
+
+    def close(self):
+        &#34;&#34;&#34;Attempt to close the pool gracefully.
+        &#34;&#34;&#34;
+        if self._pool:
+            asyncio.get_event_loop().run_until_complete(self._pool.close())
+            self._pool = None
+            print(&#34;Pool closed&#34;)
+
+
+class DB(object):
+    &#34;&#34;&#34;Helper class that can execute query taking a connection from a
+    connection pool defined by a Pool object.
+    &#34;&#34;&#34;
+
+    def __init__(self, pool: Pool, con: Connection=None):
+        &#34;&#34;&#34;Initialize a DB object setting a pool to get connection from.
+
+        If connection is given, it is used instead.
+
+        Args:
+            pool (Pool): A connection pool
+            con (Connection): Connection. Defaults to `None`.
+        &#34;&#34;&#34;
+        self._pool = pool
+        self._con = con
+        self.DATA_NO_CHANGE = &#39;DATA_NO_CHANGE_TRIGGERED&#39;
+
+    @property
+    def pool(self) -&gt; Pool:
+        &#34;&#34;&#34;Return the Pool object
+
+        Returns:
+            Pool: Pool object
+        &#34;&#34;&#34;
+        return self._pool
+
+    def corp(self) -&gt; Union[asyncpg.pool.Pool, Connection]:
+        &#34;&#34;&#34;Return the connection if available, otherwise return a Pool.
+
+        Note: The name reads &#39;c or p&#39;
+
+        Returns:
+            Connection or asyncpg.pool.Pool object
+        &#34;&#34;&#34;
+        if self._con:
+            return self._con
+        return self._pool.pool
+
+    async def fetch(self, query: str, *args,
+                    timeout: float = None,
+                    model_class: ModelType=None
+                    ) -&gt; Union[List[ModelBase], List[Record]]:
+        &#34;&#34;&#34;Make a query and get the results.
+
+        Resultant records can be mapped to model_class objects.
+
+        Args:
+            query (str): Query string.
+            args (*list or *tuple): Query arguments.
+            timeout (float, optional): Timeout value. Defaults to None.
+            model_class (Model, optional): Defaults to None.
+
+        Returns:
+            List[Model] or List[Record] : List of model instances if model_class is given, otherwise list of Record instances.
+        &#34;&#34;&#34;
+        pool = self.corp()
+        records = await pool.fetch(query, *args, timeout=timeout)
+        if not model_class:
+            return records
+        else:
+            new_records = []
+            for record in records:
+                new_record = record_to_model(record, model_class)
+                new_records.append(new_record)
+            return new_records
+
+    async def fetchrow(self, query: str, *args,
+                        timeout: float = None,
+                        model_class: ModelType=None
+                        ) -&gt; Union[ModelBase, Record]:
+        &#34;&#34;&#34;Make a query and get the first row.
+
+        Resultant record can be mapped to model_class objects.
+
+        Args:
+            query (str): Query string.
+            args (*list or *tuple): Query arguments.
+            timeout (float, optional): Timeout value. Defaults to None.
+            model_class (Model, optional): Defaults to None.
+
+        Returns:
+            Record or model_clas object or None if no rows were selected.
+        &#34;&#34;&#34;
+        pool = self.corp()
+        record = await pool.fetchrow(query, *args, timeout=timeout)
+        if not model_class:
+            return record
+        else:
+            if not record:
+                return record
+            new_record = record_to_model(record, model_class)
+            return new_record
+
+    async def fetchval(self, query: str, *args,
+                        column: int = 0,
+                        timeout: float = None
+                        ) -&gt; Any:
+        &#34;&#34;&#34;Run a query and return a column value in the first row.
+
+        Args:
+            query (str): Query to run.
+            args (*list or *tuple): Query arguments.
+            column (int, optional): Column index. Defaults to 0.
+            timeout (float, optional): Timeout. Defaults to None.
+
+        Returns:
+            Any: Coulmn (indentified by index) value of first row.
+        &#34;&#34;&#34;
+        pool = self.corp()
+        return await pool.fetchval(query, *args, column=column, timeout=timeout)
+
+    async def execute(self, query: str, *args,
+                        timeout: float = None
+                        ) -&gt; str:
+        &#34;&#34;&#34;Execute a query.
+
+        Args:
+            query (str): Query to run.
+            args (*list or *tuple): Query arguments.
+            timeout (float, optional): Timeout. Defaults to None.
+
+        Returns:
+            str: Status of the last SQL command
+        &#34;&#34;&#34;
+        pool = self.corp()
+        return await pool.execute(query, *args, timeout=timeout)
+
+    def get_insert_query(self, mob: ModelBase) -&gt; Tuple[str, List[Any]]:
+        &#34;&#34;&#34;Get insert query for the model object (mob) with its current data
+
+        Args:
+            mob (ModelBase): Model object
+
+        Returns:
+            (str, list): query, prepared_args
+        &#34;&#34;&#34;
+        data = mob.Meta._fields_
+        new_data_gen = mob.__class__._get_FieldValue_data_valid_(data, up=True)
+        columns = []
+        values = []
+        markers = []
+        c = 0
+        for n,v in new_data_gen:
+            c += 1
+            columns.append(n)
+            values.append(v.value)
+            markers.append(f&#39;${c}&#39;)
+
+        column_q = &#39;&#34;,&#34;&#39;.join(columns)
+        if column_q:
+            column_q = f&#39;&#34;{column_q}&#34;&#39;
+        marker_q = &#39;, &#39;.join(markers)
+        if column_q:
+            query = f&#39;INSERT INTO &#34;{mob.__class__._get_db_table_()}&#34; ({column_q}) VALUES ({marker_q}) RETURNING &#34;{mob.__class__._get_pk_()}&#34;&#39;
+        else:
+            query = &#39;&#39;
+        return query, values
+
+    def get_update_query(self, mob: ModelBase, reset=False) -&gt; Tuple[str, List[Any]]:
+        &#34;&#34;&#34;Get the update query for the changed data in the model object (mob)
+
+        Args:
+            mob (ModelBase): Model object
+            reset (bool): If True, this method can be called just once to get the changes done on mob. Subsequent call will return empty query.
+
+        Raises:
+            AttributeError: If primary key does not exists i.e if not updatable
+
+        Returns:
+            str, args: tuple of query, prepared_args
+        &#34;&#34;&#34;
+        pkval = getattr(mob, mob.__class__._get_pk_()) #save method depends on it&#39;s AttributeError
+        data = mob.Meta._fields_
+        new_data_gen = mob.__class__._get_FieldValue_data_valid_(data, up=True)
+        colval = []
+        values = []
+        c = 0
+        for n,v in new_data_gen:
+            if n == mob.__class__._get_pk_(): continue
+            if n in mob.Meta._fromdb_:
+                countover = 1
+            else:
+                countover = 0
+            if v.value_change_count &gt; countover:
+                c += 1
+                colval.append(f&#39;&#34;{n}&#34;=${c}&#39;)
+                values.append(v.value)
+                if reset:
+                    v._value_change_count = countover
+
+        where = f&#39;&#34;{mob.__class__._get_pk_()}&#34;=${c+1}&#39;
+        values.append(pkval)
+
+        colval_q = &#39;, &#39;.join(colval)
+        if colval_q:
+            query = f&#39;UPDATE &#34;{mob.__class__._get_db_table_()}&#34; SET {colval_q} WHERE {where}&#39;
+        else:
+            query = &#39;&#39;
+        return query, values
+
+    async def insert(self, mob: ModelBase, timeout: float = None) -&gt; Any:
+        &#34;&#34;&#34;Insert the current data state of mob into db.
+
+        Args:
+            mob (ModelBase): Model object
+            timeout (float): timeout value. Defaults to None.
+
+        Returns:
+            (Any): Value of primary key of the inserted row
+        &#34;&#34;&#34;
+        query, args = self.get_insert_query(mob)
+        pkval = await self.fetchval(query, *args, timeout=timeout)
+        if pkval is not None:
+            setattr(mob, mob.__class__._get_pk_(), pkval)
+        return pkval
+
+    async def update(self, mob: ModelBase, timeout: float = None) -&gt; str:
+        &#34;&#34;&#34;Update the current changed data of mob onto db
+
+        Args:
+            mob (ModelBase): Model object
+            timeout (float): timeout value. Defaults to None.
+
+        Raises:
+            AttributeError: If primary key does not exists.
+
+        Returns:
+            str: status of last sql command.
+            Successful status starts with the word &#39;UPDATE&#39; followed by
+            number of rows updated, which should be 1 in this case.
+        &#34;&#34;&#34;
+        query, args = self.get_update_query(mob, reset=True)
+        if query:
+            return await self.execute(query, *args, timeout=timeout)
+        return self.DATA_NO_CHANGE
+
+
+    async def save(self, mob: ModelBase, timeout: float = None) -&gt; Union[str, Any]:
+        &#34;&#34;&#34;Insert if not exists and update if exists.
+
+        update is tried first, if fails (if pk does not exist), insert
+        is called.
+
+        Args:
+            mob (ModelBase): Model object
+            timeout (float): timeout value. Defaults to None.
+
+        Returns:
+            int or str: The value of the primary key for insert or
+                            status for update.
+        &#34;&#34;&#34;
+        try:
+            return await self.update(mob, timeout=timeout)
+        except AttributeError:
+            return await self.insert(mob, timeout=timeout)
+
+    def q(self, model: ModelType = None) -&gt; &#39;ModelQuery&#39;:
+        &#34;&#34;&#34;Return a ModelQuery for model
+
+        If `None` is passed, it will give a `ModelQuery` without setting
+        `self.model` on the `ModelQuery` object.
+
+        Args:
+            model (ModelType, optional): model class. Defaults to None.
+
+        Raises:
+            TypeError: If invalid model type is passed
+
+        Returns:
+            ModelQuery: ModelQuery object
+        &#34;&#34;&#34;
+        return self(model)
+
+
+    def __call__(self, model: ModelType = None) -&gt; &#39;ModelQuery&#39;:
+        &#34;&#34;&#34;Return a ModelQuery for model
+
+        If `None` is passed, it will give a `ModelQuery` without setting
+        `self.model` on the `ModelQuery` object.
+
+        Args:
+            model (ModelType, optional): model class. Defaults to None.
+
+        Raises:
+            TypeError: If invalid model type is passed
+
+        Returns:
+            ModelQuery: ModelQuery object
+        &#34;&#34;&#34;
+        if isinstance(model, ModelType) or model is None:
+            return ModelQuery(self, model)
+        raise TypeError(f&#34;Invalid model: {model}. model must be of type {ModelType.__name__}. Make sure you did not pass a model object by mistake.&#34;)
+
+
+
+class ModelQuery():
+    def __init__(self, db: DB, model_class: ModelType = None):
+        &#34;&#34;&#34;Query builder for model class.
+
+        The `q` family of methods (`q, qc, qu etc..`) can be used to
+        build a query step by step. These methods can be chained
+        together to break down the query building in multiple steps.
+
+        Several properties are available to get information of the model
+        such as table name (`self.db_table`), ordering (`self.ordering`),
+        field names (`self.f.&lt;field_name&gt;`) etc..
+
+        `self.c` is a counter that gives an integer representing the
+        last existing argument position plus 1.
+
+        `reset()` can be called to reset the query to start a new.
+
+        To execute a query, you need to run one of the execution methods
+        : `fetch, fetchrow, fetchval, execute`.
+
+        Notable convenience methods:
+
+        * `qupdate(data)`: Initialize a update query for data
+        * `qfilter()`: Initialize a filter query upto WHERE clasue.
+        * `get(pkval)`: Get an item by primary key.
+
+        Args:
+            db (DB): DB object
+            model_class (ModelType): model
+        &#34;&#34;&#34;
+        self.reset()
+        self.db = db
+        self.model = model_class # can be None
+        def func(k):
+            return Q(model_class._check_field_name_(k))
+        self._f = FieldNames(func) # no reset
+
+    def __repr__(self):
+        return f&#39;ModelQuery({self.db}, {self.model})&#39;
+
+    def reset(self) -&gt; &#39;ModelQuery&#39;:
+        &#34;&#34;&#34;Reset the model query by returning it to its initial state.
+
+        Returns:
+            self (Enables method chaining)
+        &#34;&#34;&#34;
+        self._query_str_queue: List[str] = []
+        self.end_query_str = &#39;&#39;
+        self.start_query_str = &#39;&#39;
+        self._prepared_args: List[Any] = []
+        self._arg_count = 0
+        self._named_args: Dict[str, Any] = {}
+        self._named_args_mapper: Dict[str, int] = {}
+        self.__filter_initiated = False
+        self._ordering = &#39;&#39;
+        self.__update_initiated = False
+        return self
+
+
+    @property
+    def c(self) -&gt; int:
+        &#34;&#34;&#34;Current available argument position in the query
+
+        arg_count + 1 i.e if $1 and $2 has been used so far, then
+        self.c is 3 so that you can use it to make $3.
+
+        Returns:
+            int
+        &#34;&#34;&#34;
+        return self._arg_count + 1
+
+    @property
+    def db_table(self) -&gt; str:
+        &#34;&#34;&#34;Table name of the model (quoted)
+        &#34;&#34;&#34;
+        return Q(self.model._get_db_table_()) #type: ignore
+
+    @property
+    def pk(self) -&gt; str:
+        &#34;&#34;&#34;Primary key name (quoted)
+        &#34;&#34;&#34;
+        return Q(self.model._get_pk_()) #type: ignore
+
+    @property
+    def ordering(self) -&gt; str:
+        &#34;&#34;&#34;Ordering query in SQL, does not include `ORDER BY`.
+
+        Example: `&#34;price&#34; ASC, &#34;quantity&#34; DESC`
+        &#34;&#34;&#34;
+        if not self._ordering:
+            self._ordering = &#39;,&#39;.join([&#39; &#39;.join(y) for y in self.model._get_ordering_(quote=&#39;&#34;&#39;)]) # type: ignore
+        return self._ordering
+
+    @property
+    def f(self) -&gt; FieldNames:
+        &#34;&#34;&#34;Field name container where names are quoted.
+
+        It can be used to avoid spelling mistakes in writing query.
+
+        Example: query `&#39;select &#34;profesion&#34; from &#34;table_name&#34;&#39;`
+
+        will only produce error after actually running the query against
+        a correctly spelled column &#39;profession&#39;.
+
+        while,
+
+        query `f&#39;select {self.f.profesion} from {self.db_table}&#39;`
+
+        will throw python exception telling you that there is no
+        misspelled &#39;profesion&#39; field.
+
+        Note: you have to change `self` in above to the current
+        `ModelQuery` instance
+        &#34;&#34;&#34;
+        return self._f
+
+    def _process_positional_args(self, *args):
+        if args:
+            self._prepared_args.extend(args)
+            self._arg_count += len(args)
+
+
+    def _process_keyword_args(self, q: str, **kwargs) -&gt; str:
+        # TODO: improvents need to be done
+        # 1. needs to handle only unquoted keyword :field_name
+        #    and ignore &#39;:field_name&#39; or &#34;:field_name&#34;
+        self._named_args.update(kwargs)
+        for k,v in self._named_args.items():
+            if k in self._named_args_mapper:
+                q, mc = re.subn(f&#39;:{k}\\b&#39;, f&#39;${self._named_args_mapper[k]}&#39;, q)
+            else:
+                q, mc = re.subn(f&#39;:{k}\\b&#39;, f&#39;${self._arg_count+1}&#39;, q)
+                if mc &gt; 0:
+                    self._prepared_args.append(v)
+                    self._arg_count += 1
+                    self._named_args_mapper[k] = self._arg_count
+        return q
+
+    def q(self, q: str, *args) -&gt; &#39;ModelQuery&#39;:
+        &#34;&#34;&#34;Add raw query stub without parsing to check for keyword arguments
+
+        Use `$1`, `$2` etc. for prepared arguments.
+
+        Use `self.c` (instance property, use fstring) to get the current
+        available prepared argument position.
+
+        This is an efficient way to add query that do not have any
+        keyword arguments to handle, compared to `q_()` which checks for
+        keyword arguments everytime it is called.
+
+        Example:
+
+        ```python
+        mq = db(SomeModel)
+        mq\
+        .q(&#39;SELECT * FROM &#34;table&#34; WHERE $1&#39;, True)\
+        .q(&#39;AND &#34;price&#34; &gt;= $2&#39;, 33)\
+        .q(f&#39;OR &#34;price&#34; = ${mq.c}&#39;, 0) # mq.c=3 (now)\
+        .q_(&#39;OR &#34;status&#34; = :status&#39;, status=&#39;OK&#39;)\
+        # :status is $4:
+        .q(&#39;OR &#34;active&#34; = $5&#39;, 0)\
+        .q_(&#39;AND &#34;status&#34; = :status&#39;)\
+        # status=&#39;OK&#39; from previous call
+        .q(&#39;OR &#34;price&#34; = $2&#39;)\
+        # $2=33 from previous call
+        #using format string and mq.c to get the argument position:
+        .q(f&#39;OR &#34;price&#34; &gt; ${mq.c} OR &#34;quantity&#34; &gt; ${mq.c+1}&#39;, 12, 3)
+        #               mq.c=6 ^
+        ```
+
+        Args:
+            q (str): raw query string
+
+        Returns:
+            ModelQuery: self, enables method chaining.
+        &#34;&#34;&#34;
+        self._process_positional_args(*args)
+        self._query_str_queue.append(q)
+        return self
+
+
+    def q_(self, q: str, *args, **kwargs) -&gt; &#39;ModelQuery&#39;:
+        &#34;&#34;&#34;Add a query stub having keyword params.
+
+        Use the format `:field_name` for keyword parameter.
+        `:field_name` is converted to positional parameter (`$n`).
+
+        This method checks the query against all keyword arguments
+        that has been added so far with other `q*()` methods.
+
+        Args:
+            q (str): query string (SQL)
+
+        Returns:
+            ModelQuery: returns `self` to enable method chaining
+        &#34;&#34;&#34;
+        self._process_positional_args(*args)
+        q = self._process_keyword_args(q, **kwargs)
+        self._query_str_queue.append(q)
+        return self
+
+    def qq(self, word: str) -&gt; &#39;ModelQuery&#39;:
+        &#34;&#34;&#34;Quote and add a word to the query.
+
+        Enable to add names with auto-quote. For example, if the name
+        for a field value is `status`, it can be added to the query
+        with auto-quoting, i.e for postgresql it will be added
+        as `&#34;status&#34;`.
+
+        Example:
+
+        ```python
+        .qq(&#39;price&#39;).q(&#39;&gt;= $1&#39;,34)
+        ```
+
+        Args:
+            word (str): the word that needs to be added with quote.
+
+        Returns:
+            ModelQuery: returns `self` to enable method chaining
+        &#34;&#34;&#34;
+        if word:
+            self._query_str_queue.append(Q(word))
+        return self
+
+
+    def qc(self, word: str, rest: str, *args) -&gt; &#39;ModelQuery&#39;:
+        &#34;&#34;&#34;Add query by quoting `word` while adding the `rest` as is.
+
+        This is a shorthand for making where clause conditions.
+        For example: `qc(&#39;price&#39;, &#39;&gt;=$1&#39;, 34)` is a safe way to write
+        a where condition like: `&#34;price&#34; &gt;=34`.
+
+        The same can be achieved by using a combination of
+        `qq()` and `q()` or manually quoting and using
+        with `q()`
+
+        Example:
+
+        ```python
+        .qc(&#39;price&#39;, &#39;&gt;= $1&#39;, 34)
+        ```
+
+        Args:
+            word (str): left part of query that needs to be quoted
+            rest (str): right part of query that does not need to be quoted
+            *args (any): prepared args
+
+        Returns:
+            ModelQuery: returns `self` to enable method chaining
+        &#34;&#34;&#34;
+        return self.qq(word).q(rest, *args)
+
+
+    def qc_(self, word: str, rest: str, *args, **kwargs) -&gt; &#39;ModelQuery&#39;:
+        &#34;&#34;&#34;Add query by quoting `word` while adding the `rest` as is.
+
+        Same as `qc()` except this method parses the `rest` query string
+        for keyword params in the format: `:field_name`
+
+        Args:
+            word (str): left part of query that needs to be quoted
+            rest (str): right part of query that does not need to be quoted
+            *args (any): prepared args
+            *kwargs: prepared keyword args
+
+        Returns:
+            ModelQuery: returns `self` to enable method chaining
+        &#34;&#34;&#34;
+        return self.qq(word).q_(rest, *args, **kwargs)
+
+    def qo(self, order: str) -&gt; &#39;ModelQuery&#39;:
+        &#34;&#34;&#34;Convert `+/-field_name,` to proper order_by criteria and add to query.
+
+        Example: `-field_name,` will become: `&#34;field_name&#34; DESC,`
+
+        * `+` at beginning means ascending order (default)
+        * `-` at beginning means descending order
+        * `,` at end means you will add more order criteria
+
+        Ommit the comma (`,`) when it is the last ordering criteria.
+
+        Args:
+            order (str): order criteria in the format `+/-field_name,`
+
+        Returns:
+            ModelQuery: returns `self` to enable method chaining
+        &#34;&#34;&#34;
+        direction = &#39;ASC&#39;
+        if order.startswith(&#39;-&#39;):
+            order = order[1:]
+            direction = &#39;DESC&#39;
+        elif order.startswith(&#39;+&#39;):
+            order = order[1:]
+        if order.endswith(&#39;,&#39;):
+            order = order[0:-1]
+            direction += &#39;,&#39;
+        return self.qq(order).q(direction)
+
+    def qu(self, data: dict) -&gt; &#39;ModelQuery&#39;:
+        &#34;&#34;&#34;Convert data to `&#34;column&#34;=$n` query with prepared args as the
+            values and add to the main query.
+
+        The counter of positional arguments increases by the number of
+        items in `data`. Make use of `self.c` counter to add more
+        queries after using this method.
+
+        Args:
+            data (dict): data in format: `{&#39;column&#39;: value}`
+
+        Returns:
+            ModelQuery: returns `self` to enable method chaining
+        &#34;&#34;&#34;
+        setq = &#39;, &#39;.join([f&#39;&#34;{c}&#34;=${i}&#39; for i,c in enumerate(data, self.c)])
+        return self.q(setq, *data.values())
+
+    def qreturning(self, *column_names) -&gt; &#39;ModelQuery&#39;:
+        &#34;&#34;&#34;Convenience to add a `RETURNING` clause.
+
+        Args:
+            column_names: column names.
+
+        Returns:
+            ModelQuery: returns `self` to enable method chaining
+        &#34;&#34;&#34;
+        q = &#39;&#34;,&#34;&#39;.join(column_names)
+        if q:
+            q = f&#39;&#34;{q}&#34;&#39;
+        return self.q(q)
+
+    def qwhere(self) -&gt; &#39;ModelQuery&#39;:
+        &#34;&#34;&#34;Convenience to add &#39;WHERE&#39; to the main query.
+
+        Make use of `qc()` method to add conditions.
+
+        Returns:
+            ModelQuery: returns `self` to enable method chaining
+        &#34;&#34;&#34;
+        return self.q(&#39;WHERE&#39;)
+
+    def qfilter(self, no_ordering=False) -&gt; &#39;ModelQuery&#39;:
+        &#34;&#34;&#34;Initiate a filter.
+
+        This initiates a `SELECT` query upto `WHERE`. You can then use the
+        `q()`, `qc()`, etc. methods to add conditions and finally
+        execute the `fetch()` method to get all results or execute the
+        `fetchrow()` method to get a single row.
+
+        Example:
+
+        ```python
+        .qfilter().q(&#39;&#34;price&#34; &gt;= $1 AND &#34;status&#34; = $2&#39;, 32.12, &#39;OK&#39;)
+        ```
+
+        Args:
+            no_ordering (bool): Whether to remove the default ordering SQL. Defaults to False.
+
+        Returns:
+            ModelQuery: returns self to enable method chaining
+        &#34;&#34;&#34;
+        if not self.__filter_initiated:
+            down_fields = &#39;,&#39;.join([Q(x) for x in self.model._get_fields_(up=False)]) #type: ignore
+            self.q(f&#39;SELECT {down_fields} FROM &#34;{self.model._get_db_table_()}&#34; WHERE&#39;) #type: ignore
+            self.__filter_initiated = True
+            order_by = self.ordering
+            if order_by and not no_ordering:
+                self.end_query_str = f&#39;ORDER BY {order_by}&#39;
+        else:
+            ValueError(f&#34;Filter is already initiated for this {self.__class__.__name__} query object: {self}&#34;)
+        return self
+
+    def qupdate(self, data: dict) -&gt; &#39;ModelQuery&#39;:
+        &#34;&#34;&#34;Initiate a UPDATE query for data.
+
+        This initiates an `UPDATE` query upto `WHERE` and leaves you to
+        add conditions with other methods such as `qc` or the generic
+        method `q()`.
+
+        Finally call the `execute()` method to execute the query or
+        call the `fetchval()` method if using `RETURNING` clause.
+
+        Args:
+            data (dict): data in key value dictionary
+
+        Returns:
+            ModelQuery: returns `self` to enable method chaining
+        &#34;&#34;&#34;
+        if not self.__update_initiated:
+            self.q(f&#39;UPDATE {self.db_table} SET&#39;).qu(data).qwhere()
+            self.__update_initiated = True
+        else:
+            ValueError(f&#34;update is already initiated for this {self.__class__.__name__} query: {self}&#34;)
+        return self
+
+
+    def getq(self) -&gt; Tuple[str, List[Any]]:
+        &#34;&#34;&#34;Return query string and prepared arg list
+
+        Returns:
+            tuple: (str, list) : (query, parepared_args)
+        &#34;&#34;&#34;
+        query = &#39; &#39;.join(self._query_str_queue)
+        self._query_str_queue = [query]
+        query = f&#39;{self.start_query_str} {query} {self.end_query_str}&#39;
+        return query, self._prepared_args
+
+    async def fetch(self, timeout: float = None) -&gt; Union[List[ModelBase], List[Record]]:
+        &#34;&#34;&#34;Run query method `fetch` that returns the results in model class objects
+
+        Returns the results in model class objects.
+
+        Args:
+            timeout (float, optional): Timeout in seconds. Defaults to None.
+
+        Returns:
+            List[Model]: List of model instances.
+        &#34;&#34;&#34;
+        query, parepared_args = self.getq()
+        return await self.db.fetch(query, *parepared_args, timeout=timeout, model_class=self.model)
+
+    async def fetchrow(self, timeout: float = None) -&gt; Union[ModelBase, Record]:
+        &#34;&#34;&#34;Make a query and get the first row.
+
+        Resultant record is mapped to model_class object.
+
+        Args:
+            timeout (float, optional): Timeout value. Defaults to None.
+
+        Returns:
+            model_clas object or None if no rows were selected.
+        &#34;&#34;&#34;
+        query, parepared_args = self.getq()
+        return await self.db.fetchrow(query, *parepared_args, timeout=timeout, model_class=self.model)
+
+    async def fetchval(self, column: int = 0, timeout: float = None) -&gt; Any:
+        &#34;&#34;&#34;Run the query and return a column value in the first row.
+
+        Args:
+            column (int, optional): Column index. Defaults to 0.
+            timeout (float, optional): Timeout. Defaults to None.
+
+        Returns:
+            Any: Coulmn (indentified by index) value of first row.
+        &#34;&#34;&#34;
+        query, parepared_args = self.getq()
+        return await self.db.fetchval(query, *parepared_args, column=column, timeout=timeout)
+
+    async def execute(self, timeout: float = None) -&gt; str:
+        &#34;&#34;&#34;Execute the query.
+
+        Args:
+            timeout (float, optional): Timeout. Defaults to None.
+
+        Returns:
+            str: Status of the last SQL command
+        &#34;&#34;&#34;
+        query, parepared_args = self.getq()
+        return await self.db.execute(query, *parepared_args, timeout=timeout)
+
+    async def get(self, *vals, col: str = &#39;&#39;, comp: str = &#39;=$1&#39;) -&gt; Union[ModelBase, Record]:
+        &#34;&#34;&#34;Get the first row found by column and value.
+
+        If `col` is not given, it defaults to the primary key (`pk`) of
+        the model.
+
+        If comparison is not given, it defaults to `=$1`
+
+        Args:
+            *vals (any): Values to compare. Must be referenced with $1, $2 etc.. in `comp`.
+            col (str, optional): Column name. Defaults to the primary key.
+            comp (str, optional): Comparison. Defaults to &#39;=$1&#39;.
+
+        Returns:
+            model_clas object or None if no rows were selected.
+        &#34;&#34;&#34;
+        if not col:
+            col = self.model.Meta.pk    #type: ignore
+        return await self.qfilter().qc(col, comp, *vals).fetchrow()
+
+
+
+
+
+
+
+
+
+class Transaction():
+    def __init__(self, pool: Pool, *,
+                isolation: str=&#39;read_committed&#39;,
+                readonly: bool=False,
+                deferrable: bool=False):
+        &#34;&#34;&#34;Start a transaction.
+
+        Args:
+            pool (Pool): Pool instance.
+            isolation (str, optional): Transaction isolation mode, can be one of: `&#39;serializable&#39;`, `&#39;repeatable_read&#39;`, `&#39;read_committed&#39;`. Defaults to &#39;read_committed&#39;. See https://www.postgresql.org/docs/9.5/transaction-iso.html
+            readonly (bool, optional): Specifies whether or not this transaction is read-only. Defaults to False.
+            deferrable (bool, optional): Specifies whether or not this transaction is deferrable. Defaults to False.
+        &#34;&#34;&#34;
+        self.db = DB(pool)
+        self.tr = None
+        self.tr_args = {
+            &#39;isolation&#39;: isolation,
+            &#39;readonly&#39;: readonly,
+            &#39;deferrable&#39;: deferrable,
+        }
+
+    async def __aenter__(self) -&gt; Connection:
+        return await self.start()
+
+    async def start(self) -&gt; Connection:
+        &#34;&#34;&#34;Start transaction.
+
+        Raises:
+            exceptions.TransactionError: When same object is used simultaneously for transaction
+
+        Returns:
+            Connection: Connection object.
+        &#34;&#34;&#34;
+        if self.db._con:
+            raise exceptions.TransactionError(&#39;Another transaction is running (or not ended properly) with this Transaction object&#39;)
+        self.db._con = await self.db._pool.pool.acquire() # type: ignore
+        self.tr = self.db._con.transaction(**self.tr_args) # type: ignore
+        await self.tr.start() # type: ignore
+        # return self.db
+        # test with returning con directly
+        return self.db._con
+
+    async def rollback(self):
+        &#34;&#34;&#34;Rollback the transaction.
+        &#34;&#34;&#34;
+        if self.tr:
+            await self.tr.rollback()
+
+    async def commit(self):
+        &#34;&#34;&#34;Commit the transaction.
+        &#34;&#34;&#34;
+        if self.tr:
+            await self.tr.commit()
+
+    async def end(self):
+        &#34;&#34;&#34;Close the transaction gracefully.
+
+        Resources are released and some cleanups are done.
+        &#34;&#34;&#34;
+        try:
+            if self.db._con:
+                await self.db._pool.pool.release(self.db._con)
+        finally:
+            self.db._con = None
+            self.tr = None
+
+    async def __aexit__(self, extype, ex, tb):
+        try:
+            if extype is not None:
+                await self.rollback()
+            else:
+                await self.commit()
+        finally:
+            await self.end()</code></pre>
+</details>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+<h2 class="section-title" id="header-functions">Functions</h2>
+<dl>
+<dt id="morm.db.record_to_model"><code class="name flex">
+<span>def <span class="ident">record_to_model</span></span>(<span>record: asyncpg.Record, model_class: <a title="morm.model.ModelType" href="model.html#morm.model.ModelType">ModelType</a>) ‑> <a title="morm.model.Model" href="model.html#morm.model.Model">Model</a></span>
+</code></dt>
+<dd>
+<div class="desc"><p>Convert a Record object to Model object.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>record</code></strong> :&ensp;<code>Record</code></dt>
+<dd>Record object.</dd>
+<dt><strong><code>model_class</code></strong> :&ensp;<code>ModelType</code></dt>
+<dd>Model class</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code>Model</code></dt>
+<dd>Model instance.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def record_to_model(record: Record, model_class: ModelType) -&gt; Model:
+    &#34;&#34;&#34;Convert a Record object to Model object.
+
+    Args:
+        record (Record): Record object.
+        model_class (ModelType): Model class
+
+    Returns:
+        Model: Model instance.
+    &#34;&#34;&#34;
+    new_record = model_class()
+    for k,v in record.items():
+        setattr(new_record, k, v)
+        new_record.Meta._fromdb_.append(k)
+    return new_record</code></pre>
+</details>
+</dd>
+</dl>
+</section>
+<section>
+<h2 class="section-title" id="header-classes">Classes</h2>
+<dl>
+<dt id="morm.db.DB"><code class="flex name class">
+<span>class <span class="ident">DB</span></span>
+<span>(</span><span>pool: <a title="morm.db.Pool" href="#morm.db.Pool">Pool</a>, con: asyncpg.connection.Connection = None)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Helper class that can execute query taking a connection from a
+connection pool defined by a Pool object.</p>
+<p>Initialize a DB object setting a pool to get connection from.</p>
+<p>If connection is given, it is used instead.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>pool</code></strong> :&ensp;<code><a title="morm.db.Pool" href="#morm.db.Pool">Pool</a></code></dt>
+<dd>A connection pool</dd>
+<dt><strong><code>con</code></strong> :&ensp;<code>Connection</code></dt>
+<dd>Connection. Defaults to <code>None</code>.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class DB(object):
+    &#34;&#34;&#34;Helper class that can execute query taking a connection from a
+    connection pool defined by a Pool object.
+    &#34;&#34;&#34;
+
+    def __init__(self, pool: Pool, con: Connection=None):
+        &#34;&#34;&#34;Initialize a DB object setting a pool to get connection from.
+
+        If connection is given, it is used instead.
+
+        Args:
+            pool (Pool): A connection pool
+            con (Connection): Connection. Defaults to `None`.
+        &#34;&#34;&#34;
+        self._pool = pool
+        self._con = con
+        self.DATA_NO_CHANGE = &#39;DATA_NO_CHANGE_TRIGGERED&#39;
+
+    @property
+    def pool(self) -&gt; Pool:
+        &#34;&#34;&#34;Return the Pool object
+
+        Returns:
+            Pool: Pool object
+        &#34;&#34;&#34;
+        return self._pool
+
+    def corp(self) -&gt; Union[asyncpg.pool.Pool, Connection]:
+        &#34;&#34;&#34;Return the connection if available, otherwise return a Pool.
+
+        Note: The name reads &#39;c or p&#39;
+
+        Returns:
+            Connection or asyncpg.pool.Pool object
+        &#34;&#34;&#34;
+        if self._con:
+            return self._con
+        return self._pool.pool
+
+    async def fetch(self, query: str, *args,
+                    timeout: float = None,
+                    model_class: ModelType=None
+                    ) -&gt; Union[List[ModelBase], List[Record]]:
+        &#34;&#34;&#34;Make a query and get the results.
+
+        Resultant records can be mapped to model_class objects.
+
+        Args:
+            query (str): Query string.
+            args (*list or *tuple): Query arguments.
+            timeout (float, optional): Timeout value. Defaults to None.
+            model_class (Model, optional): Defaults to None.
+
+        Returns:
+            List[Model] or List[Record] : List of model instances if model_class is given, otherwise list of Record instances.
+        &#34;&#34;&#34;
+        pool = self.corp()
+        records = await pool.fetch(query, *args, timeout=timeout)
+        if not model_class:
+            return records
+        else:
+            new_records = []
+            for record in records:
+                new_record = record_to_model(record, model_class)
+                new_records.append(new_record)
+            return new_records
+
+    async def fetchrow(self, query: str, *args,
+                        timeout: float = None,
+                        model_class: ModelType=None
+                        ) -&gt; Union[ModelBase, Record]:
+        &#34;&#34;&#34;Make a query and get the first row.
+
+        Resultant record can be mapped to model_class objects.
+
+        Args:
+            query (str): Query string.
+            args (*list or *tuple): Query arguments.
+            timeout (float, optional): Timeout value. Defaults to None.
+            model_class (Model, optional): Defaults to None.
+
+        Returns:
+            Record or model_clas object or None if no rows were selected.
+        &#34;&#34;&#34;
+        pool = self.corp()
+        record = await pool.fetchrow(query, *args, timeout=timeout)
+        if not model_class:
+            return record
+        else:
+            if not record:
+                return record
+            new_record = record_to_model(record, model_class)
+            return new_record
+
+    async def fetchval(self, query: str, *args,
+                        column: int = 0,
+                        timeout: float = None
+                        ) -&gt; Any:
+        &#34;&#34;&#34;Run a query and return a column value in the first row.
+
+        Args:
+            query (str): Query to run.
+            args (*list or *tuple): Query arguments.
+            column (int, optional): Column index. Defaults to 0.
+            timeout (float, optional): Timeout. Defaults to None.
+
+        Returns:
+            Any: Coulmn (indentified by index) value of first row.
+        &#34;&#34;&#34;
+        pool = self.corp()
+        return await pool.fetchval(query, *args, column=column, timeout=timeout)
+
+    async def execute(self, query: str, *args,
+                        timeout: float = None
+                        ) -&gt; str:
+        &#34;&#34;&#34;Execute a query.
+
+        Args:
+            query (str): Query to run.
+            args (*list or *tuple): Query arguments.
+            timeout (float, optional): Timeout. Defaults to None.
+
+        Returns:
+            str: Status of the last SQL command
+        &#34;&#34;&#34;
+        pool = self.corp()
+        return await pool.execute(query, *args, timeout=timeout)
+
+    def get_insert_query(self, mob: ModelBase) -&gt; Tuple[str, List[Any]]:
+        &#34;&#34;&#34;Get insert query for the model object (mob) with its current data
+
+        Args:
+            mob (ModelBase): Model object
+
+        Returns:
+            (str, list): query, prepared_args
+        &#34;&#34;&#34;
+        data = mob.Meta._fields_
+        new_data_gen = mob.__class__._get_FieldValue_data_valid_(data, up=True)
+        columns = []
+        values = []
+        markers = []
+        c = 0
+        for n,v in new_data_gen:
+            c += 1
+            columns.append(n)
+            values.append(v.value)
+            markers.append(f&#39;${c}&#39;)
+
+        column_q = &#39;&#34;,&#34;&#39;.join(columns)
+        if column_q:
+            column_q = f&#39;&#34;{column_q}&#34;&#39;
+        marker_q = &#39;, &#39;.join(markers)
+        if column_q:
+            query = f&#39;INSERT INTO &#34;{mob.__class__._get_db_table_()}&#34; ({column_q}) VALUES ({marker_q}) RETURNING &#34;{mob.__class__._get_pk_()}&#34;&#39;
+        else:
+            query = &#39;&#39;
+        return query, values
+
+    def get_update_query(self, mob: ModelBase, reset=False) -&gt; Tuple[str, List[Any]]:
+        &#34;&#34;&#34;Get the update query for the changed data in the model object (mob)
+
+        Args:
+            mob (ModelBase): Model object
+            reset (bool): If True, this method can be called just once to get the changes done on mob. Subsequent call will return empty query.
+
+        Raises:
+            AttributeError: If primary key does not exists i.e if not updatable
+
+        Returns:
+            str, args: tuple of query, prepared_args
+        &#34;&#34;&#34;
+        pkval = getattr(mob, mob.__class__._get_pk_()) #save method depends on it&#39;s AttributeError
+        data = mob.Meta._fields_
+        new_data_gen = mob.__class__._get_FieldValue_data_valid_(data, up=True)
+        colval = []
+        values = []
+        c = 0
+        for n,v in new_data_gen:
+            if n == mob.__class__._get_pk_(): continue
+            if n in mob.Meta._fromdb_:
+                countover = 1
+            else:
+                countover = 0
+            if v.value_change_count &gt; countover:
+                c += 1
+                colval.append(f&#39;&#34;{n}&#34;=${c}&#39;)
+                values.append(v.value)
+                if reset:
+                    v._value_change_count = countover
+
+        where = f&#39;&#34;{mob.__class__._get_pk_()}&#34;=${c+1}&#39;
+        values.append(pkval)
+
+        colval_q = &#39;, &#39;.join(colval)
+        if colval_q:
+            query = f&#39;UPDATE &#34;{mob.__class__._get_db_table_()}&#34; SET {colval_q} WHERE {where}&#39;
+        else:
+            query = &#39;&#39;
+        return query, values
+
+    async def insert(self, mob: ModelBase, timeout: float = None) -&gt; Any:
+        &#34;&#34;&#34;Insert the current data state of mob into db.
+
+        Args:
+            mob (ModelBase): Model object
+            timeout (float): timeout value. Defaults to None.
+
+        Returns:
+            (Any): Value of primary key of the inserted row
+        &#34;&#34;&#34;
+        query, args = self.get_insert_query(mob)
+        pkval = await self.fetchval(query, *args, timeout=timeout)
+        if pkval is not None:
+            setattr(mob, mob.__class__._get_pk_(), pkval)
+        return pkval
+
+    async def update(self, mob: ModelBase, timeout: float = None) -&gt; str:
+        &#34;&#34;&#34;Update the current changed data of mob onto db
+
+        Args:
+            mob (ModelBase): Model object
+            timeout (float): timeout value. Defaults to None.
+
+        Raises:
+            AttributeError: If primary key does not exists.
+
+        Returns:
+            str: status of last sql command.
+            Successful status starts with the word &#39;UPDATE&#39; followed by
+            number of rows updated, which should be 1 in this case.
+        &#34;&#34;&#34;
+        query, args = self.get_update_query(mob, reset=True)
+        if query:
+            return await self.execute(query, *args, timeout=timeout)
+        return self.DATA_NO_CHANGE
+
+
+    async def save(self, mob: ModelBase, timeout: float = None) -&gt; Union[str, Any]:
+        &#34;&#34;&#34;Insert if not exists and update if exists.
+
+        update is tried first, if fails (if pk does not exist), insert
+        is called.
+
+        Args:
+            mob (ModelBase): Model object
+            timeout (float): timeout value. Defaults to None.
+
+        Returns:
+            int or str: The value of the primary key for insert or
+                            status for update.
+        &#34;&#34;&#34;
+        try:
+            return await self.update(mob, timeout=timeout)
+        except AttributeError:
+            return await self.insert(mob, timeout=timeout)
+
+    def q(self, model: ModelType = None) -&gt; &#39;ModelQuery&#39;:
+        &#34;&#34;&#34;Return a ModelQuery for model
+
+        If `None` is passed, it will give a `ModelQuery` without setting
+        `self.model` on the `ModelQuery` object.
+
+        Args:
+            model (ModelType, optional): model class. Defaults to None.
+
+        Raises:
+            TypeError: If invalid model type is passed
+
+        Returns:
+            ModelQuery: ModelQuery object
+        &#34;&#34;&#34;
+        return self(model)
+
+
+    def __call__(self, model: ModelType = None) -&gt; &#39;ModelQuery&#39;:
+        &#34;&#34;&#34;Return a ModelQuery for model
+
+        If `None` is passed, it will give a `ModelQuery` without setting
+        `self.model` on the `ModelQuery` object.
+
+        Args:
+            model (ModelType, optional): model class. Defaults to None.
+
+        Raises:
+            TypeError: If invalid model type is passed
+
+        Returns:
+            ModelQuery: ModelQuery object
+        &#34;&#34;&#34;
+        if isinstance(model, ModelType) or model is None:
+            return ModelQuery(self, model)
+        raise TypeError(f&#34;Invalid model: {model}. model must be of type {ModelType.__name__}. Make sure you did not pass a model object by mistake.&#34;)</code></pre>
+</details>
+<h3>Instance variables</h3>
+<dl>
+<dt id="morm.db.DB.pool"><code class="name">var <span class="ident">pool</span> : <a title="morm.db.Pool" href="#morm.db.Pool">Pool</a></code></dt>
+<dd>
+<div class="desc"><p>Return the Pool object</p>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code><a title="morm.db.Pool" href="#morm.db.Pool">Pool</a></code></dt>
+<dd>Pool object</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def pool(self) -&gt; Pool:
+    &#34;&#34;&#34;Return the Pool object
+
+    Returns:
+        Pool: Pool object
+    &#34;&#34;&#34;
+    return self._pool</code></pre>
+</details>
+</dd>
+</dl>
+<h3>Methods</h3>
+<dl>
+<dt id="morm.db.DB.corp"><code class="name flex">
+<span>def <span class="ident">corp</span></span>(<span>self) ‑> Union[asyncpg.pool.Pool, asyncpg.connection.Connection]</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Return the connection if available, otherwise return a Pool.</p>
+<p>Note: The name reads 'c or p'</p>
+<h2 id="returns">Returns</h2>
+<p>Connection or asyncpg.pool.Pool object</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def corp(self) -&gt; Union[asyncpg.pool.Pool, Connection]:
+    &#34;&#34;&#34;Return the connection if available, otherwise return a Pool.
+
+    Note: The name reads &#39;c or p&#39;
+
+    Returns:
+        Connection or asyncpg.pool.Pool object
+    &#34;&#34;&#34;
+    if self._con:
+        return self._con
+    return self._pool.pool</code></pre>
+</details>
+</dd>
+<dt id="morm.db.DB.execute"><code class="name flex">
+<span>async def <span class="ident">execute</span></span>(<span>self, query: str, *args, timeout: float = None) ‑> str</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Execute a query.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>query</code></strong> :&ensp;<code>str</code></dt>
+<dd>Query to run.</dd>
+<dt>args (<em>list or </em>tuple): Query arguments.</dt>
+<dt><strong><code>timeout</code></strong> :&ensp;<code>float</code>, optional</dt>
+<dd>Timeout. Defaults to None.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code>str</code></dt>
+<dd>Status of the last SQL command</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">async def execute(self, query: str, *args,
+                    timeout: float = None
+                    ) -&gt; str:
+    &#34;&#34;&#34;Execute a query.
+
+    Args:
+        query (str): Query to run.
+        args (*list or *tuple): Query arguments.
+        timeout (float, optional): Timeout. Defaults to None.
+
+    Returns:
+        str: Status of the last SQL command
+    &#34;&#34;&#34;
+    pool = self.corp()
+    return await pool.execute(query, *args, timeout=timeout)</code></pre>
+</details>
+</dd>
+<dt id="morm.db.DB.fetch"><code class="name flex">
+<span>async def <span class="ident">fetch</span></span>(<span>self, query: str, *args, timeout: float = None, model_class: <a title="morm.model.ModelType" href="model.html#morm.model.ModelType">ModelType</a> = None) ‑> Union[List[<a title="morm.model.ModelBase" href="model.html#morm.model.ModelBase">ModelBase</a>], List[asyncpg.Record]]</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Make a query and get the results.</p>
+<p>Resultant records can be mapped to model_class objects.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>query</code></strong> :&ensp;<code>str</code></dt>
+<dd>Query string.</dd>
+<dt>args (<em>list or </em>tuple): Query arguments.</dt>
+<dt><strong><code>timeout</code></strong> :&ensp;<code>float</code>, optional</dt>
+<dd>Timeout value. Defaults to None.</dd>
+<dt><strong><code>model_class</code></strong> :&ensp;<code>Model</code>, optional</dt>
+<dd>Defaults to None.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code>List[Model]</code> or <code>List[Record] </code></dt>
+<dd>List of model instances if model_class is given, otherwise list of Record instances.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">async def fetch(self, query: str, *args,
+                timeout: float = None,
+                model_class: ModelType=None
+                ) -&gt; Union[List[ModelBase], List[Record]]:
+    &#34;&#34;&#34;Make a query and get the results.
+
+    Resultant records can be mapped to model_class objects.
+
+    Args:
+        query (str): Query string.
+        args (*list or *tuple): Query arguments.
+        timeout (float, optional): Timeout value. Defaults to None.
+        model_class (Model, optional): Defaults to None.
+
+    Returns:
+        List[Model] or List[Record] : List of model instances if model_class is given, otherwise list of Record instances.
+    &#34;&#34;&#34;
+    pool = self.corp()
+    records = await pool.fetch(query, *args, timeout=timeout)
+    if not model_class:
+        return records
+    else:
+        new_records = []
+        for record in records:
+            new_record = record_to_model(record, model_class)
+            new_records.append(new_record)
+        return new_records</code></pre>
+</details>
+</dd>
+<dt id="morm.db.DB.fetchrow"><code class="name flex">
+<span>async def <span class="ident">fetchrow</span></span>(<span>self, query: str, *args, timeout: float = None, model_class: <a title="morm.model.ModelType" href="model.html#morm.model.ModelType">ModelType</a> = None) ‑> Union[<a title="morm.model.ModelBase" href="model.html#morm.model.ModelBase">ModelBase</a>, asyncpg.Record]</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Make a query and get the first row.</p>
+<p>Resultant record can be mapped to model_class objects.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>query</code></strong> :&ensp;<code>str</code></dt>
+<dd>Query string.</dd>
+<dt>args (<em>list or </em>tuple): Query arguments.</dt>
+<dt><strong><code>timeout</code></strong> :&ensp;<code>float</code>, optional</dt>
+<dd>Timeout value. Defaults to None.</dd>
+<dt><strong><code>model_class</code></strong> :&ensp;<code>Model</code>, optional</dt>
+<dd>Defaults to None.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<p>Record or model_clas object or None if no rows were selected.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">async def fetchrow(self, query: str, *args,
+                    timeout: float = None,
+                    model_class: ModelType=None
+                    ) -&gt; Union[ModelBase, Record]:
+    &#34;&#34;&#34;Make a query and get the first row.
+
+    Resultant record can be mapped to model_class objects.
+
+    Args:
+        query (str): Query string.
+        args (*list or *tuple): Query arguments.
+        timeout (float, optional): Timeout value. Defaults to None.
+        model_class (Model, optional): Defaults to None.
+
+    Returns:
+        Record or model_clas object or None if no rows were selected.
+    &#34;&#34;&#34;
+    pool = self.corp()
+    record = await pool.fetchrow(query, *args, timeout=timeout)
+    if not model_class:
+        return record
+    else:
+        if not record:
+            return record
+        new_record = record_to_model(record, model_class)
+        return new_record</code></pre>
+</details>
+</dd>
+<dt id="morm.db.DB.fetchval"><code class="name flex">
+<span>async def <span class="ident">fetchval</span></span>(<span>self, query: str, *args, column: int = 0, timeout: float = None) ‑> Any</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Run a query and return a column value in the first row.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>query</code></strong> :&ensp;<code>str</code></dt>
+<dd>Query to run.</dd>
+<dt>args (<em>list or </em>tuple): Query arguments.</dt>
+<dt><strong><code>column</code></strong> :&ensp;<code>int</code>, optional</dt>
+<dd>Column index. Defaults to 0.</dd>
+<dt><strong><code>timeout</code></strong> :&ensp;<code>float</code>, optional</dt>
+<dd>Timeout. Defaults to None.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code>Any</code></dt>
+<dd>Coulmn (indentified by index) value of first row.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">async def fetchval(self, query: str, *args,
+                    column: int = 0,
+                    timeout: float = None
+                    ) -&gt; Any:
+    &#34;&#34;&#34;Run a query and return a column value in the first row.
+
+    Args:
+        query (str): Query to run.
+        args (*list or *tuple): Query arguments.
+        column (int, optional): Column index. Defaults to 0.
+        timeout (float, optional): Timeout. Defaults to None.
+
+    Returns:
+        Any: Coulmn (indentified by index) value of first row.
+    &#34;&#34;&#34;
+    pool = self.corp()
+    return await pool.fetchval(query, *args, column=column, timeout=timeout)</code></pre>
+</details>
+</dd>
+<dt id="morm.db.DB.get_insert_query"><code class="name flex">
+<span>def <span class="ident">get_insert_query</span></span>(<span>self, mob: <a title="morm.model.ModelBase" href="model.html#morm.model.ModelBase">ModelBase</a>) ‑> Tuple[str, List[Any]]</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Get insert query for the model object (mob) with its current data</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>mob</code></strong> :&ensp;<code>ModelBase</code></dt>
+<dd>Model object</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<p>(str, list): query, prepared_args</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def get_insert_query(self, mob: ModelBase) -&gt; Tuple[str, List[Any]]:
+    &#34;&#34;&#34;Get insert query for the model object (mob) with its current data
+
+    Args:
+        mob (ModelBase): Model object
+
+    Returns:
+        (str, list): query, prepared_args
+    &#34;&#34;&#34;
+    data = mob.Meta._fields_
+    new_data_gen = mob.__class__._get_FieldValue_data_valid_(data, up=True)
+    columns = []
+    values = []
+    markers = []
+    c = 0
+    for n,v in new_data_gen:
+        c += 1
+        columns.append(n)
+        values.append(v.value)
+        markers.append(f&#39;${c}&#39;)
+
+    column_q = &#39;&#34;,&#34;&#39;.join(columns)
+    if column_q:
+        column_q = f&#39;&#34;{column_q}&#34;&#39;
+    marker_q = &#39;, &#39;.join(markers)
+    if column_q:
+        query = f&#39;INSERT INTO &#34;{mob.__class__._get_db_table_()}&#34; ({column_q}) VALUES ({marker_q}) RETURNING &#34;{mob.__class__._get_pk_()}&#34;&#39;
+    else:
+        query = &#39;&#39;
+    return query, values</code></pre>
+</details>
+</dd>
+<dt id="morm.db.DB.get_update_query"><code class="name flex">
+<span>def <span class="ident">get_update_query</span></span>(<span>self, mob: <a title="morm.model.ModelBase" href="model.html#morm.model.ModelBase">ModelBase</a>, reset=False) ‑> Tuple[str, List[Any]]</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Get the update query for the changed data in the model object (mob)</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>mob</code></strong> :&ensp;<code>ModelBase</code></dt>
+<dd>Model object</dd>
+<dt><strong><code>reset</code></strong> :&ensp;<code>bool</code></dt>
+<dd>If True, this method can be called just once to get the changes done on mob. Subsequent call will return empty query.</dd>
+</dl>
+<h2 id="raises">Raises</h2>
+<dl>
+<dt><code>AttributeError</code></dt>
+<dd>If primary key does not exists i.e if not updatable</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code>str, args</code></dt>
+<dd>tuple of query, prepared_args</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def get_update_query(self, mob: ModelBase, reset=False) -&gt; Tuple[str, List[Any]]:
+    &#34;&#34;&#34;Get the update query for the changed data in the model object (mob)
+
+    Args:
+        mob (ModelBase): Model object
+        reset (bool): If True, this method can be called just once to get the changes done on mob. Subsequent call will return empty query.
+
+    Raises:
+        AttributeError: If primary key does not exists i.e if not updatable
+
+    Returns:
+        str, args: tuple of query, prepared_args
+    &#34;&#34;&#34;
+    pkval = getattr(mob, mob.__class__._get_pk_()) #save method depends on it&#39;s AttributeError
+    data = mob.Meta._fields_
+    new_data_gen = mob.__class__._get_FieldValue_data_valid_(data, up=True)
+    colval = []
+    values = []
+    c = 0
+    for n,v in new_data_gen:
+        if n == mob.__class__._get_pk_(): continue
+        if n in mob.Meta._fromdb_:
+            countover = 1
+        else:
+            countover = 0
+        if v.value_change_count &gt; countover:
+            c += 1
+            colval.append(f&#39;&#34;{n}&#34;=${c}&#39;)
+            values.append(v.value)
+            if reset:
+                v._value_change_count = countover
+
+    where = f&#39;&#34;{mob.__class__._get_pk_()}&#34;=${c+1}&#39;
+    values.append(pkval)
+
+    colval_q = &#39;, &#39;.join(colval)
+    if colval_q:
+        query = f&#39;UPDATE &#34;{mob.__class__._get_db_table_()}&#34; SET {colval_q} WHERE {where}&#39;
+    else:
+        query = &#39;&#39;
+    return query, values</code></pre>
+</details>
+</dd>
+<dt id="morm.db.DB.insert"><code class="name flex">
+<span>async def <span class="ident">insert</span></span>(<span>self, mob: <a title="morm.model.ModelBase" href="model.html#morm.model.ModelBase">ModelBase</a>, timeout: float = None) ‑> Any</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Insert the current data state of mob into db.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>mob</code></strong> :&ensp;<code>ModelBase</code></dt>
+<dd>Model object</dd>
+<dt><strong><code>timeout</code></strong> :&ensp;<code>float</code></dt>
+<dd>timeout value. Defaults to None.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<p>(Any): Value of primary key of the inserted row</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">async def insert(self, mob: ModelBase, timeout: float = None) -&gt; Any:
+    &#34;&#34;&#34;Insert the current data state of mob into db.
+
+    Args:
+        mob (ModelBase): Model object
+        timeout (float): timeout value. Defaults to None.
+
+    Returns:
+        (Any): Value of primary key of the inserted row
+    &#34;&#34;&#34;
+    query, args = self.get_insert_query(mob)
+    pkval = await self.fetchval(query, *args, timeout=timeout)
+    if pkval is not None:
+        setattr(mob, mob.__class__._get_pk_(), pkval)
+    return pkval</code></pre>
+</details>
+</dd>
+<dt id="morm.db.DB.q"><code class="name flex">
+<span>def <span class="ident">q</span></span>(<span>self, model: <a title="morm.model.ModelType" href="model.html#morm.model.ModelType">ModelType</a> = None) ‑> <a title="morm.db.ModelQuery" href="#morm.db.ModelQuery">ModelQuery</a></span>
+</code></dt>
+<dd>
+<div class="desc"><p>Return a ModelQuery for model</p>
+<p>If <code>None</code> is passed, it will give a <code><a title="morm.db.ModelQuery" href="#morm.db.ModelQuery">ModelQuery</a></code> without setting
+<code>self.model</code> on the <code><a title="morm.db.ModelQuery" href="#morm.db.ModelQuery">ModelQuery</a></code> object.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>model</code></strong> :&ensp;<code>ModelType</code>, optional</dt>
+<dd>model class. Defaults to None.</dd>
+</dl>
+<h2 id="raises">Raises</h2>
+<dl>
+<dt><code>TypeError</code></dt>
+<dd>If invalid model type is passed</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code><a title="morm.db.ModelQuery" href="#morm.db.ModelQuery">ModelQuery</a></code></dt>
+<dd>ModelQuery object</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def q(self, model: ModelType = None) -&gt; &#39;ModelQuery&#39;:
+    &#34;&#34;&#34;Return a ModelQuery for model
+
+    If `None` is passed, it will give a `ModelQuery` without setting
+    `self.model` on the `ModelQuery` object.
+
+    Args:
+        model (ModelType, optional): model class. Defaults to None.
+
+    Raises:
+        TypeError: If invalid model type is passed
+
+    Returns:
+        ModelQuery: ModelQuery object
+    &#34;&#34;&#34;
+    return self(model)</code></pre>
+</details>
+</dd>
+<dt id="morm.db.DB.save"><code class="name flex">
+<span>async def <span class="ident">save</span></span>(<span>self, mob: <a title="morm.model.ModelBase" href="model.html#morm.model.ModelBase">ModelBase</a>, timeout: float = None) ‑> Union[str, Any]</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Insert if not exists and update if exists.</p>
+<p>update is tried first, if fails (if pk does not exist), insert
+is called.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>mob</code></strong> :&ensp;<code>ModelBase</code></dt>
+<dd>Model object</dd>
+<dt><strong><code>timeout</code></strong> :&ensp;<code>float</code></dt>
+<dd>timeout value. Defaults to None.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code>int</code> or <code>str</code></dt>
+<dd>The value of the primary key for insert or
+status for update.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">async def save(self, mob: ModelBase, timeout: float = None) -&gt; Union[str, Any]:
+    &#34;&#34;&#34;Insert if not exists and update if exists.
+
+    update is tried first, if fails (if pk does not exist), insert
+    is called.
+
+    Args:
+        mob (ModelBase): Model object
+        timeout (float): timeout value. Defaults to None.
+
+    Returns:
+        int or str: The value of the primary key for insert or
+                        status for update.
+    &#34;&#34;&#34;
+    try:
+        return await self.update(mob, timeout=timeout)
+    except AttributeError:
+        return await self.insert(mob, timeout=timeout)</code></pre>
+</details>
+</dd>
+<dt id="morm.db.DB.update"><code class="name flex">
+<span>async def <span class="ident">update</span></span>(<span>self, mob: <a title="morm.model.ModelBase" href="model.html#morm.model.ModelBase">ModelBase</a>, timeout: float = None) ‑> str</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Update the current changed data of mob onto db</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>mob</code></strong> :&ensp;<code>ModelBase</code></dt>
+<dd>Model object</dd>
+<dt><strong><code>timeout</code></strong> :&ensp;<code>float</code></dt>
+<dd>timeout value. Defaults to None.</dd>
+</dl>
+<h2 id="raises">Raises</h2>
+<dl>
+<dt><code>AttributeError</code></dt>
+<dd>If primary key does not exists.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code>str</code></dt>
+<dd>status of last sql command.</dd>
+</dl>
+<p>Successful status starts with the word 'UPDATE' followed by
+number of rows updated, which should be 1 in this case.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">async def update(self, mob: ModelBase, timeout: float = None) -&gt; str:
+    &#34;&#34;&#34;Update the current changed data of mob onto db
+
+    Args:
+        mob (ModelBase): Model object
+        timeout (float): timeout value. Defaults to None.
+
+    Raises:
+        AttributeError: If primary key does not exists.
+
+    Returns:
+        str: status of last sql command.
+        Successful status starts with the word &#39;UPDATE&#39; followed by
+        number of rows updated, which should be 1 in this case.
+    &#34;&#34;&#34;
+    query, args = self.get_update_query(mob, reset=True)
+    if query:
+        return await self.execute(query, *args, timeout=timeout)
+    return self.DATA_NO_CHANGE</code></pre>
+</details>
+</dd>
+</dl>
+</dd>
+<dt id="morm.db.ModelQuery"><code class="flex name class">
+<span>class <span class="ident">ModelQuery</span></span>
+<span>(</span><span>db: <a title="morm.db.DB" href="#morm.db.DB">DB</a>, model_class: <a title="morm.model.ModelType" href="model.html#morm.model.ModelType">ModelType</a> = None)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Query builder for model class.</p>
+<p>The <code>q</code> family of methods (<code>q, qc, qu etc..</code>) can be used to
+build a query step by step. These methods can be chained
+together to break down the query building in multiple steps.</p>
+<p>Several properties are available to get information of the model
+such as table name (<code>self.db_table</code>), ordering (<code>self.ordering</code>),
+field names (<code>self.f.&lt;field_name&gt;</code>) etc..</p>
+<p><code>self.c</code> is a counter that gives an integer representing the
+last existing argument position plus 1.</p>
+<p><code>reset()</code> can be called to reset the query to start a new.</p>
+<dl>
+<dt>To execute a query, you need to run one of the execution methods</dt>
+<dd><code>fetch, fetchrow, fetchval, execute</code>.</dd>
+</dl>
+<p>Notable convenience methods:</p>
+<ul>
+<li><code>qupdate(data)</code>: Initialize a update query for data</li>
+<li><code>qfilter()</code>: Initialize a filter query upto WHERE clasue.</li>
+<li><code>get(pkval)</code>: Get an item by primary key.</li>
+</ul>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>db</code></strong> :&ensp;<code><a title="morm.db.DB" href="#morm.db.DB">DB</a></code></dt>
+<dd>DB object</dd>
+<dt><strong><code>model_class</code></strong> :&ensp;<code>ModelType</code></dt>
+<dd>model</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class ModelQuery():
+    def __init__(self, db: DB, model_class: ModelType = None):
+        &#34;&#34;&#34;Query builder for model class.
+
+        The `q` family of methods (`q, qc, qu etc..`) can be used to
+        build a query step by step. These methods can be chained
+        together to break down the query building in multiple steps.
+
+        Several properties are available to get information of the model
+        such as table name (`self.db_table`), ordering (`self.ordering`),
+        field names (`self.f.&lt;field_name&gt;`) etc..
+
+        `self.c` is a counter that gives an integer representing the
+        last existing argument position plus 1.
+
+        `reset()` can be called to reset the query to start a new.
+
+        To execute a query, you need to run one of the execution methods
+        : `fetch, fetchrow, fetchval, execute`.
+
+        Notable convenience methods:
+
+        * `qupdate(data)`: Initialize a update query for data
+        * `qfilter()`: Initialize a filter query upto WHERE clasue.
+        * `get(pkval)`: Get an item by primary key.
+
+        Args:
+            db (DB): DB object
+            model_class (ModelType): model
+        &#34;&#34;&#34;
+        self.reset()
+        self.db = db
+        self.model = model_class # can be None
+        def func(k):
+            return Q(model_class._check_field_name_(k))
+        self._f = FieldNames(func) # no reset
+
+    def __repr__(self):
+        return f&#39;ModelQuery({self.db}, {self.model})&#39;
+
+    def reset(self) -&gt; &#39;ModelQuery&#39;:
+        &#34;&#34;&#34;Reset the model query by returning it to its initial state.
+
+        Returns:
+            self (Enables method chaining)
+        &#34;&#34;&#34;
+        self._query_str_queue: List[str] = []
+        self.end_query_str = &#39;&#39;
+        self.start_query_str = &#39;&#39;
+        self._prepared_args: List[Any] = []
+        self._arg_count = 0
+        self._named_args: Dict[str, Any] = {}
+        self._named_args_mapper: Dict[str, int] = {}
+        self.__filter_initiated = False
+        self._ordering = &#39;&#39;
+        self.__update_initiated = False
+        return self
+
+
+    @property
+    def c(self) -&gt; int:
+        &#34;&#34;&#34;Current available argument position in the query
+
+        arg_count + 1 i.e if $1 and $2 has been used so far, then
+        self.c is 3 so that you can use it to make $3.
+
+        Returns:
+            int
+        &#34;&#34;&#34;
+        return self._arg_count + 1
+
+    @property
+    def db_table(self) -&gt; str:
+        &#34;&#34;&#34;Table name of the model (quoted)
+        &#34;&#34;&#34;
+        return Q(self.model._get_db_table_()) #type: ignore
+
+    @property
+    def pk(self) -&gt; str:
+        &#34;&#34;&#34;Primary key name (quoted)
+        &#34;&#34;&#34;
+        return Q(self.model._get_pk_()) #type: ignore
+
+    @property
+    def ordering(self) -&gt; str:
+        &#34;&#34;&#34;Ordering query in SQL, does not include `ORDER BY`.
+
+        Example: `&#34;price&#34; ASC, &#34;quantity&#34; DESC`
+        &#34;&#34;&#34;
+        if not self._ordering:
+            self._ordering = &#39;,&#39;.join([&#39; &#39;.join(y) for y in self.model._get_ordering_(quote=&#39;&#34;&#39;)]) # type: ignore
+        return self._ordering
+
+    @property
+    def f(self) -&gt; FieldNames:
+        &#34;&#34;&#34;Field name container where names are quoted.
+
+        It can be used to avoid spelling mistakes in writing query.
+
+        Example: query `&#39;select &#34;profesion&#34; from &#34;table_name&#34;&#39;`
+
+        will only produce error after actually running the query against
+        a correctly spelled column &#39;profession&#39;.
+
+        while,
+
+        query `f&#39;select {self.f.profesion} from {self.db_table}&#39;`
+
+        will throw python exception telling you that there is no
+        misspelled &#39;profesion&#39; field.
+
+        Note: you have to change `self` in above to the current
+        `ModelQuery` instance
+        &#34;&#34;&#34;
+        return self._f
+
+    def _process_positional_args(self, *args):
+        if args:
+            self._prepared_args.extend(args)
+            self._arg_count += len(args)
+
+
+    def _process_keyword_args(self, q: str, **kwargs) -&gt; str:
+        # TODO: improvents need to be done
+        # 1. needs to handle only unquoted keyword :field_name
+        #    and ignore &#39;:field_name&#39; or &#34;:field_name&#34;
+        self._named_args.update(kwargs)
+        for k,v in self._named_args.items():
+            if k in self._named_args_mapper:
+                q, mc = re.subn(f&#39;:{k}\\b&#39;, f&#39;${self._named_args_mapper[k]}&#39;, q)
+            else:
+                q, mc = re.subn(f&#39;:{k}\\b&#39;, f&#39;${self._arg_count+1}&#39;, q)
+                if mc &gt; 0:
+                    self._prepared_args.append(v)
+                    self._arg_count += 1
+                    self._named_args_mapper[k] = self._arg_count
+        return q
+
+    def q(self, q: str, *args) -&gt; &#39;ModelQuery&#39;:
+        &#34;&#34;&#34;Add raw query stub without parsing to check for keyword arguments
+
+        Use `$1`, `$2` etc. for prepared arguments.
+
+        Use `self.c` (instance property, use fstring) to get the current
+        available prepared argument position.
+
+        This is an efficient way to add query that do not have any
+        keyword arguments to handle, compared to `q_()` which checks for
+        keyword arguments everytime it is called.
+
+        Example:
+
+        ```python
+        mq = db(SomeModel)
+        mq\
+        .q(&#39;SELECT * FROM &#34;table&#34; WHERE $1&#39;, True)\
+        .q(&#39;AND &#34;price&#34; &gt;= $2&#39;, 33)\
+        .q(f&#39;OR &#34;price&#34; = ${mq.c}&#39;, 0) # mq.c=3 (now)\
+        .q_(&#39;OR &#34;status&#34; = :status&#39;, status=&#39;OK&#39;)\
+        # :status is $4:
+        .q(&#39;OR &#34;active&#34; = $5&#39;, 0)\
+        .q_(&#39;AND &#34;status&#34; = :status&#39;)\
+        # status=&#39;OK&#39; from previous call
+        .q(&#39;OR &#34;price&#34; = $2&#39;)\
+        # $2=33 from previous call
+        #using format string and mq.c to get the argument position:
+        .q(f&#39;OR &#34;price&#34; &gt; ${mq.c} OR &#34;quantity&#34; &gt; ${mq.c+1}&#39;, 12, 3)
+        #               mq.c=6 ^
+        ```
+
+        Args:
+            q (str): raw query string
+
+        Returns:
+            ModelQuery: self, enables method chaining.
+        &#34;&#34;&#34;
+        self._process_positional_args(*args)
+        self._query_str_queue.append(q)
+        return self
+
+
+    def q_(self, q: str, *args, **kwargs) -&gt; &#39;ModelQuery&#39;:
+        &#34;&#34;&#34;Add a query stub having keyword params.
+
+        Use the format `:field_name` for keyword parameter.
+        `:field_name` is converted to positional parameter (`$n`).
+
+        This method checks the query against all keyword arguments
+        that has been added so far with other `q*()` methods.
+
+        Args:
+            q (str): query string (SQL)
+
+        Returns:
+            ModelQuery: returns `self` to enable method chaining
+        &#34;&#34;&#34;
+        self._process_positional_args(*args)
+        q = self._process_keyword_args(q, **kwargs)
+        self._query_str_queue.append(q)
+        return self
+
+    def qq(self, word: str) -&gt; &#39;ModelQuery&#39;:
+        &#34;&#34;&#34;Quote and add a word to the query.
+
+        Enable to add names with auto-quote. For example, if the name
+        for a field value is `status`, it can be added to the query
+        with auto-quoting, i.e for postgresql it will be added
+        as `&#34;status&#34;`.
+
+        Example:
+
+        ```python
+        .qq(&#39;price&#39;).q(&#39;&gt;= $1&#39;,34)
+        ```
+
+        Args:
+            word (str): the word that needs to be added with quote.
+
+        Returns:
+            ModelQuery: returns `self` to enable method chaining
+        &#34;&#34;&#34;
+        if word:
+            self._query_str_queue.append(Q(word))
+        return self
+
+
+    def qc(self, word: str, rest: str, *args) -&gt; &#39;ModelQuery&#39;:
+        &#34;&#34;&#34;Add query by quoting `word` while adding the `rest` as is.
+
+        This is a shorthand for making where clause conditions.
+        For example: `qc(&#39;price&#39;, &#39;&gt;=$1&#39;, 34)` is a safe way to write
+        a where condition like: `&#34;price&#34; &gt;=34`.
+
+        The same can be achieved by using a combination of
+        `qq()` and `q()` or manually quoting and using
+        with `q()`
+
+        Example:
+
+        ```python
+        .qc(&#39;price&#39;, &#39;&gt;= $1&#39;, 34)
+        ```
+
+        Args:
+            word (str): left part of query that needs to be quoted
+            rest (str): right part of query that does not need to be quoted
+            *args (any): prepared args
+
+        Returns:
+            ModelQuery: returns `self` to enable method chaining
+        &#34;&#34;&#34;
+        return self.qq(word).q(rest, *args)
+
+
+    def qc_(self, word: str, rest: str, *args, **kwargs) -&gt; &#39;ModelQuery&#39;:
+        &#34;&#34;&#34;Add query by quoting `word` while adding the `rest` as is.
+
+        Same as `qc()` except this method parses the `rest` query string
+        for keyword params in the format: `:field_name`
+
+        Args:
+            word (str): left part of query that needs to be quoted
+            rest (str): right part of query that does not need to be quoted
+            *args (any): prepared args
+            *kwargs: prepared keyword args
+
+        Returns:
+            ModelQuery: returns `self` to enable method chaining
+        &#34;&#34;&#34;
+        return self.qq(word).q_(rest, *args, **kwargs)
+
+    def qo(self, order: str) -&gt; &#39;ModelQuery&#39;:
+        &#34;&#34;&#34;Convert `+/-field_name,` to proper order_by criteria and add to query.
+
+        Example: `-field_name,` will become: `&#34;field_name&#34; DESC,`
+
+        * `+` at beginning means ascending order (default)
+        * `-` at beginning means descending order
+        * `,` at end means you will add more order criteria
+
+        Ommit the comma (`,`) when it is the last ordering criteria.
+
+        Args:
+            order (str): order criteria in the format `+/-field_name,`
+
+        Returns:
+            ModelQuery: returns `self` to enable method chaining
+        &#34;&#34;&#34;
+        direction = &#39;ASC&#39;
+        if order.startswith(&#39;-&#39;):
+            order = order[1:]
+            direction = &#39;DESC&#39;
+        elif order.startswith(&#39;+&#39;):
+            order = order[1:]
+        if order.endswith(&#39;,&#39;):
+            order = order[0:-1]
+            direction += &#39;,&#39;
+        return self.qq(order).q(direction)
+
+    def qu(self, data: dict) -&gt; &#39;ModelQuery&#39;:
+        &#34;&#34;&#34;Convert data to `&#34;column&#34;=$n` query with prepared args as the
+            values and add to the main query.
+
+        The counter of positional arguments increases by the number of
+        items in `data`. Make use of `self.c` counter to add more
+        queries after using this method.
+
+        Args:
+            data (dict): data in format: `{&#39;column&#39;: value}`
+
+        Returns:
+            ModelQuery: returns `self` to enable method chaining
+        &#34;&#34;&#34;
+        setq = &#39;, &#39;.join([f&#39;&#34;{c}&#34;=${i}&#39; for i,c in enumerate(data, self.c)])
+        return self.q(setq, *data.values())
+
+    def qreturning(self, *column_names) -&gt; &#39;ModelQuery&#39;:
+        &#34;&#34;&#34;Convenience to add a `RETURNING` clause.
+
+        Args:
+            column_names: column names.
+
+        Returns:
+            ModelQuery: returns `self` to enable method chaining
+        &#34;&#34;&#34;
+        q = &#39;&#34;,&#34;&#39;.join(column_names)
+        if q:
+            q = f&#39;&#34;{q}&#34;&#39;
+        return self.q(q)
+
+    def qwhere(self) -&gt; &#39;ModelQuery&#39;:
+        &#34;&#34;&#34;Convenience to add &#39;WHERE&#39; to the main query.
+
+        Make use of `qc()` method to add conditions.
+
+        Returns:
+            ModelQuery: returns `self` to enable method chaining
+        &#34;&#34;&#34;
+        return self.q(&#39;WHERE&#39;)
+
+    def qfilter(self, no_ordering=False) -&gt; &#39;ModelQuery&#39;:
+        &#34;&#34;&#34;Initiate a filter.
+
+        This initiates a `SELECT` query upto `WHERE`. You can then use the
+        `q()`, `qc()`, etc. methods to add conditions and finally
+        execute the `fetch()` method to get all results or execute the
+        `fetchrow()` method to get a single row.
+
+        Example:
+
+        ```python
+        .qfilter().q(&#39;&#34;price&#34; &gt;= $1 AND &#34;status&#34; = $2&#39;, 32.12, &#39;OK&#39;)
+        ```
+
+        Args:
+            no_ordering (bool): Whether to remove the default ordering SQL. Defaults to False.
+
+        Returns:
+            ModelQuery: returns self to enable method chaining
+        &#34;&#34;&#34;
+        if not self.__filter_initiated:
+            down_fields = &#39;,&#39;.join([Q(x) for x in self.model._get_fields_(up=False)]) #type: ignore
+            self.q(f&#39;SELECT {down_fields} FROM &#34;{self.model._get_db_table_()}&#34; WHERE&#39;) #type: ignore
+            self.__filter_initiated = True
+            order_by = self.ordering
+            if order_by and not no_ordering:
+                self.end_query_str = f&#39;ORDER BY {order_by}&#39;
+        else:
+            ValueError(f&#34;Filter is already initiated for this {self.__class__.__name__} query object: {self}&#34;)
+        return self
+
+    def qupdate(self, data: dict) -&gt; &#39;ModelQuery&#39;:
+        &#34;&#34;&#34;Initiate a UPDATE query for data.
+
+        This initiates an `UPDATE` query upto `WHERE` and leaves you to
+        add conditions with other methods such as `qc` or the generic
+        method `q()`.
+
+        Finally call the `execute()` method to execute the query or
+        call the `fetchval()` method if using `RETURNING` clause.
+
+        Args:
+            data (dict): data in key value dictionary
+
+        Returns:
+            ModelQuery: returns `self` to enable method chaining
+        &#34;&#34;&#34;
+        if not self.__update_initiated:
+            self.q(f&#39;UPDATE {self.db_table} SET&#39;).qu(data).qwhere()
+            self.__update_initiated = True
+        else:
+            ValueError(f&#34;update is already initiated for this {self.__class__.__name__} query: {self}&#34;)
+        return self
+
+
+    def getq(self) -&gt; Tuple[str, List[Any]]:
+        &#34;&#34;&#34;Return query string and prepared arg list
+
+        Returns:
+            tuple: (str, list) : (query, parepared_args)
+        &#34;&#34;&#34;
+        query = &#39; &#39;.join(self._query_str_queue)
+        self._query_str_queue = [query]
+        query = f&#39;{self.start_query_str} {query} {self.end_query_str}&#39;
+        return query, self._prepared_args
+
+    async def fetch(self, timeout: float = None) -&gt; Union[List[ModelBase], List[Record]]:
+        &#34;&#34;&#34;Run query method `fetch` that returns the results in model class objects
+
+        Returns the results in model class objects.
+
+        Args:
+            timeout (float, optional): Timeout in seconds. Defaults to None.
+
+        Returns:
+            List[Model]: List of model instances.
+        &#34;&#34;&#34;
+        query, parepared_args = self.getq()
+        return await self.db.fetch(query, *parepared_args, timeout=timeout, model_class=self.model)
+
+    async def fetchrow(self, timeout: float = None) -&gt; Union[ModelBase, Record]:
+        &#34;&#34;&#34;Make a query and get the first row.
+
+        Resultant record is mapped to model_class object.
+
+        Args:
+            timeout (float, optional): Timeout value. Defaults to None.
+
+        Returns:
+            model_clas object or None if no rows were selected.
+        &#34;&#34;&#34;
+        query, parepared_args = self.getq()
+        return await self.db.fetchrow(query, *parepared_args, timeout=timeout, model_class=self.model)
+
+    async def fetchval(self, column: int = 0, timeout: float = None) -&gt; Any:
+        &#34;&#34;&#34;Run the query and return a column value in the first row.
+
+        Args:
+            column (int, optional): Column index. Defaults to 0.
+            timeout (float, optional): Timeout. Defaults to None.
+
+        Returns:
+            Any: Coulmn (indentified by index) value of first row.
+        &#34;&#34;&#34;
+        query, parepared_args = self.getq()
+        return await self.db.fetchval(query, *parepared_args, column=column, timeout=timeout)
+
+    async def execute(self, timeout: float = None) -&gt; str:
+        &#34;&#34;&#34;Execute the query.
+
+        Args:
+            timeout (float, optional): Timeout. Defaults to None.
+
+        Returns:
+            str: Status of the last SQL command
+        &#34;&#34;&#34;
+        query, parepared_args = self.getq()
+        return await self.db.execute(query, *parepared_args, timeout=timeout)
+
+    async def get(self, *vals, col: str = &#39;&#39;, comp: str = &#39;=$1&#39;) -&gt; Union[ModelBase, Record]:
+        &#34;&#34;&#34;Get the first row found by column and value.
+
+        If `col` is not given, it defaults to the primary key (`pk`) of
+        the model.
+
+        If comparison is not given, it defaults to `=$1`
+
+        Args:
+            *vals (any): Values to compare. Must be referenced with $1, $2 etc.. in `comp`.
+            col (str, optional): Column name. Defaults to the primary key.
+            comp (str, optional): Comparison. Defaults to &#39;=$1&#39;.
+
+        Returns:
+            model_clas object or None if no rows were selected.
+        &#34;&#34;&#34;
+        if not col:
+            col = self.model.Meta.pk    #type: ignore
+        return await self.qfilter().qc(col, comp, *vals).fetchrow()</code></pre>
+</details>
+<h3>Instance variables</h3>
+<dl>
+<dt id="morm.db.ModelQuery.c"><code class="name">var <span class="ident">c</span> : int</code></dt>
+<dd>
+<div class="desc"><p>Current available argument position in the query</p>
+<p>arg_count + 1 i.e if $1 and $2 has been used so far, then
+self.c is 3 so that you can use it to make $3.</p>
+<h2 id="returns">Returns</h2>
+<p>int</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def c(self) -&gt; int:
+    &#34;&#34;&#34;Current available argument position in the query
+
+    arg_count + 1 i.e if $1 and $2 has been used so far, then
+    self.c is 3 so that you can use it to make $3.
+
+    Returns:
+        int
+    &#34;&#34;&#34;
+    return self._arg_count + 1</code></pre>
+</details>
+</dd>
+<dt id="morm.db.ModelQuery.db_table"><code class="name">var <span class="ident">db_table</span> : str</code></dt>
+<dd>
+<div class="desc"><p>Table name of the model (quoted)</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def db_table(self) -&gt; str:
+    &#34;&#34;&#34;Table name of the model (quoted)
+    &#34;&#34;&#34;
+    return Q(self.model._get_db_table_()) #type: ignore</code></pre>
+</details>
+</dd>
+<dt id="morm.db.ModelQuery.f"><code class="name">var <span class="ident">f</span> : <a title="morm.model.FieldNames" href="model.html#morm.model.FieldNames">FieldNames</a></code></dt>
+<dd>
+<div class="desc"><p>Field name container where names are quoted.</p>
+<p>It can be used to avoid spelling mistakes in writing query.</p>
+<p>Example: query <code>'select "profesion" from "table_name"'</code></p>
+<p>will only produce error after actually running the query against
+a correctly spelled column 'profession'.</p>
+<p>while,</p>
+<p>query <code>f'select {self.f.profesion} from {self.db_table}'</code></p>
+<p>will throw python exception telling you that there is no
+misspelled 'profesion' field.</p>
+<p>Note: you have to change <code>self</code> in above to the current
+<code><a title="morm.db.ModelQuery" href="#morm.db.ModelQuery">ModelQuery</a></code> instance</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def f(self) -&gt; FieldNames:
+    &#34;&#34;&#34;Field name container where names are quoted.
+
+    It can be used to avoid spelling mistakes in writing query.
+
+    Example: query `&#39;select &#34;profesion&#34; from &#34;table_name&#34;&#39;`
+
+    will only produce error after actually running the query against
+    a correctly spelled column &#39;profession&#39;.
+
+    while,
+
+    query `f&#39;select {self.f.profesion} from {self.db_table}&#39;`
+
+    will throw python exception telling you that there is no
+    misspelled &#39;profesion&#39; field.
+
+    Note: you have to change `self` in above to the current
+    `ModelQuery` instance
+    &#34;&#34;&#34;
+    return self._f</code></pre>
+</details>
+</dd>
+<dt id="morm.db.ModelQuery.ordering"><code class="name">var <span class="ident">ordering</span> : str</code></dt>
+<dd>
+<div class="desc"><p>Ordering query in SQL, does not include <code>ORDER BY</code>.</p>
+<p>Example: <code>"price" ASC, "quantity" DESC</code></p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def ordering(self) -&gt; str:
+    &#34;&#34;&#34;Ordering query in SQL, does not include `ORDER BY`.
+
+    Example: `&#34;price&#34; ASC, &#34;quantity&#34; DESC`
+    &#34;&#34;&#34;
+    if not self._ordering:
+        self._ordering = &#39;,&#39;.join([&#39; &#39;.join(y) for y in self.model._get_ordering_(quote=&#39;&#34;&#39;)]) # type: ignore
+    return self._ordering</code></pre>
+</details>
+</dd>
+<dt id="morm.db.ModelQuery.pk"><code class="name">var <span class="ident">pk</span> : str</code></dt>
+<dd>
+<div class="desc"><p>Primary key name (quoted)</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def pk(self) -&gt; str:
+    &#34;&#34;&#34;Primary key name (quoted)
+    &#34;&#34;&#34;
+    return Q(self.model._get_pk_()) #type: ignore</code></pre>
+</details>
+</dd>
+</dl>
+<h3>Methods</h3>
+<dl>
+<dt id="morm.db.ModelQuery.execute"><code class="name flex">
+<span>async def <span class="ident">execute</span></span>(<span>self, timeout: float = None) ‑> str</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Execute the query.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>timeout</code></strong> :&ensp;<code>float</code>, optional</dt>
+<dd>Timeout. Defaults to None.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code>str</code></dt>
+<dd>Status of the last SQL command</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">async def execute(self, timeout: float = None) -&gt; str:
+    &#34;&#34;&#34;Execute the query.
+
+    Args:
+        timeout (float, optional): Timeout. Defaults to None.
+
+    Returns:
+        str: Status of the last SQL command
+    &#34;&#34;&#34;
+    query, parepared_args = self.getq()
+    return await self.db.execute(query, *parepared_args, timeout=timeout)</code></pre>
+</details>
+</dd>
+<dt id="morm.db.ModelQuery.fetch"><code class="name flex">
+<span>async def <span class="ident">fetch</span></span>(<span>self, timeout: float = None) ‑> Union[List[<a title="morm.model.ModelBase" href="model.html#morm.model.ModelBase">ModelBase</a>], List[asyncpg.Record]]</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Run query method <code>fetch</code> that returns the results in model class objects</p>
+<p>Returns the results in model class objects.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>timeout</code></strong> :&ensp;<code>float</code>, optional</dt>
+<dd>Timeout in seconds. Defaults to None.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code>List[Model]</code></dt>
+<dd>List of model instances.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">async def fetch(self, timeout: float = None) -&gt; Union[List[ModelBase], List[Record]]:
+    &#34;&#34;&#34;Run query method `fetch` that returns the results in model class objects
+
+    Returns the results in model class objects.
+
+    Args:
+        timeout (float, optional): Timeout in seconds. Defaults to None.
+
+    Returns:
+        List[Model]: List of model instances.
+    &#34;&#34;&#34;
+    query, parepared_args = self.getq()
+    return await self.db.fetch(query, *parepared_args, timeout=timeout, model_class=self.model)</code></pre>
+</details>
+</dd>
+<dt id="morm.db.ModelQuery.fetchrow"><code class="name flex">
+<span>async def <span class="ident">fetchrow</span></span>(<span>self, timeout: float = None) ‑> Union[<a title="morm.model.ModelBase" href="model.html#morm.model.ModelBase">ModelBase</a>, asyncpg.Record]</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Make a query and get the first row.</p>
+<p>Resultant record is mapped to model_class object.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>timeout</code></strong> :&ensp;<code>float</code>, optional</dt>
+<dd>Timeout value. Defaults to None.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<p>model_clas object or None if no rows were selected.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">async def fetchrow(self, timeout: float = None) -&gt; Union[ModelBase, Record]:
+    &#34;&#34;&#34;Make a query and get the first row.
+
+    Resultant record is mapped to model_class object.
+
+    Args:
+        timeout (float, optional): Timeout value. Defaults to None.
+
+    Returns:
+        model_clas object or None if no rows were selected.
+    &#34;&#34;&#34;
+    query, parepared_args = self.getq()
+    return await self.db.fetchrow(query, *parepared_args, timeout=timeout, model_class=self.model)</code></pre>
+</details>
+</dd>
+<dt id="morm.db.ModelQuery.fetchval"><code class="name flex">
+<span>async def <span class="ident">fetchval</span></span>(<span>self, column: int = 0, timeout: float = None) ‑> Any</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Run the query and return a column value in the first row.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>column</code></strong> :&ensp;<code>int</code>, optional</dt>
+<dd>Column index. Defaults to 0.</dd>
+<dt><strong><code>timeout</code></strong> :&ensp;<code>float</code>, optional</dt>
+<dd>Timeout. Defaults to None.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code>Any</code></dt>
+<dd>Coulmn (indentified by index) value of first row.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">async def fetchval(self, column: int = 0, timeout: float = None) -&gt; Any:
+    &#34;&#34;&#34;Run the query and return a column value in the first row.
+
+    Args:
+        column (int, optional): Column index. Defaults to 0.
+        timeout (float, optional): Timeout. Defaults to None.
+
+    Returns:
+        Any: Coulmn (indentified by index) value of first row.
+    &#34;&#34;&#34;
+    query, parepared_args = self.getq()
+    return await self.db.fetchval(query, *parepared_args, column=column, timeout=timeout)</code></pre>
+</details>
+</dd>
+<dt id="morm.db.ModelQuery.get"><code class="name flex">
+<span>async def <span class="ident">get</span></span>(<span>self, *vals, col: str = '', comp: str = '=$1') ‑> Union[<a title="morm.model.ModelBase" href="model.html#morm.model.ModelBase">ModelBase</a>, asyncpg.Record]</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Get the first row found by column and value.</p>
+<p>If <code>col</code> is not given, it defaults to the primary key (<code>pk</code>) of
+the model.</p>
+<p>If comparison is not given, it defaults to <code>=$1</code></p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>*vals</code></strong> :&ensp;<code>any</code></dt>
+<dd>Values to compare. Must be referenced with $1, $2 etc.. in <code>comp</code>.</dd>
+<dt><strong><code>col</code></strong> :&ensp;<code>str</code>, optional</dt>
+<dd>Column name. Defaults to the primary key.</dd>
+<dt><strong><code>comp</code></strong> :&ensp;<code>str</code>, optional</dt>
+<dd>Comparison. Defaults to '=$1'.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<p>model_clas object or None if no rows were selected.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">async def get(self, *vals, col: str = &#39;&#39;, comp: str = &#39;=$1&#39;) -&gt; Union[ModelBase, Record]:
+    &#34;&#34;&#34;Get the first row found by column and value.
+
+    If `col` is not given, it defaults to the primary key (`pk`) of
+    the model.
+
+    If comparison is not given, it defaults to `=$1`
+
+    Args:
+        *vals (any): Values to compare. Must be referenced with $1, $2 etc.. in `comp`.
+        col (str, optional): Column name. Defaults to the primary key.
+        comp (str, optional): Comparison. Defaults to &#39;=$1&#39;.
+
+    Returns:
+        model_clas object or None if no rows were selected.
+    &#34;&#34;&#34;
+    if not col:
+        col = self.model.Meta.pk    #type: ignore
+    return await self.qfilter().qc(col, comp, *vals).fetchrow()</code></pre>
+</details>
+</dd>
+<dt id="morm.db.ModelQuery.getq"><code class="name flex">
+<span>def <span class="ident">getq</span></span>(<span>self) ‑> Tuple[str, List[Any]]</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Return query string and prepared arg list</p>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code>tuple</code></dt>
+<dd>(str, list) : (query, parepared_args)</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def getq(self) -&gt; Tuple[str, List[Any]]:
+    &#34;&#34;&#34;Return query string and prepared arg list
+
+    Returns:
+        tuple: (str, list) : (query, parepared_args)
+    &#34;&#34;&#34;
+    query = &#39; &#39;.join(self._query_str_queue)
+    self._query_str_queue = [query]
+    query = f&#39;{self.start_query_str} {query} {self.end_query_str}&#39;
+    return query, self._prepared_args</code></pre>
+</details>
+</dd>
+<dt id="morm.db.ModelQuery.q"><code class="name flex">
+<span>def <span class="ident">q</span></span>(<span>self, q: str, *args) ‑> <a title="morm.db.ModelQuery" href="#morm.db.ModelQuery">ModelQuery</a></span>
+</code></dt>
+<dd>
+<div class="desc"><p>Add raw query stub without parsing to check for keyword arguments</p>
+<p>Use <code>$1</code>, <code>$2</code> etc. for prepared arguments.</p>
+<p>Use <code>self.c</code> (instance property, use fstring) to get the current
+available prepared argument position.</p>
+<p>This is an efficient way to add query that do not have any
+keyword arguments to handle, compared to <code>q_()</code> which checks for
+keyword arguments everytime it is called.</p>
+<p>Example:</p>
+<pre><code class="language-python">mq = db(SomeModel)
+mq        .q('SELECT * FROM &quot;table&quot; WHERE $1', True)        .q('AND &quot;price&quot; &gt;= $2', 33)        .q(f'OR &quot;price&quot; = ${mq.c}', 0) # mq.c=3 (now)        .q_('OR &quot;status&quot; = :status', status='OK')        # :status is $4:
+.q('OR &quot;active&quot; = $5', 0)        .q_('AND &quot;status&quot; = :status')        # status='OK' from previous call
+.q('OR &quot;price&quot; = $2')        # $2=33 from previous call
+#using format string and mq.c to get the argument position:
+.q(f'OR &quot;price&quot; &gt; ${mq.c} OR &quot;quantity&quot; &gt; ${mq.c+1}', 12, 3)
+#               mq.c=6 ^
+</code></pre>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>q</code></strong> :&ensp;<code>str</code></dt>
+<dd>raw query string</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code><a title="morm.db.ModelQuery" href="#morm.db.ModelQuery">ModelQuery</a></code></dt>
+<dd>self, enables method chaining.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def q(self, q: str, *args) -&gt; &#39;ModelQuery&#39;:
+    &#34;&#34;&#34;Add raw query stub without parsing to check for keyword arguments
+
+    Use `$1`, `$2` etc. for prepared arguments.
+
+    Use `self.c` (instance property, use fstring) to get the current
+    available prepared argument position.
+
+    This is an efficient way to add query that do not have any
+    keyword arguments to handle, compared to `q_()` which checks for
+    keyword arguments everytime it is called.
+
+    Example:
+
+    ```python
+    mq = db(SomeModel)
+    mq\
+    .q(&#39;SELECT * FROM &#34;table&#34; WHERE $1&#39;, True)\
+    .q(&#39;AND &#34;price&#34; &gt;= $2&#39;, 33)\
+    .q(f&#39;OR &#34;price&#34; = ${mq.c}&#39;, 0) # mq.c=3 (now)\
+    .q_(&#39;OR &#34;status&#34; = :status&#39;, status=&#39;OK&#39;)\
+    # :status is $4:
+    .q(&#39;OR &#34;active&#34; = $5&#39;, 0)\
+    .q_(&#39;AND &#34;status&#34; = :status&#39;)\
+    # status=&#39;OK&#39; from previous call
+    .q(&#39;OR &#34;price&#34; = $2&#39;)\
+    # $2=33 from previous call
+    #using format string and mq.c to get the argument position:
+    .q(f&#39;OR &#34;price&#34; &gt; ${mq.c} OR &#34;quantity&#34; &gt; ${mq.c+1}&#39;, 12, 3)
+    #               mq.c=6 ^
+    ```
+
+    Args:
+        q (str): raw query string
+
+    Returns:
+        ModelQuery: self, enables method chaining.
+    &#34;&#34;&#34;
+    self._process_positional_args(*args)
+    self._query_str_queue.append(q)
+    return self</code></pre>
+</details>
+</dd>
+<dt id="morm.db.ModelQuery.q_"><code class="name flex">
+<span>def <span class="ident">q_</span></span>(<span>self, q: str, *args, **kwargs) ‑> <a title="morm.db.ModelQuery" href="#morm.db.ModelQuery">ModelQuery</a></span>
+</code></dt>
+<dd>
+<div class="desc"><p>Add a query stub having keyword params.</p>
+<p>Use the format <code>:field_name</code> for keyword parameter.
+<code>:field_name</code> is converted to positional parameter (<code>$n</code>).</p>
+<p>This method checks the query against all keyword arguments
+that has been added so far with other <code>q*()</code> methods.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>q</code></strong> :&ensp;<code>str</code></dt>
+<dd>query string (SQL)</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code><a title="morm.db.ModelQuery" href="#morm.db.ModelQuery">ModelQuery</a></code></dt>
+<dd>returns <code>self</code> to enable method chaining</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def q_(self, q: str, *args, **kwargs) -&gt; &#39;ModelQuery&#39;:
+    &#34;&#34;&#34;Add a query stub having keyword params.
+
+    Use the format `:field_name` for keyword parameter.
+    `:field_name` is converted to positional parameter (`$n`).
+
+    This method checks the query against all keyword arguments
+    that has been added so far with other `q*()` methods.
+
+    Args:
+        q (str): query string (SQL)
+
+    Returns:
+        ModelQuery: returns `self` to enable method chaining
+    &#34;&#34;&#34;
+    self._process_positional_args(*args)
+    q = self._process_keyword_args(q, **kwargs)
+    self._query_str_queue.append(q)
+    return self</code></pre>
+</details>
+</dd>
+<dt id="morm.db.ModelQuery.qc"><code class="name flex">
+<span>def <span class="ident">qc</span></span>(<span>self, word: str, rest: str, *args) ‑> <a title="morm.db.ModelQuery" href="#morm.db.ModelQuery">ModelQuery</a></span>
+</code></dt>
+<dd>
+<div class="desc"><p>Add query by quoting <code>word</code> while adding the <code>rest</code> as is.</p>
+<p>This is a shorthand for making where clause conditions.
+For example: <code>qc('price', '&gt;=$1', 34)</code> is a safe way to write
+a where condition like: <code>"price" &gt;=34</code>.</p>
+<p>The same can be achieved by using a combination of
+<code>qq()</code> and <code>q()</code> or manually quoting and using
+with <code>q()</code></p>
+<p>Example:</p>
+<pre><code class="language-python">.qc('price', '&gt;= $1', 34)
+</code></pre>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>word</code></strong> :&ensp;<code>str</code></dt>
+<dd>left part of query that needs to be quoted</dd>
+<dt><strong><code>rest</code></strong> :&ensp;<code>str</code></dt>
+<dd>right part of query that does not need to be quoted</dd>
+<dt><strong><code>*args</code></strong> :&ensp;<code>any</code></dt>
+<dd>prepared args</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code><a title="morm.db.ModelQuery" href="#morm.db.ModelQuery">ModelQuery</a></code></dt>
+<dd>returns <code>self</code> to enable method chaining</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def qc(self, word: str, rest: str, *args) -&gt; &#39;ModelQuery&#39;:
+    &#34;&#34;&#34;Add query by quoting `word` while adding the `rest` as is.
+
+    This is a shorthand for making where clause conditions.
+    For example: `qc(&#39;price&#39;, &#39;&gt;=$1&#39;, 34)` is a safe way to write
+    a where condition like: `&#34;price&#34; &gt;=34`.
+
+    The same can be achieved by using a combination of
+    `qq()` and `q()` or manually quoting and using
+    with `q()`
+
+    Example:
+
+    ```python
+    .qc(&#39;price&#39;, &#39;&gt;= $1&#39;, 34)
+    ```
+
+    Args:
+        word (str): left part of query that needs to be quoted
+        rest (str): right part of query that does not need to be quoted
+        *args (any): prepared args
+
+    Returns:
+        ModelQuery: returns `self` to enable method chaining
+    &#34;&#34;&#34;
+    return self.qq(word).q(rest, *args)</code></pre>
+</details>
+</dd>
+<dt id="morm.db.ModelQuery.qc_"><code class="name flex">
+<span>def <span class="ident">qc_</span></span>(<span>self, word: str, rest: str, *args, **kwargs) ‑> <a title="morm.db.ModelQuery" href="#morm.db.ModelQuery">ModelQuery</a></span>
+</code></dt>
+<dd>
+<div class="desc"><p>Add query by quoting <code>word</code> while adding the <code>rest</code> as is.</p>
+<p>Same as <code>qc()</code> except this method parses the <code>rest</code> query string
+for keyword params in the format: <code>:field_name</code></p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>word</code></strong> :&ensp;<code>str</code></dt>
+<dd>left part of query that needs to be quoted</dd>
+<dt><strong><code>rest</code></strong> :&ensp;<code>str</code></dt>
+<dd>right part of query that does not need to be quoted</dd>
+<dt><strong><code>*args</code></strong> :&ensp;<code>any</code></dt>
+<dd>prepared args</dd>
+<dt><strong><code>*kwargs</code></strong></dt>
+<dd>prepared keyword args</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code><a title="morm.db.ModelQuery" href="#morm.db.ModelQuery">ModelQuery</a></code></dt>
+<dd>returns <code>self</code> to enable method chaining</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def qc_(self, word: str, rest: str, *args, **kwargs) -&gt; &#39;ModelQuery&#39;:
+    &#34;&#34;&#34;Add query by quoting `word` while adding the `rest` as is.
+
+    Same as `qc()` except this method parses the `rest` query string
+    for keyword params in the format: `:field_name`
+
+    Args:
+        word (str): left part of query that needs to be quoted
+        rest (str): right part of query that does not need to be quoted
+        *args (any): prepared args
+        *kwargs: prepared keyword args
+
+    Returns:
+        ModelQuery: returns `self` to enable method chaining
+    &#34;&#34;&#34;
+    return self.qq(word).q_(rest, *args, **kwargs)</code></pre>
+</details>
+</dd>
+<dt id="morm.db.ModelQuery.qfilter"><code class="name flex">
+<span>def <span class="ident">qfilter</span></span>(<span>self, no_ordering=False) ‑> <a title="morm.db.ModelQuery" href="#morm.db.ModelQuery">ModelQuery</a></span>
+</code></dt>
+<dd>
+<div class="desc"><p>Initiate a filter.</p>
+<p>This initiates a <code>SELECT</code> query upto <code>WHERE</code>. You can then use the
+<code>q()</code>, <code>qc()</code>, etc. methods to add conditions and finally
+execute the <code>fetch()</code> method to get all results or execute the
+<code>fetchrow()</code> method to get a single row.</p>
+<p>Example:</p>
+<pre><code class="language-python">.qfilter().q('&quot;price&quot; &gt;= $1 AND &quot;status&quot; = $2', 32.12, 'OK')
+</code></pre>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>no_ordering</code></strong> :&ensp;<code>bool</code></dt>
+<dd>Whether to remove the default ordering SQL. Defaults to False.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code><a title="morm.db.ModelQuery" href="#morm.db.ModelQuery">ModelQuery</a></code></dt>
+<dd>returns self to enable method chaining</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def qfilter(self, no_ordering=False) -&gt; &#39;ModelQuery&#39;:
+    &#34;&#34;&#34;Initiate a filter.
+
+    This initiates a `SELECT` query upto `WHERE`. You can then use the
+    `q()`, `qc()`, etc. methods to add conditions and finally
+    execute the `fetch()` method to get all results or execute the
+    `fetchrow()` method to get a single row.
+
+    Example:
+
+    ```python
+    .qfilter().q(&#39;&#34;price&#34; &gt;= $1 AND &#34;status&#34; = $2&#39;, 32.12, &#39;OK&#39;)
+    ```
+
+    Args:
+        no_ordering (bool): Whether to remove the default ordering SQL. Defaults to False.
+
+    Returns:
+        ModelQuery: returns self to enable method chaining
+    &#34;&#34;&#34;
+    if not self.__filter_initiated:
+        down_fields = &#39;,&#39;.join([Q(x) for x in self.model._get_fields_(up=False)]) #type: ignore
+        self.q(f&#39;SELECT {down_fields} FROM &#34;{self.model._get_db_table_()}&#34; WHERE&#39;) #type: ignore
+        self.__filter_initiated = True
+        order_by = self.ordering
+        if order_by and not no_ordering:
+            self.end_query_str = f&#39;ORDER BY {order_by}&#39;
+    else:
+        ValueError(f&#34;Filter is already initiated for this {self.__class__.__name__} query object: {self}&#34;)
+    return self</code></pre>
+</details>
+</dd>
+<dt id="morm.db.ModelQuery.qo"><code class="name flex">
+<span>def <span class="ident">qo</span></span>(<span>self, order: str) ‑> <a title="morm.db.ModelQuery" href="#morm.db.ModelQuery">ModelQuery</a></span>
+</code></dt>
+<dd>
+<div class="desc"><p>Convert <code>+/-field_name,</code> to proper order_by criteria and add to query.</p>
+<p>Example: <code>-field_name,</code> will become: <code>"field_name" DESC,</code></p>
+<ul>
+<li><code>+</code> at beginning means ascending order (default)</li>
+<li><code>-</code> at beginning means descending order</li>
+<li><code>,</code> at end means you will add more order criteria</li>
+</ul>
+<p>Ommit the comma (<code>,</code>) when it is the last ordering criteria.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>order</code></strong> :&ensp;<code>str</code></dt>
+<dd>order criteria in the format <code>+/-field_name,</code></dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code><a title="morm.db.ModelQuery" href="#morm.db.ModelQuery">ModelQuery</a></code></dt>
+<dd>returns <code>self</code> to enable method chaining</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def qo(self, order: str) -&gt; &#39;ModelQuery&#39;:
+    &#34;&#34;&#34;Convert `+/-field_name,` to proper order_by criteria and add to query.
+
+    Example: `-field_name,` will become: `&#34;field_name&#34; DESC,`
+
+    * `+` at beginning means ascending order (default)
+    * `-` at beginning means descending order
+    * `,` at end means you will add more order criteria
+
+    Ommit the comma (`,`) when it is the last ordering criteria.
+
+    Args:
+        order (str): order criteria in the format `+/-field_name,`
+
+    Returns:
+        ModelQuery: returns `self` to enable method chaining
+    &#34;&#34;&#34;
+    direction = &#39;ASC&#39;
+    if order.startswith(&#39;-&#39;):
+        order = order[1:]
+        direction = &#39;DESC&#39;
+    elif order.startswith(&#39;+&#39;):
+        order = order[1:]
+    if order.endswith(&#39;,&#39;):
+        order = order[0:-1]
+        direction += &#39;,&#39;
+    return self.qq(order).q(direction)</code></pre>
+</details>
+</dd>
+<dt id="morm.db.ModelQuery.qq"><code class="name flex">
+<span>def <span class="ident">qq</span></span>(<span>self, word: str) ‑> <a title="morm.db.ModelQuery" href="#morm.db.ModelQuery">ModelQuery</a></span>
+</code></dt>
+<dd>
+<div class="desc"><p>Quote and add a word to the query.</p>
+<p>Enable to add names with auto-quote. For example, if the name
+for a field value is <code>status</code>, it can be added to the query
+with auto-quoting, i.e for postgresql it will be added
+as <code>"status"</code>.</p>
+<p>Example:</p>
+<pre><code class="language-python">.qq('price').q('&gt;= $1',34)
+</code></pre>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>word</code></strong> :&ensp;<code>str</code></dt>
+<dd>the word that needs to be added with quote.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code><a title="morm.db.ModelQuery" href="#morm.db.ModelQuery">ModelQuery</a></code></dt>
+<dd>returns <code>self</code> to enable method chaining</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def qq(self, word: str) -&gt; &#39;ModelQuery&#39;:
+    &#34;&#34;&#34;Quote and add a word to the query.
+
+    Enable to add names with auto-quote. For example, if the name
+    for a field value is `status`, it can be added to the query
+    with auto-quoting, i.e for postgresql it will be added
+    as `&#34;status&#34;`.
+
+    Example:
+
+    ```python
+    .qq(&#39;price&#39;).q(&#39;&gt;= $1&#39;,34)
+    ```
+
+    Args:
+        word (str): the word that needs to be added with quote.
+
+    Returns:
+        ModelQuery: returns `self` to enable method chaining
+    &#34;&#34;&#34;
+    if word:
+        self._query_str_queue.append(Q(word))
+    return self</code></pre>
+</details>
+</dd>
+<dt id="morm.db.ModelQuery.qreturning"><code class="name flex">
+<span>def <span class="ident">qreturning</span></span>(<span>self, *column_names) ‑> <a title="morm.db.ModelQuery" href="#morm.db.ModelQuery">ModelQuery</a></span>
+</code></dt>
+<dd>
+<div class="desc"><p>Convenience to add a <code>RETURNING</code> clause.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>column_names</code></strong></dt>
+<dd>column names.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code><a title="morm.db.ModelQuery" href="#morm.db.ModelQuery">ModelQuery</a></code></dt>
+<dd>returns <code>self</code> to enable method chaining</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def qreturning(self, *column_names) -&gt; &#39;ModelQuery&#39;:
+    &#34;&#34;&#34;Convenience to add a `RETURNING` clause.
+
+    Args:
+        column_names: column names.
+
+    Returns:
+        ModelQuery: returns `self` to enable method chaining
+    &#34;&#34;&#34;
+    q = &#39;&#34;,&#34;&#39;.join(column_names)
+    if q:
+        q = f&#39;&#34;{q}&#34;&#39;
+    return self.q(q)</code></pre>
+</details>
+</dd>
+<dt id="morm.db.ModelQuery.qu"><code class="name flex">
+<span>def <span class="ident">qu</span></span>(<span>self, data: dict) ‑> <a title="morm.db.ModelQuery" href="#morm.db.ModelQuery">ModelQuery</a></span>
+</code></dt>
+<dd>
+<div class="desc"><p>Convert data to <code>"column"=$n</code> query with prepared args as the
+values and add to the main query.</p>
+<p>The counter of positional arguments increases by the number of
+items in <code>data</code>. Make use of <code>self.c</code> counter to add more
+queries after using this method.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>data</code></strong> :&ensp;<code>dict</code></dt>
+<dd>data in format: <code>{'column': value}</code></dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code><a title="morm.db.ModelQuery" href="#morm.db.ModelQuery">ModelQuery</a></code></dt>
+<dd>returns <code>self</code> to enable method chaining</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def qu(self, data: dict) -&gt; &#39;ModelQuery&#39;:
+    &#34;&#34;&#34;Convert data to `&#34;column&#34;=$n` query with prepared args as the
+        values and add to the main query.
+
+    The counter of positional arguments increases by the number of
+    items in `data`. Make use of `self.c` counter to add more
+    queries after using this method.
+
+    Args:
+        data (dict): data in format: `{&#39;column&#39;: value}`
+
+    Returns:
+        ModelQuery: returns `self` to enable method chaining
+    &#34;&#34;&#34;
+    setq = &#39;, &#39;.join([f&#39;&#34;{c}&#34;=${i}&#39; for i,c in enumerate(data, self.c)])
+    return self.q(setq, *data.values())</code></pre>
+</details>
+</dd>
+<dt id="morm.db.ModelQuery.qupdate"><code class="name flex">
+<span>def <span class="ident">qupdate</span></span>(<span>self, data: dict) ‑> <a title="morm.db.ModelQuery" href="#morm.db.ModelQuery">ModelQuery</a></span>
+</code></dt>
+<dd>
+<div class="desc"><p>Initiate a UPDATE query for data.</p>
+<p>This initiates an <code>UPDATE</code> query upto <code>WHERE</code> and leaves you to
+add conditions with other methods such as <code>qc</code> or the generic
+method <code>q()</code>.</p>
+<p>Finally call the <code>execute()</code> method to execute the query or
+call the <code>fetchval()</code> method if using <code>RETURNING</code> clause.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>data</code></strong> :&ensp;<code>dict</code></dt>
+<dd>data in key value dictionary</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code><a title="morm.db.ModelQuery" href="#morm.db.ModelQuery">ModelQuery</a></code></dt>
+<dd>returns <code>self</code> to enable method chaining</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def qupdate(self, data: dict) -&gt; &#39;ModelQuery&#39;:
+    &#34;&#34;&#34;Initiate a UPDATE query for data.
+
+    This initiates an `UPDATE` query upto `WHERE` and leaves you to
+    add conditions with other methods such as `qc` or the generic
+    method `q()`.
+
+    Finally call the `execute()` method to execute the query or
+    call the `fetchval()` method if using `RETURNING` clause.
+
+    Args:
+        data (dict): data in key value dictionary
+
+    Returns:
+        ModelQuery: returns `self` to enable method chaining
+    &#34;&#34;&#34;
+    if not self.__update_initiated:
+        self.q(f&#39;UPDATE {self.db_table} SET&#39;).qu(data).qwhere()
+        self.__update_initiated = True
+    else:
+        ValueError(f&#34;update is already initiated for this {self.__class__.__name__} query: {self}&#34;)
+    return self</code></pre>
+</details>
+</dd>
+<dt id="morm.db.ModelQuery.qwhere"><code class="name flex">
+<span>def <span class="ident">qwhere</span></span>(<span>self) ‑> <a title="morm.db.ModelQuery" href="#morm.db.ModelQuery">ModelQuery</a></span>
+</code></dt>
+<dd>
+<div class="desc"><p>Convenience to add 'WHERE' to the main query.</p>
+<p>Make use of <code>qc()</code> method to add conditions.</p>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code><a title="morm.db.ModelQuery" href="#morm.db.ModelQuery">ModelQuery</a></code></dt>
+<dd>returns <code>self</code> to enable method chaining</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def qwhere(self) -&gt; &#39;ModelQuery&#39;:
+    &#34;&#34;&#34;Convenience to add &#39;WHERE&#39; to the main query.
+
+    Make use of `qc()` method to add conditions.
+
+    Returns:
+        ModelQuery: returns `self` to enable method chaining
+    &#34;&#34;&#34;
+    return self.q(&#39;WHERE&#39;)</code></pre>
+</details>
+</dd>
+<dt id="morm.db.ModelQuery.reset"><code class="name flex">
+<span>def <span class="ident">reset</span></span>(<span>self) ‑> <a title="morm.db.ModelQuery" href="#morm.db.ModelQuery">ModelQuery</a></span>
+</code></dt>
+<dd>
+<div class="desc"><p>Reset the model query by returning it to its initial state.</p>
+<h2 id="returns">Returns</h2>
+<p>self (Enables method chaining)</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def reset(self) -&gt; &#39;ModelQuery&#39;:
+    &#34;&#34;&#34;Reset the model query by returning it to its initial state.
+
+    Returns:
+        self (Enables method chaining)
+    &#34;&#34;&#34;
+    self._query_str_queue: List[str] = []
+    self.end_query_str = &#39;&#39;
+    self.start_query_str = &#39;&#39;
+    self._prepared_args: List[Any] = []
+    self._arg_count = 0
+    self._named_args: Dict[str, Any] = {}
+    self._named_args_mapper: Dict[str, int] = {}
+    self.__filter_initiated = False
+    self._ordering = &#39;&#39;
+    self.__update_initiated = False
+    return self</code></pre>
+</details>
+</dd>
+</dl>
+</dd>
+<dt id="morm.db.Pool"><code class="flex name class">
+<span>class <span class="ident">Pool</span></span>
+<span>(</span><span>dsn: str = None, min_size: int = 10, max_size: int = 100, max_queries: int = 50000, max_inactive_connection_lifetime: float = 300.0, setup=None, init=None, loop=None, connection_class=asyncpg.connection.Connection, **connect_kwargs)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>DB connection pool.</p>
+<p>The parameters are same as <code>asyncpg.create_pool</code> function.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>dsn</code></strong> :&ensp;<code>str</code>, optional</dt>
+<dd>DSN string. Defaults to None.</dd>
+<dt><strong><code>min_size</code></strong> :&ensp;<code>int</code>, optional</dt>
+<dd>Minimum connection in the pool. Defaults to 10.</dd>
+<dt><strong><code>max_size</code></strong> :&ensp;<code>int</code>, optional</dt>
+<dd>Maximum connection in the pool. Defaults to 100.</dd>
+<dt><strong><code>max_queries</code></strong> :&ensp;<code>int</code>, optional</dt>
+<dd>Number of queries after a connection is closed and replaced with a new connection. Defaults to 50000.</dd>
+<dt><strong><code>max_inactive_connection_lifetime</code></strong> :&ensp;<code>float</code>, optional</dt>
+<dd>Number of seconds after which inactive connections in the pool will be closed.
+Pass <code>0</code> to disable this mechanism. Defaults to 300.0.</dd>
+<dt><strong><code>setup</code></strong> :&ensp;<code>[type]</code>, optional</dt>
+<dd>A coroutine to prepare a connection right before it is returned
+from <code>Pool.acquire()</code>. Defaults to None.</dd>
+<dt><strong><code>init</code></strong> :&ensp;<code>[type]</code>, optional</dt>
+<dd>A coroutine to initialize a connection when it is created. Defaults to None.</dd>
+<dt><strong><code>loop</code></strong> :&ensp;<code>[type]</code>, optional</dt>
+<dd>Asyncio even loop instance. Defaults to None.</dd>
+<dt><strong><code>connection_class</code></strong> :&ensp;<code>[type]</code>, optional</dt>
+<dd>The class to use for connections.
+Must be a subclass of <code>asyncpg.connection.Connection</code>. Defaults to asyncpg.connection.Connection.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class Pool(object):
+    def __init__(self, dsn: str = None,
+                 min_size: int = 10,
+                 max_size: int = 100,
+                 max_queries: int = 50000,
+                 max_inactive_connection_lifetime: float = 300.0,
+                 setup=None,
+                 init=None,
+                 loop=None,
+                 connection_class=Connection,
+                 **connect_kwargs):
+        &#34;&#34;&#34;DB connection pool.
+
+        The parameters are same as `asyncpg.create_pool` function.
+
+        Args:
+            dsn (str, optional): DSN string. Defaults to None.
+            min_size (int, optional): Minimum connection in the pool. Defaults to 10.
+            max_size (int, optional): Maximum connection in the pool. Defaults to 100.
+            max_queries (int, optional): Number of queries after a connection is closed and replaced with a new connection. Defaults to 50000.
+            max_inactive_connection_lifetime (float, optional): Number of seconds after which inactive connections in the pool will be closed.  Pass `0` to disable this mechanism. Defaults to 300.0.
+            setup ([type], optional): A coroutine to prepare a connection right before it is returned  from `Pool.acquire()`. Defaults to None.
+            init ([type], optional): A coroutine to initialize a connection when it is created. Defaults to None.
+            loop ([type], optional): Asyncio even loop instance. Defaults to None.
+            connection_class ([type], optional): The class to use for connections.  Must be a subclass of `asyncpg.connection.Connection`. Defaults to asyncpg.connection.Connection.
+        &#34;&#34;&#34;
+        self.dsn = dsn
+        self.min_size = min_size
+        self.max_size = max_size
+        self.max_queries = max_queries
+        self.max_inactive_connection_lifetime = max_inactive_connection_lifetime
+        self.setup = setup
+        self.init = init
+        self.loop = loop
+        self.connection_class = connection_class
+        self.connect_kwargs = connect_kwargs
+
+        self._pool = None
+        self.open()
+
+    @property
+    def pool(self) -&gt; asyncpg.pool.Pool:
+        &#34;&#34;&#34;Property pool that is an asyncpg.pool.Pool object
+        &#34;&#34;&#34;
+        return self._pool
+
+    async def __create_pool(self) -&gt; asyncpg.pool.Pool:
+        &#34;&#34;&#34;Create a asyncpg.pool.Pool for this Pool object.
+
+        Returns:
+            asyncpg.pool.Pool: Pool object (singleton)
+        &#34;&#34;&#34;
+        return await asyncpg.create_pool(
+                                        dsn=self.dsn,
+                                        min_size=self.min_size,
+                                        max_size=self.max_size,
+                                        max_queries=self.max_queries,
+                                        max_inactive_connection_lifetime=self.max_inactive_connection_lifetime,
+                                        setup=self.setup,
+                                        init=self.init,
+                                        loop=self.loop,
+                                        connection_class=self.connection_class,
+                                        **self.connect_kwargs)
+    def open(self):
+        &#34;&#34;&#34;Open the pool
+        &#34;&#34;&#34;
+        if not self._pool:
+            self._pool = asyncio.get_event_loop().run_until_complete(self.__create_pool())
+            print(&#34;Pool opened&#34;)
+
+    def close(self):
+        &#34;&#34;&#34;Attempt to close the pool gracefully.
+        &#34;&#34;&#34;
+        if self._pool:
+            asyncio.get_event_loop().run_until_complete(self._pool.close())
+            self._pool = None
+            print(&#34;Pool closed&#34;)</code></pre>
+</details>
+<h3>Instance variables</h3>
+<dl>
+<dt id="morm.db.Pool.pool"><code class="name">var <span class="ident">pool</span> : asyncpg.pool.Pool</code></dt>
+<dd>
+<div class="desc"><p>Property pool that is an asyncpg.pool.Pool object</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def pool(self) -&gt; asyncpg.pool.Pool:
+    &#34;&#34;&#34;Property pool that is an asyncpg.pool.Pool object
+    &#34;&#34;&#34;
+    return self._pool</code></pre>
+</details>
+</dd>
+</dl>
+<h3>Methods</h3>
+<dl>
+<dt id="morm.db.Pool.close"><code class="name flex">
+<span>def <span class="ident">close</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Attempt to close the pool gracefully.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def close(self):
+    &#34;&#34;&#34;Attempt to close the pool gracefully.
+    &#34;&#34;&#34;
+    if self._pool:
+        asyncio.get_event_loop().run_until_complete(self._pool.close())
+        self._pool = None
+        print(&#34;Pool closed&#34;)</code></pre>
+</details>
+</dd>
+<dt id="morm.db.Pool.open"><code class="name flex">
+<span>def <span class="ident">open</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Open the pool</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def open(self):
+    &#34;&#34;&#34;Open the pool
+    &#34;&#34;&#34;
+    if not self._pool:
+        self._pool = asyncio.get_event_loop().run_until_complete(self.__create_pool())
+        print(&#34;Pool opened&#34;)</code></pre>
+</details>
+</dd>
+</dl>
+</dd>
+<dt id="morm.db.Transaction"><code class="flex name class">
+<span>class <span class="ident">Transaction</span></span>
+<span>(</span><span>pool: <a title="morm.db.Pool" href="#morm.db.Pool">Pool</a>, *, isolation: str = 'read_committed', readonly: bool = False, deferrable: bool = False)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Start a transaction.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>pool</code></strong> :&ensp;<code><a title="morm.db.Pool" href="#morm.db.Pool">Pool</a></code></dt>
+<dd>Pool instance.</dd>
+<dt><strong><code>isolation</code></strong> :&ensp;<code>str</code>, optional</dt>
+<dd>Transaction isolation mode, can be one of: <code>'serializable'</code>, <code>'repeatable_read'</code>, <code>'read_committed'</code>. Defaults to 'read_committed'. See <a href="https://www.postgresql.org/docs/9.5/transaction-iso.html">https://www.postgresql.org/docs/9.5/transaction-iso.html</a></dd>
+<dt><strong><code>readonly</code></strong> :&ensp;<code>bool</code>, optional</dt>
+<dd>Specifies whether or not this transaction is read-only. Defaults to False.</dd>
+<dt><strong><code>deferrable</code></strong> :&ensp;<code>bool</code>, optional</dt>
+<dd>Specifies whether or not this transaction is deferrable. Defaults to False.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class Transaction():
+    def __init__(self, pool: Pool, *,
+                isolation: str=&#39;read_committed&#39;,
+                readonly: bool=False,
+                deferrable: bool=False):
+        &#34;&#34;&#34;Start a transaction.
+
+        Args:
+            pool (Pool): Pool instance.
+            isolation (str, optional): Transaction isolation mode, can be one of: `&#39;serializable&#39;`, `&#39;repeatable_read&#39;`, `&#39;read_committed&#39;`. Defaults to &#39;read_committed&#39;. See https://www.postgresql.org/docs/9.5/transaction-iso.html
+            readonly (bool, optional): Specifies whether or not this transaction is read-only. Defaults to False.
+            deferrable (bool, optional): Specifies whether or not this transaction is deferrable. Defaults to False.
+        &#34;&#34;&#34;
+        self.db = DB(pool)
+        self.tr = None
+        self.tr_args = {
+            &#39;isolation&#39;: isolation,
+            &#39;readonly&#39;: readonly,
+            &#39;deferrable&#39;: deferrable,
+        }
+
+    async def __aenter__(self) -&gt; Connection:
+        return await self.start()
+
+    async def start(self) -&gt; Connection:
+        &#34;&#34;&#34;Start transaction.
+
+        Raises:
+            exceptions.TransactionError: When same object is used simultaneously for transaction
+
+        Returns:
+            Connection: Connection object.
+        &#34;&#34;&#34;
+        if self.db._con:
+            raise exceptions.TransactionError(&#39;Another transaction is running (or not ended properly) with this Transaction object&#39;)
+        self.db._con = await self.db._pool.pool.acquire() # type: ignore
+        self.tr = self.db._con.transaction(**self.tr_args) # type: ignore
+        await self.tr.start() # type: ignore
+        # return self.db
+        # test with returning con directly
+        return self.db._con
+
+    async def rollback(self):
+        &#34;&#34;&#34;Rollback the transaction.
+        &#34;&#34;&#34;
+        if self.tr:
+            await self.tr.rollback()
+
+    async def commit(self):
+        &#34;&#34;&#34;Commit the transaction.
+        &#34;&#34;&#34;
+        if self.tr:
+            await self.tr.commit()
+
+    async def end(self):
+        &#34;&#34;&#34;Close the transaction gracefully.
+
+        Resources are released and some cleanups are done.
+        &#34;&#34;&#34;
+        try:
+            if self.db._con:
+                await self.db._pool.pool.release(self.db._con)
+        finally:
+            self.db._con = None
+            self.tr = None
+
+    async def __aexit__(self, extype, ex, tb):
+        try:
+            if extype is not None:
+                await self.rollback()
+            else:
+                await self.commit()
+        finally:
+            await self.end()</code></pre>
+</details>
+<h3>Methods</h3>
+<dl>
+<dt id="morm.db.Transaction.commit"><code class="name flex">
+<span>async def <span class="ident">commit</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Commit the transaction.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">async def commit(self):
+    &#34;&#34;&#34;Commit the transaction.
+    &#34;&#34;&#34;
+    if self.tr:
+        await self.tr.commit()</code></pre>
+</details>
+</dd>
+<dt id="morm.db.Transaction.end"><code class="name flex">
+<span>async def <span class="ident">end</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Close the transaction gracefully.</p>
+<p>Resources are released and some cleanups are done.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">async def end(self):
+    &#34;&#34;&#34;Close the transaction gracefully.
+
+    Resources are released and some cleanups are done.
+    &#34;&#34;&#34;
+    try:
+        if self.db._con:
+            await self.db._pool.pool.release(self.db._con)
+    finally:
+        self.db._con = None
+        self.tr = None</code></pre>
+</details>
+</dd>
+<dt id="morm.db.Transaction.rollback"><code class="name flex">
+<span>async def <span class="ident">rollback</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Rollback the transaction.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">async def rollback(self):
+    &#34;&#34;&#34;Rollback the transaction.
+    &#34;&#34;&#34;
+    if self.tr:
+        await self.tr.rollback()</code></pre>
+</details>
+</dd>
+<dt id="morm.db.Transaction.start"><code class="name flex">
+<span>async def <span class="ident">start</span></span>(<span>self) ‑> asyncpg.connection.Connection</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Start transaction.</p>
+<h2 id="raises">Raises</h2>
+<dl>
+<dt><code>exceptions.TransactionError</code></dt>
+<dd>When same object is used simultaneously for transaction</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code>Connection</code></dt>
+<dd>Connection object.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">async def start(self) -&gt; Connection:
+    &#34;&#34;&#34;Start transaction.
+
+    Raises:
+        exceptions.TransactionError: When same object is used simultaneously for transaction
+
+    Returns:
+        Connection: Connection object.
+    &#34;&#34;&#34;
+    if self.db._con:
+        raise exceptions.TransactionError(&#39;Another transaction is running (or not ended properly) with this Transaction object&#39;)
+    self.db._con = await self.db._pool.pool.acquire() # type: ignore
+    self.tr = self.db._con.transaction(**self.tr_args) # type: ignore
+    await self.tr.start() # type: ignore
+    # return self.db
+    # test with returning con directly
+    return self.db._con</code></pre>
+</details>
+</dd>
+</dl>
+</dd>
+</dl>
+</section>
+</article>
+<nav id="sidebar">
+<h1>Index</h1>
+<div class="toc">
+<ul></ul>
+</div>
+<ul id="index">
+<li><h3>Super-module</h3>
+<ul>
+<li><code><a title="morm" href="index.html">morm</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-functions">Functions</a></h3>
+<ul class="">
+<li><code><a title="morm.db.record_to_model" href="#morm.db.record_to_model">record_to_model</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-classes">Classes</a></h3>
+<ul>
+<li>
+<h4><code><a title="morm.db.DB" href="#morm.db.DB">DB</a></code></h4>
+<ul class="two-column">
+<li><code><a title="morm.db.DB.corp" href="#morm.db.DB.corp">corp</a></code></li>
+<li><code><a title="morm.db.DB.execute" href="#morm.db.DB.execute">execute</a></code></li>
+<li><code><a title="morm.db.DB.fetch" href="#morm.db.DB.fetch">fetch</a></code></li>
+<li><code><a title="morm.db.DB.fetchrow" href="#morm.db.DB.fetchrow">fetchrow</a></code></li>
+<li><code><a title="morm.db.DB.fetchval" href="#morm.db.DB.fetchval">fetchval</a></code></li>
+<li><code><a title="morm.db.DB.get_insert_query" href="#morm.db.DB.get_insert_query">get_insert_query</a></code></li>
+<li><code><a title="morm.db.DB.get_update_query" href="#morm.db.DB.get_update_query">get_update_query</a></code></li>
+<li><code><a title="morm.db.DB.insert" href="#morm.db.DB.insert">insert</a></code></li>
+<li><code><a title="morm.db.DB.pool" href="#morm.db.DB.pool">pool</a></code></li>
+<li><code><a title="morm.db.DB.q" href="#morm.db.DB.q">q</a></code></li>
+<li><code><a title="morm.db.DB.save" href="#morm.db.DB.save">save</a></code></li>
+<li><code><a title="morm.db.DB.update" href="#morm.db.DB.update">update</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="morm.db.ModelQuery" href="#morm.db.ModelQuery">ModelQuery</a></code></h4>
+<ul class="two-column">
+<li><code><a title="morm.db.ModelQuery.c" href="#morm.db.ModelQuery.c">c</a></code></li>
+<li><code><a title="morm.db.ModelQuery.db_table" href="#morm.db.ModelQuery.db_table">db_table</a></code></li>
+<li><code><a title="morm.db.ModelQuery.execute" href="#morm.db.ModelQuery.execute">execute</a></code></li>
+<li><code><a title="morm.db.ModelQuery.f" href="#morm.db.ModelQuery.f">f</a></code></li>
+<li><code><a title="morm.db.ModelQuery.fetch" href="#morm.db.ModelQuery.fetch">fetch</a></code></li>
+<li><code><a title="morm.db.ModelQuery.fetchrow" href="#morm.db.ModelQuery.fetchrow">fetchrow</a></code></li>
+<li><code><a title="morm.db.ModelQuery.fetchval" href="#morm.db.ModelQuery.fetchval">fetchval</a></code></li>
+<li><code><a title="morm.db.ModelQuery.get" href="#morm.db.ModelQuery.get">get</a></code></li>
+<li><code><a title="morm.db.ModelQuery.getq" href="#morm.db.ModelQuery.getq">getq</a></code></li>
+<li><code><a title="morm.db.ModelQuery.ordering" href="#morm.db.ModelQuery.ordering">ordering</a></code></li>
+<li><code><a title="morm.db.ModelQuery.pk" href="#morm.db.ModelQuery.pk">pk</a></code></li>
+<li><code><a title="morm.db.ModelQuery.q" href="#morm.db.ModelQuery.q">q</a></code></li>
+<li><code><a title="morm.db.ModelQuery.q_" href="#morm.db.ModelQuery.q_">q_</a></code></li>
+<li><code><a title="morm.db.ModelQuery.qc" href="#morm.db.ModelQuery.qc">qc</a></code></li>
+<li><code><a title="morm.db.ModelQuery.qc_" href="#morm.db.ModelQuery.qc_">qc_</a></code></li>
+<li><code><a title="morm.db.ModelQuery.qfilter" href="#morm.db.ModelQuery.qfilter">qfilter</a></code></li>
+<li><code><a title="morm.db.ModelQuery.qo" href="#morm.db.ModelQuery.qo">qo</a></code></li>
+<li><code><a title="morm.db.ModelQuery.qq" href="#morm.db.ModelQuery.qq">qq</a></code></li>
+<li><code><a title="morm.db.ModelQuery.qreturning" href="#morm.db.ModelQuery.qreturning">qreturning</a></code></li>
+<li><code><a title="morm.db.ModelQuery.qu" href="#morm.db.ModelQuery.qu">qu</a></code></li>
+<li><code><a title="morm.db.ModelQuery.qupdate" href="#morm.db.ModelQuery.qupdate">qupdate</a></code></li>
+<li><code><a title="morm.db.ModelQuery.qwhere" href="#morm.db.ModelQuery.qwhere">qwhere</a></code></li>
+<li><code><a title="morm.db.ModelQuery.reset" href="#morm.db.ModelQuery.reset">reset</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="morm.db.Pool" href="#morm.db.Pool">Pool</a></code></h4>
+<ul class="">
+<li><code><a title="morm.db.Pool.close" href="#morm.db.Pool.close">close</a></code></li>
+<li><code><a title="morm.db.Pool.open" href="#morm.db.Pool.open">open</a></code></li>
+<li><code><a title="morm.db.Pool.pool" href="#morm.db.Pool.pool">pool</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="morm.db.Transaction" href="#morm.db.Transaction">Transaction</a></code></h4>
+<ul class="">
+<li><code><a title="morm.db.Transaction.commit" href="#morm.db.Transaction.commit">commit</a></code></li>
+<li><code><a title="morm.db.Transaction.end" href="#morm.db.Transaction.end">end</a></code></li>
+<li><code><a title="morm.db.Transaction.rollback" href="#morm.db.Transaction.rollback">rollback</a></code></li>
+<li><code><a title="morm.db.Transaction.start" href="#morm.db.Transaction.start">start</a></code></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</nav>
+</main>
+<footer id="footer">
+<p>Generated by <a href="https://pdoc3.github.io/pdoc"><cite>pdoc</cite> 0.9.2</a>.</p>
+</footer>
+</body>
+</html>

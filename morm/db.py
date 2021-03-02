@@ -13,7 +13,7 @@ from contextlib import asynccontextmanager
 
 import asyncpg # type: ignore
 from asyncpg import Record, Connection # type: ignore
-from typing import Optional, List, Tuple, TypeVar, Union, Any
+from typing import Optional, Dict, List, Tuple, TypeVar, Union, Any
 
 from morm import exceptions
 from morm.model import ModelType, Model, ModelBase, FieldNames
@@ -414,7 +414,7 @@ class DB(object):
 
 
 class ModelQuery():
-    def __init__(self, db: DB, model_class: ModelType):
+    def __init__(self, db: DB, model_class: ModelType = None):
         """Query builder for model class.
 
         The `q` family of methods (`q, qc, qu etc..`) can be used to
@@ -450,19 +450,22 @@ class ModelQuery():
             return Q(model_class._check_field_name_(k))
         self._f = FieldNames(func) # no reset
 
+    def __repr__(self):
+        return f'ModelQuery({self.db}, {self.model})'
+
     def reset(self) -> 'ModelQuery':
         """Reset the model query by returning it to its initial state.
 
         Returns:
             self (Enables method chaining)
         """
-        self._query_str_queue = []
+        self._query_str_queue: List[str] = []
         self.end_query_str = ''
         self.start_query_str = ''
-        self._prepared_args = []
+        self._prepared_args: List[Any] = []
         self._arg_count = 0
-        self._named_args = {}
-        self._named_args_mapper = {}
+        self._named_args: Dict[str, Any] = {}
+        self._named_args_mapper: Dict[str, int] = {}
         self.__filter_initiated = False
         self._ordering = ''
         self.__update_initiated = False
@@ -485,13 +488,13 @@ class ModelQuery():
     def db_table(self) -> str:
         """Table name of the model (quoted)
         """
-        return Q(self.model._get_db_table_())
+        return Q(self.model._get_db_table_()) #type: ignore
 
     @property
     def pk(self) -> str:
         """Primary key name (quoted)
         """
-        return Q(self.model._get_pk_())
+        return Q(self.model._get_pk_()) #type: ignore
 
     @property
     def ordering(self) -> str:
@@ -500,7 +503,7 @@ class ModelQuery():
         Example: `"price" ASC, "quantity" DESC`
         """
         if not self._ordering:
-            self._ordering = ','.join([' '.join(y) for y in self.model._get_ordering_(quote='"')])
+            self._ordering = ','.join([' '.join(y) for y in self.model._get_ordering_(quote='"')]) # type: ignore
         return self._ordering
 
     @property
@@ -771,8 +774,8 @@ class ModelQuery():
             ModelQuery: returns self to enable method chaining
         """
         if not self.__filter_initiated:
-            down_fields = ','.join([Q(x) for x in self.model._get_fields_(up=False)])
-            self.q(f'SELECT {down_fields} FROM "{self.model._get_db_table_()}" WHERE')
+            down_fields = ','.join([Q(x) for x in self.model._get_fields_(up=False)]) #type: ignore
+            self.q(f'SELECT {down_fields} FROM "{self.model._get_db_table_()}" WHERE') #type: ignore
             self.__filter_initiated = True
             order_by = self.ordering
             if order_by and not no_ordering:
@@ -886,7 +889,7 @@ class ModelQuery():
             model_clas object or None if no rows were selected.
         """
         if not col:
-            col = self.model.Meta.pk
+            col = self.model.Meta.pk    #type: ignore
         return await self.qfilter().qc(col, comp, *vals).fetchrow()
 
 
