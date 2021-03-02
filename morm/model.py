@@ -52,52 +52,51 @@ class ModelType(type):
         _class_ = super().__new__(mcs, 'x_' + class_name, parents, attrs)
         BaseMeta = getattr(_class_, 'Meta', _Meta_)
 
-        # parse and update meta
-        meta_attrs_inheritable = {
-            'pk': 'id',
-            'proxy': False,             # TODO: Implement in migration
-            'ordering': (),
-            'fields_up': (),
-            'fields_down': (),
-            'exclude_fields_up': (),
-            'exclude_fields_down': (),
-            'exclude_values_up': {'':()},
-            'exclude_values_down': {'':()},
-        }
-        meta_attrs_noninheritable = {
-            'db_table': class_name,
-            'abstract': False,          # TODO: Implement in migration
-        }
-
-        meta_attrs_inheritable_internal = { # type: ignore
-            # for preserving order, python 3.6+ is required.
-            # This library requires at least 3.7
-            '_field_defs_': {},         # Internal, Dicts are ordered from python 3.6, officially from 3.7
-        }
-
         meta_attrs = {}
-        def set_meta_attrs(meta, meta_attrs_current, inherit=False, internal=False):
-            for k, v in meta_attrs_current.items():
-                try:
-                    given_value = getattr(meta, k)
-                    if internal:
-                        raise ValueError(f"'{k}' is a reserved attribute for class Meta. Error in model '{class_name}'")
-                    given_type = type(given_value)
-                    required_type = type(v)
-                    if not given_type is required_type:
-                        raise TypeError(f"Invalid type {given_type} given for attribute '{k}' in class '{class_name}.Meta'. Required {required_type}.")
-                    meta_attrs[k] = given_value
-                except AttributeError:
-                    if inherit:
-                        v = getattr(BaseMeta, k, v)
-                        # here deepcopy fixes a bug
-                        # mutable values can be changed by other class meta change
+        def _set_meta_attr(k, v, mutable=False, inherit=True, internal=False):
+            try:
+                given_value = getattr(meta, k)
+                if internal:
+                    raise ValueError(f"'{k}' is a reserved attribute for class Meta. Error in model '{class_name}'")
+                given_type = type(given_value)
+                required_type = type(v)
+                if not given_type is required_type:
+                    raise TypeError(f"Invalid type {given_type} given for attribute '{k}' in class '{class_name}.Meta'. Required {required_type}.")
+                meta_attrs[k] = given_value
+            except AttributeError:
+                if inherit:
+                    v = getattr(BaseMeta, k, v)
+                    # here deepcopy fixes a bug
+                    # mutable values can be changed by other class meta change
+                    if mutable:
                         meta_attrs[k] = copy.deepcopy(v)
                     else:
                         meta_attrs[k] = v
-        set_meta_attrs(meta, meta_attrs_inheritable, inherit=True)
-        set_meta_attrs(meta, meta_attrs_noninheritable, inherit=False)
-        set_meta_attrs(meta, meta_attrs_inheritable_internal, inherit=True, internal=True)
+                else:
+                    meta_attrs[k] = v
+
+        _set_meta_attr('pk', 'id')
+        _set_meta_attr('proxy', False)
+        _set_meta_attr('ordering', ())
+        _set_meta_attr('fields_up', ())
+        _set_meta_attr('fields_down', ())
+        _set_meta_attr('exclude_fields_up', ())
+        _set_meta_attr('exclude_fields_down', ())
+        _set_meta_attr('exclude_values_up', {'':()}, mutable=True)
+        _set_meta_attr('exclude_values_down', {'':()}, mutable=True)
+        _set_meta_attr('_field_defs_', {}, internal=True, mutable=True)
+
+        if meta_attrs['proxy']:
+            #proxy model inherits everything
+            try:
+                meta_attrs['db_table'] = BaseMeta.db_table
+                meta_attrs['abstract'] = BaseMeta.abstract
+            except AttributeError:
+                raise TypeError(f"This model '{class_name}' can not be a proxy model. It does not have a valid base or super base non-proxy model")
+        else:
+            _set_meta_attr('db_table', class_name, inherit=False)
+            _set_meta_attr('abstract', False, inherit=False)
+
 
 
         new_attrs = {}
@@ -122,7 +121,10 @@ class ModelType(type):
 
         # we do this after finalizing meta_attr
         def _get_field_name(n: str) -> str:
-            return meta_attrs['_field_defs_'][n].name
+            if n in meta_attrs['_field_defs_']:
+                return n
+            else:
+                raise AttributeError(f"No such field '{n}' in model '{class_name}'")
         meta_attrs['f'] = FieldNames(_get_field_name)
 
         MetaClass = mt.MetaType('Meta', (mt.Meta,), meta_attrs)

@@ -194,6 +194,15 @@ class TestMethods(unittest.TestCase):
             f.age: 23,
             f.hobby: 'gardenning',
         }
+        print(f' - [x] Checking field name access from Model.Meta.f')
+        self.assertTrue(f.profession == 'profession')
+        with self.assertRaises(AttributeError):
+            f.profesion
+
+        print(f'* Changing Model.Meta.f.<field_name> is not possible.')
+        with self.assertRaises(NotImplementedError):
+            f.profession = 343
+
         # db.q(BigUser2).q_()
 
 
