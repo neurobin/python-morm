@@ -13,11 +13,11 @@ from contextlib import asynccontextmanager
 
 import asyncpg # type: ignore
 from asyncpg import Record, Connection # type: ignore
-from typing import Optional, List, Tuple
+from typing import Optional, List, Tuple, TypeVar, Union, Any
 
 from morm import exceptions
-from morm.model import ModelType, Model, ModelBase
-from morm.q import Q, QueryBuilder
+from morm.model import ModelType, Model, ModelBase, FieldNames
+from morm.q import Q
 from morm.types import Void
 
 
@@ -122,14 +122,14 @@ class DB(object):
     connection pool defined by a Pool object.
     """
 
-    def __init__(self, pool: Pool, con=None):
+    def __init__(self, pool: Pool, con: Connection=None):
         """Initialize a DB object setting a pool to get connection from.
 
         If connection is given, it is used instead.
 
         Args:
             pool (Pool): A connection pool
-            con (asyncpg.Connection): Connection. Defaults to `None`.
+            con (Connection): Connection. Defaults to `None`.
         """
         self._pool = pool
         self._con = con
@@ -144,7 +144,7 @@ class DB(object):
         """
         return self._pool
 
-    def corp(self):
+    def corp(self) -> Union[asyncpg.pool.Pool, Connection]:
         """Return the connection if available, otherwise return a Pool.
 
         Note: The name reads 'c or p'
@@ -158,9 +158,8 @@ class DB(object):
 
     async def fetch(self, query: str, *args,
                     timeout: float = None,
-                    model_class: ModelType=None,
-                    # con: Connection=None,
-                    ):
+                    model_class: ModelType=None
+                    ) -> Union[List[ModelBase], List[Record]]:
         """Make a query and get the results.
 
         Resultant records can be mapped to model_class objects.
@@ -187,9 +186,8 @@ class DB(object):
 
     async def fetchrow(self, query: str, *args,
                         timeout: float = None,
-                        model_class: ModelType=None,
-                        # con: Connection=None,
-                        ):
+                        model_class: ModelType=None
+                        ) -> Union[ModelBase, Record]:
         """Make a query and get the first row.
 
         Resultant record can be mapped to model_class objects.
@@ -215,9 +213,8 @@ class DB(object):
 
     async def fetchval(self, query: str, *args,
                         column: int = 0,
-                        timeout: float = None,
-                        # con: Connection=None,
-                        ):
+                        timeout: float = None
+                        ) -> Any:
         """Run a query and return a column value in the first row.
 
         Args:
@@ -233,9 +230,8 @@ class DB(object):
         return await pool.fetchval(query, *args, column=column, timeout=timeout)
 
     async def execute(self, query: str, *args,
-                        timeout: float = None,
-                        # con: Connection=None,
-                        ):
+                        timeout: float = None
+                        ) -> str:
         """Execute a query.
 
         Args:
@@ -249,8 +245,11 @@ class DB(object):
         pool = self.corp()
         return await pool.execute(query, *args, timeout=timeout)
 
-    def get_insert_query(self, mob: ModelBase):
-        """Get insert query for the model object with the current data
+    def get_insert_query(self, mob: ModelBase) -> Tuple[str, List[Any]]:
+        """Get insert query for the model object (mob) with its current data
+
+        Args:
+            mob (ModelBase): Model object
 
         Returns:
             (str, list): query, prepared_args
@@ -272,13 +271,17 @@ class DB(object):
             column_q = f'"{column_q}"'
         marker_q = ', '.join(markers)
         if column_q:
-            query = f'INSERT INTO "{mob.__class__._get_table_name_()}" ({column_q}) VALUES ({marker_q}) RETURNING "{mob.__class__._get_pk_()}"'
+            query = f'INSERT INTO "{mob.__class__._get_db_table_()}" ({column_q}) VALUES ({marker_q}) RETURNING "{mob.__class__._get_pk_()}"'
         else:
             query = ''
         return query, values
 
-    def get_update_query(self, mob: ModelBase, reset=False):
-        """Get the update query for the changed data in the model object
+    def get_update_query(self, mob: ModelBase, reset=False) -> Tuple[str, List[Any]]:
+        """Get the update query for the changed data in the model object (mob)
+
+        Args:
+            mob (ModelBase): Model object
+            reset (bool): If True, this method can be called just once to get the changes done on mob. Subsequent call will return empty query.
 
         Raises:
             AttributeError: If primary key does not exists i.e if not updatable
@@ -310,16 +313,20 @@ class DB(object):
 
         colval_q = ', '.join(colval)
         if colval_q:
-            query = f'UPDATE "{mob.__class__._get_table_name_()}" SET {colval_q} WHERE {where}'
+            query = f'UPDATE "{mob.__class__._get_db_table_()}" SET {colval_q} WHERE {where}'
         else:
             query = ''
         return query, values
 
-    async def insert(self, mob: ModelBase, timeout: float = None):
-        """Insert the current data state into db
+    async def insert(self, mob: ModelBase, timeout: float = None) -> Any:
+        """Insert the current data state of mob into db.
+
+        Args:
+            mob (ModelBase): Model object
+            timeout (float): timeout value. Defaults to None.
 
         Returns:
-            Value of primary key of the inserted row
+            (Any): Value of primary key of the inserted row
         """
         query, args = self.get_insert_query(mob)
         pkval = await self.fetchval(query, *args, timeout=timeout)
@@ -327,14 +334,20 @@ class DB(object):
             setattr(mob, mob.__class__._get_pk_(), pkval)
         return pkval
 
-    async def update(self, mob: ModelBase, timeout: float = None):
-        """Update the current changed data onto db
+    async def update(self, mob: ModelBase, timeout: float = None) -> str:
+        """Update the current changed data of mob onto db
+
+        Args:
+            mob (ModelBase): Model object
+            timeout (float): timeout value. Defaults to None.
 
         Raises:
             AttributeError: If primary key does not exists.
 
         Returns:
-            str: status of last sql command
+            str: status of last sql command.
+            Successful status starts with the word 'UPDATE' followed by
+            number of rows updated, which should be 1 in this case.
         """
         query, args = self.get_update_query(mob, reset=True)
         if query:
@@ -342,25 +355,48 @@ class DB(object):
         return self.DATA_NO_CHANGE
 
 
-    async def save(self, mob: ModelBase, timeout: float = None):
+    async def save(self, mob: ModelBase, timeout: float = None) -> Union[str, Any]:
         """Insert if not exists and update if exists.
 
-        update is tried first, if fails, insert is called.
+        update is tried first, if fails (if pk does not exist), insert
+        is called.
+
+        Args:
+            mob (ModelBase): Model object
+            timeout (float): timeout value. Defaults to None.
 
         Returns:
             int or str: The value of the primary key for insert or
-                            status for update operation.
+                            status for update.
         """
         try:
             return await self.update(mob, timeout=timeout)
         except AttributeError:
             return await self.insert(mob, timeout=timeout)
 
-    def __call__(self, model: ModelType = None):
+    def q(self, model: ModelType = None) -> 'ModelQuery':
         """Return a ModelQuery for model
 
-        If None is passed it will give a ModelQuery without setting
-        self.model on the `ModelQuery` object.
+        If `None` is passed, it will give a `ModelQuery` without setting
+        `self.model` on the `ModelQuery` object.
+
+        Args:
+            model (ModelType, optional): model class. Defaults to None.
+
+        Raises:
+            TypeError: If invalid model type is passed
+
+        Returns:
+            ModelQuery: ModelQuery object
+        """
+        return self(model)
+
+
+    def __call__(self, model: ModelType = None) -> 'ModelQuery':
+        """Return a ModelQuery for model
+
+        If `None` is passed, it will give a `ModelQuery` without setting
+        `self.model` on the `ModelQuery` object.
 
         Args:
             model (ModelType, optional): model class. Defaults to None.
@@ -373,7 +409,7 @@ class DB(object):
         """
         if isinstance(model, ModelType) or model is None:
             return ModelQuery(self, model)
-        raise TypeError(f"Invalid model: {model}. model must be of type {ModelType.__name__}")
+        raise TypeError(f"Invalid model: {model}. model must be of type {ModelType.__name__}. Make sure you did not pass a model object by mistake.")
 
 
 
@@ -386,7 +422,7 @@ class ModelQuery():
         together to break down the query building in multiple steps.
 
         Several properties are available to get information of the model
-        such as table name (`self.table`), ordering (`self.ordering`),
+        such as table name (`self.db_table`), ordering (`self.ordering`),
         field names (`self.f.<field_name>`) etc..
 
         `self.c` is a counter that gives an integer representing the
@@ -399,8 +435,8 @@ class ModelQuery():
 
         Notable convenience methods:
 
-        * `update(data)`: Initialize a update query for data
-        * `filter()`: Initialize a filter query upto WHERE clasue.
+        * `qupdate(data)`: Initialize a update query for data
+        * `qfilter()`: Initialize a filter query upto WHERE clasue.
         * `get(pkval)`: Get an item by primary key.
 
         Args:
@@ -410,10 +446,11 @@ class ModelQuery():
         self.reset()
         self.db = db
         self.model = model_class # can be None
-        self._f = None # no reset
-        self._f_ = None # no reset
+        def func(k):
+            return Q(model_class._check_field_name_(k))
+        self._f = FieldNames(func) # no reset
 
-    def reset(self):
+    def reset(self) -> 'ModelQuery':
         """Reset the model query by returning it to its initial state.
 
         Returns:
@@ -433,43 +470,31 @@ class ModelQuery():
 
 
     @property
-    def c(self):
+    def c(self) -> int:
         """Current available argument position in the query
 
         arg_count + 1 i.e if $1 and $2 has been used so far, then
         self.c is 3 so that you can use it to make $3.
 
         Returns:
-            self
+            int
         """
         return self._arg_count + 1
 
     @property
-    def table(self):
-        """Table name of the model
-        """
-        return self.model._get_db_table_()
-
-    @property
-    def table_(self):
+    def db_table(self) -> str:
         """Table name of the model (quoted)
         """
         return Q(self.model._get_db_table_())
 
     @property
-    def pk(self):
-        """Primary key name
-        """
-        return self.model._get_pk_()
-
-    @property
-    def pk_(self):
+    def pk(self) -> str:
         """Primary key name (quoted)
         """
         return Q(self.model._get_pk_())
 
     @property
-    def ordering(self):
+    def ordering(self) -> str:
         """Ordering query in SQL, does not include `ORDER BY`.
 
         Example: `"price" ASC, "quantity" DESC`
@@ -478,54 +503,28 @@ class ModelQuery():
             self._ordering = ','.join([' '.join(y) for y in self.model._get_ordering_(quote='"')])
         return self._ordering
 
-    def _get_GetFieldName_object(self, func):
-        class _GetFieldName():
-            def __getattr__(self, k):
-                return func(k)
-
-            def __setattr__(self, k, v):
-                raise NotImplementedError
-        return _GetFieldName()
-
-
     @property
-    def f(self):
-        """Field name container
+    def f(self) -> FieldNames:
+        """Field name container where names are quoted.
 
         It can be used to avoid spelling mistakes in writing query.
-        Example:
 
-        query: `'select "profesion" from "table_name"'`
+        Example: query `'select "profesion" from "table_name"'`
 
         will only produce error after actually running the query against
         a correctly spelled column 'profession'.
 
         while,
 
-        query: `f'select "{self.fn.profesion}" from "{self.table}"'`
+        query `f'select {self.f.profesion} from {self.db_table}'`
 
         will throw python exception telling you that there is no
         misspelled 'profesion' field.
 
         Note: you have to change `self` in above to the current
-        ModelQuery instance
-
+        `ModelQuery` instance
         """
-        if not self._f:
-            def func(k):
-                return self.model._get_field_name_(k)
-            self._f = self._get_GetFieldName_object(func)
         return self._f
-
-    @property
-    def f_(self):
-        """Field name container where names are quoted.
-        """
-        if not self._f_:
-            def func(k):
-                return self.model._get_field_name_(Q(k))
-            self._f = self._get_GetFieldName_object(func)
-        return self._f_
 
     def _process_positional_args(self, *args):
         if args:
@@ -549,7 +548,7 @@ class ModelQuery():
                     self._named_args_mapper[k] = self._arg_count
         return q
 
-    def q(self, q: str, *args):
+    def q(self, q: str, *args) -> 'ModelQuery':
         """Add raw query stub without parsing to check for keyword arguments
 
         Use `$1`, `$2` etc. for prepared arguments.
@@ -592,7 +591,7 @@ class ModelQuery():
         return self
 
 
-    def q_(self, q: str, *args, **kwargs):
+    def q_(self, q: str, *args, **kwargs) -> 'ModelQuery':
         """Add a query stub having keyword params.
 
         Use the format `:field_name` for keyword parameter.
@@ -612,7 +611,7 @@ class ModelQuery():
         self._query_str_queue.append(q)
         return self
 
-    def qq(self, word: str):
+    def qq(self, word: str) -> 'ModelQuery':
         """Quote and add a word to the query.
 
         Enable to add names with auto-quote. For example, if the name
@@ -637,7 +636,7 @@ class ModelQuery():
         return self
 
 
-    def qc(self, word: str, rest: str, *args):
+    def qc(self, word: str, rest: str, *args) -> 'ModelQuery':
         """Add query by quoting `word` while adding the `rest` as is.
 
         This is a shorthand for making where clause conditions.
@@ -665,7 +664,7 @@ class ModelQuery():
         return self.qq(word).q(rest, *args)
 
 
-    def qc_(self, word: str, rest: str, *args, **kwargs):
+    def qc_(self, word: str, rest: str, *args, **kwargs) -> 'ModelQuery':
         """Add query by quoting `word` while adding the `rest` as is.
 
         Same as `qc()` except this method parses the `rest` query string
@@ -682,8 +681,8 @@ class ModelQuery():
         """
         return self.qq(word).q_(rest, *args, **kwargs)
 
-    def qo(self, order: str):
-        """Convert `-field_name,` to proper order_by criteria and add to query.
+    def qo(self, order: str) -> 'ModelQuery':
+        """Convert `+/-field_name,` to proper order_by criteria and add to query.
 
         Example: `-field_name,` will become: `"field_name" DESC,`
 
@@ -710,8 +709,8 @@ class ModelQuery():
             direction += ','
         return self.qq(order).q(direction)
 
-    def qu(self, data: dict):
-        """Convert data to "column"=$n query with prepared args as the
+    def qu(self, data: dict) -> 'ModelQuery':
+        """Convert data to `"column"=$n` query with prepared args as the
             values and add to the main query.
 
         The counter of positional arguments increases by the number of
@@ -727,21 +726,21 @@ class ModelQuery():
         setq = ', '.join([f'"{c}"=${i}' for i,c in enumerate(data, self.c)])
         return self.q(setq, *data.values())
 
-    def qreturning(self, *args):
+    def qreturning(self, *column_names) -> 'ModelQuery':
         """Convenience to add a `RETURNING` clause.
 
         Args:
-            args: column names.
+            column_names: column names.
 
         Returns:
             ModelQuery: returns `self` to enable method chaining
         """
-        q = '","'.join(args)
+        q = '","'.join(column_names)
         if q:
             q = f'"{q}"'
         return self.q(q)
 
-    def qwhere(self):
+    def qwhere(self) -> 'ModelQuery':
         """Convenience to add 'WHERE' to the main query.
 
         Make use of `qc()` method to add conditions.
@@ -751,8 +750,62 @@ class ModelQuery():
         """
         return self.q('WHERE')
 
+    def qfilter(self, no_ordering=False) -> 'ModelQuery':
+        """Initiate a filter.
 
-    def getq(self):
+        This initiates a `SELECT` query upto `WHERE`. You can then use the
+        `q()`, `qc()`, etc. methods to add conditions and finally
+        execute the `fetch()` method to get all results or execute the
+        `fetchrow()` method to get a single row.
+
+        Example:
+
+        ```python
+        .qfilter().q('"price" >= $1 AND "status" = $2', 32.12, 'OK')
+        ```
+
+        Args:
+            no_ordering (bool): Whether to remove the default ordering SQL. Defaults to False.
+
+        Returns:
+            ModelQuery: returns self to enable method chaining
+        """
+        if not self.__filter_initiated:
+            down_fields = ','.join([Q(x) for x in self.model._get_fields_(up=False)])
+            self.q(f'SELECT {down_fields} FROM "{self.model._get_db_table_()}" WHERE')
+            self.__filter_initiated = True
+            order_by = self.ordering
+            if order_by and not no_ordering:
+                self.end_query_str = f'ORDER BY {order_by}'
+        else:
+            ValueError(f"Filter is already initiated for this {self.__class__.__name__} query object: {self}")
+        return self
+
+    def qupdate(self, data: dict) -> 'ModelQuery':
+        """Initiate a UPDATE query for data.
+
+        This initiates an `UPDATE` query upto `WHERE` and leaves you to
+        add conditions with other methods such as `qc` or the generic
+        method `q()`.
+
+        Finally call the `execute()` method to execute the query or
+        call the `fetchval()` method if using `RETURNING` clause.
+
+        Args:
+            data (dict): data in key value dictionary
+
+        Returns:
+            ModelQuery: returns `self` to enable method chaining
+        """
+        if not self.__update_initiated:
+            self.q(f'UPDATE {self.db_table} SET').qu(data).qwhere()
+            self.__update_initiated = True
+        else:
+            ValueError(f"update is already initiated for this {self.__class__.__name__} query: {self}")
+        return self
+
+
+    def getq(self) -> Tuple[str, List[Any]]:
         """Return query string and prepared arg list
 
         Returns:
@@ -763,7 +816,7 @@ class ModelQuery():
         query = f'{self.start_query_str} {query} {self.end_query_str}'
         return query, self._prepared_args
 
-    async def fetch(self, timeout: float = None):
+    async def fetch(self, timeout: float = None) -> Union[List[ModelBase], List[Record]]:
         """Run query method `fetch` that returns the results in model class objects
 
         Returns the results in model class objects.
@@ -777,7 +830,7 @@ class ModelQuery():
         query, parepared_args = self.getq()
         return await self.db.fetch(query, *parepared_args, timeout=timeout, model_class=self.model)
 
-    async def fetchrow(self, timeout: float = None):
+    async def fetchrow(self, timeout: float = None) -> Union[ModelBase, Record]:
         """Make a query and get the first row.
 
         Resultant record is mapped to model_class object.
@@ -791,7 +844,7 @@ class ModelQuery():
         query, parepared_args = self.getq()
         return await self.db.fetchrow(query, *parepared_args, timeout=timeout, model_class=self.model)
 
-    async def fetchval(self, column: int = 0, timeout: float = None):
+    async def fetchval(self, column: int = 0, timeout: float = None) -> Any:
         """Run the query and return a column value in the first row.
 
         Args:
@@ -804,7 +857,7 @@ class ModelQuery():
         query, parepared_args = self.getq()
         return await self.db.fetchval(query, *parepared_args, column=column, timeout=timeout)
 
-    async def execute(self, timeout: float = None):
+    async def execute(self, timeout: float = None) -> str:
         """Execute the query.
 
         Args:
@@ -816,38 +869,7 @@ class ModelQuery():
         query, parepared_args = self.getq()
         return await self.db.execute(query, *parepared_args, timeout=timeout)
 
-    def filter(self, no_ordering=False):
-        """Initiate a filter.
-
-        This initiates a `SELECT` query upto `WHERE`. You can then use the
-        `qc()` method to add conditions and finally execute the `fetch()`
-        method to get all results or execute the `fetchrow()` method
-        to get single row.
-
-        Example:
-
-        ```python
-        .filter().qc('price', '>=$1 AND', 45).qc('status', '=$1')
-        ```
-
-        Args:
-            no_ordering (bool): Whether to remove the default ordering SQL. Defaults to `False`.
-
-        Returns:
-            ModelQuery: returns `self` to enable method chaining
-        """
-        if not self.__filter_initiated:
-            down_fields = ','.join([Q(x) for x in self.model._get_fields_(up=False)])
-            self.q(f'SELECT {down_fields} FROM "{self.model._get_db_table_()}" WHERE')
-            self.__filter_initiated = True
-            order_by = self.ordering
-            if order_by and not no_ordering:
-                self.end_query_str = f'ORDER BY {order_by}'
-        else:
-            ValueError(f"Filter is already initiated for this {self.__class__.__name__} query object: {self}")
-        return self
-
-    async def get(self, *vals, col='', comp='=$1'):
+    async def get(self, *vals, col: str = '', comp: str = '=$1') -> Union[ModelBase, Record]:
         """Get the first row found by column and value.
 
         If `col` is not given, it defaults to the primary key (`pk`) of
@@ -865,31 +887,8 @@ class ModelQuery():
         """
         if not col:
             col = self.model.Meta.pk
-        return await self.filter().qc(col, comp, *vals).fetchrow()
+        return await self.qfilter().qc(col, comp, *vals).fetchrow()
 
-
-    def update(self, data: dict):
-        """Initiate a UPDATE query for data.
-
-        This initiates an `UPDATE` query upto `WHERE` and leaves you to
-        add conditions with other methods such as `qc` or the generic
-        method `q()`.
-
-        Finally call the `execute()` method to execute the query or
-        call the `fetchval()` method if using `RETURNING` clause.
-
-        Args:
-            data (dict): data in key value dictionary
-
-        Returns:
-            ModelQuery: returns `self` to enable method chaining
-        """
-        if not self.__update_initiated:
-            self.q(f'UPDATE {self.table} SET').qu(data).qwhere()
-            self.__update_initiated = True
-        else:
-            ValueError(f"update is already initiated for this {self.__class__.__name__} query: {self}")
-        return self
 
 
 

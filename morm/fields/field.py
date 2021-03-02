@@ -128,7 +128,7 @@ class FieldValue(object):
         self._value_change_count = 0
 
     @property
-    def value_change_count(self):
+    def value_change_count(self) -> int:
         """Return how many times the value has been set or changed.
 
         Returns:
@@ -137,7 +137,7 @@ class FieldValue(object):
         return self._value_change_count
 
     @property
-    def value(self):
+    def value(self) -> Any:
         """Get the value if set or default otherwise.
 
         Returns:
@@ -149,7 +149,7 @@ class FieldValue(object):
             return self._field.get_default()
 
     @value.setter
-    def value(self, v):
+    def value(self, v: Any):
         """Set the value by doing cleanup.
 
         Falls back to default if value is invalid.
@@ -159,7 +159,7 @@ class FieldValue(object):
         """
         self.set_value(v, fallback=self._field.fallback)
 
-    def set_value(self, v, fallback=False):
+    def set_value(self, v: Any, fallback=False):
         """Value setter.
 
         Args:

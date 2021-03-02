@@ -8,18 +8,32 @@ __version__ = '0.0.1'
 
 import inspect
 import typing
+from typing import Optional, Dict, List, Tuple, TypeVar, Union, Any, Iterator
 from collections import OrderedDict
 import copy
 from abc import ABCMeta
 from asyncpg import Record # type: ignore
 from morm.exceptions import ItemDoesNotExistError
 from morm.fields.field import Field, FieldValue
-from morm.types import Void, imdict
+from morm.types import Void
 import morm.meta as mt      # for internal use
 
 # morm.db must not be imported here.
 
 Meta = mt.Meta  # For client use
+
+
+class FieldNames():
+    """Access field names
+    """
+    def __init__(self, func):
+        self.__dict__['func'] = func
+
+    def __getattr__(self, k):
+        return self.__dict__['func'](k)
+
+    def __setattr__(self, k, v):
+        raise NotImplementedError
 
 
 class ModelType(type):
@@ -106,6 +120,11 @@ class ModelType(type):
             elif n in attrs:
                 new_attrs[n] = attrs[n]
 
+        # we do this after finalizing meta_attr
+        def _get_field_name(n: str) -> str:
+            return meta_attrs['_field_defs_'][n].name
+        meta_attrs['f'] = FieldNames(_get_field_name)
+
         MetaClass = mt.MetaType('Meta', (mt.Meta,), meta_attrs)
         new_attrs['Meta'] = MetaClass
 
@@ -119,18 +138,26 @@ class ModelType(type):
     def __delattr__(cls, k):
         raise NotImplementedError("You can not delete model attributes outside model definition.")
 
-    def _is_valid_key_(cls, k, fields, exclude_keys):
+    def _is_valid_key_(cls, k:str, fields:Tuple[str], exclude_keys:Tuple[str]) -> bool:
+        """Returns True if the key is valid considering include/exclude keys
+        """
         if k in exclude_keys: return False
         if fields and k not in fields: return False
         return True
 
-    def _is_valid_down_key_(cls, k):
+    def _is_valid_down_key_(cls, k: str) -> bool:
+        """Returns True if the key is valid considering include/exclude down keys
+        """
         return cls._is_valid_key_(k, cls.Meta.fields_down, cls.Meta.exclude_fields_down)
 
-    def _is_valid_up_key_(cls, k):
+    def _is_valid_up_key_(cls, k: str) -> bool:
+        """Returns True if the key is valid considering include/exclude up keys
+        """
         return cls._is_valid_key_(k, cls.Meta.fields_up, cls.Meta.exclude_fields_up)
 
-    def _is_valid_value_(cls, k, v, exclude_values):
+    def _is_valid_value_(cls, k: str, v: Any, exclude_values: Tuple[Any]) -> bool:
+        """Returns True if the value for the key is valid considering exclude values
+        """
         if v is Void:
             return False
         if k in exclude_values:
@@ -140,37 +167,59 @@ class ModelType(type):
             return False
         return True
 
-    def _is_valid_up_value_(cls, k, v):
+    def _is_valid_up_value_(cls, k: str, v: Any) -> bool:
+        """Returns True if the value for the key is valid considering exclude up values
+        """
         return cls._is_valid_value_(k, v, cls.Meta.exclude_values_up)
 
-    def _is_valid_down_value_(cls, k, v):
+    def _is_valid_down_value_(cls, k: str, v: Any) -> bool:
+        """Returns True if the value for the key is valid considering exclude down values
+        """
         return cls._is_valid_value_(k, v, cls.Meta.exclude_values_down)
 
-    def _is_valid_down_(cls, k, v):
+    def _is_valid_down_(cls, k: str, v: Any) -> bool:
+        """Check whether the key and value is valid for down (data retrieval)
+        """
         return cls._is_valid_down_key_(k) and cls._is_valid_down_value_(k, v)
 
-    def _is_valid_up_(cls, k, v):
+    def _is_valid_up_(cls, k: str, v: Any) -> bool:
+        """Check whether the key and value is valid for up (data update)
+        """
         return cls._is_valid_up_key_(k) and cls._is_valid_up_value_(k, v)
 
-    def _get_all_fields_(cls):
+    def _get_all_fields_(cls) -> Dict[str, Field]:
+        """Get all fields on model without applying any restriction.
+
+        Returns:
+            Dict[str, Field]: Dictionary of all fields
+        """
         return cls.Meta._field_defs_
 
-    def _get_field_name_(cls, n):
-        try:
-            return cls.Meta._field_defs_[n].name
-        except KeyError:
-            raise AttributeError(f"No such field `{n}` in model `{cls.__name__}`")
-
-    def _get_fields_(cls, up=False):
-        """Generator
-
-        [extended_summary]
+    def _check_field_name_(cls, n: str) -> str:
+        """Return the field name if exists else raise AttributeError
 
         Args:
-            up (bool, optional): [description]. Defaults to False.
+            n (str): field name
+
+        Raises:
+            AttributeError: if field name does not exist
+
+        Returns:
+            str: field name
+        """
+        if n in cls.Meta._field_defs_:
+            return n
+        else:
+            raise AttributeError(f"No such field `{n}` in model `{cls.__name__}`")
+
+    def _get_fields_(cls, up=False) -> Iterator[str]:
+        """Yields field names that pass include/exclude criteria
+
+        Args:
+            up (bool, optional): up criteria or down criteria. Defaults to False (down).
 
         Yields:
-            [type]: [description]
+            str: field name
         """
         if up:
             fields = cls.Meta.fields_up
@@ -184,7 +233,18 @@ class ModelType(type):
                 continue
             yield k
 
-    def _get_FieldValue_data_valid_(cls, data, up=False):
+    def _get_FieldValue_data_valid_(cls, data: dict, up=False) -> Iterator[Tuple[str, Any]]:
+        """Yields valid key,value pairs from data.
+
+        Validity is checked against include/exclude key/value criteria.
+
+        Args:
+            data (dict): data to be validated.
+            up (bool, optional): whether up (data update) or down (data retrieval). Defaults to False.
+
+        Yields:
+            Iterator[Tuple[str, Any]]: Yields key, value pair
+        """
         if up:
             exclude_values = cls.Meta.exclude_values_up
             fields = cls.Meta.fields_up
@@ -202,35 +262,53 @@ class ModelType(type):
             yield k, v
 
 
-    def _get_data_for_valid_values_(cls, data, up=False, gen=False):
-        if up:
-            exclude_values = cls.Meta.exclude_values_up
-        else:
-            exclude_values = cls.Meta.exclude_values_down
-        new_data = type(data)()
-        for k,v in data.items():
-            if not cls._is_valid_value_(k, v, exclude_values):
-                continue
-            if gen:
-                yield k, v
-            else:
-                new_data[k] = v
-        if not gen:
-            return new_data
+    # def _get_data_for_valid_values_(cls, data, up=False, gen=False):
+    #     if up:
+    #         exclude_values = cls.Meta.exclude_values_up
+    #     else:
+    #         exclude_values = cls.Meta.exclude_values_down
+    #     new_data = type(data)()
+    #     for k,v in data.items():
+    #         if not cls._is_valid_value_(k, v, exclude_values):
+    #             continue
+    #         if gen:
+    #             yield k, v
+    #         else:
+    #             new_data[k] = v
+    #     if not gen:
+    #         return new_data
 
-    def _get_db_table_(cls):
+    def _get_db_table_(cls) -> str:
+        """Get db table name for model
+        """
         return cls.Meta.db_table
 
-    def _is_abstract_(cls):
+    def _is_abstract_(cls) -> bool:
+        """Whether it's an abstract model or not
+        """
         return cls.Meta.abstract
 
-    def _is_proxy_(cls):
+    def _is_proxy_(cls) -> bool:
+        """Whether its is proxy model or not
+        """
         return cls.Meta.proxy
 
-    def _get_pk_(cls):
+    def _get_pk_(cls) -> str:
+        """Get primary column name
+        """
         return cls.Meta.pk
 
-    def _get_ordering_(cls, quote='"'):
+    def _get_ordering_(cls, quote: str) -> Iterator[Tuple[str, str]]:
+        """Yield each ordering from model parsed and converted to column, direction
+
+        direction is either `ASC` or `DESC`
+
+        Args:
+            quote (str): Quote to apply to the column
+
+        Yields:
+            Iterator[Tuple[str, str]]: Yields column, direction
+        """
         ordering = cls.Meta.ordering
         direction = 'ASC'
         for o in ordering:
@@ -262,6 +340,8 @@ class ModelBase(metaclass=ModelType):
         AttributeError: When misspelled fields are tried to set.
     """
     class Meta(mt.Meta):
+        """Meta that holds metadata for model
+        """
         # The following needs to be defined here, not in meta.Meta
         # meta.Meta is used in client Models, thus everything
         # included there will be blindly inherited, while these are passed

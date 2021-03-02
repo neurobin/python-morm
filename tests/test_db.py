@@ -124,8 +124,8 @@ class TestMethods(unittest.TestCase):
     async def _test_db_filter_data(self):
         print('## CRUD methods\n')
         db = DB(SNORM_DB_POOL)
-        mq = db(BigUser).filter().qc('', '$1', True)
-        mq2 = db(BigUser2).filter().qc('', '$1', True)
+        mq = db(BigUser).qfilter().qc('', '$1', True)
+        mq2 = db(BigUser2).qfilter().qc('', '$1', True)
         mqq = ' SELECT "name","profession","hobby","status","salary" FROM "BigUser" WHERE $1 ORDER BY "name" ASC,"profession" DESC,"age" DESC'
         mqq2 = ' SELECT "id","name","profession" FROM "BigUser2" WHERE $1 '
         res = await mq.fetch()
@@ -163,9 +163,12 @@ class TestMethods(unittest.TestCase):
             res2[0].status
 
         user5 = BigUser2(name='Jahidul Hamid', age=31)
+        print(f' - [x] model object can not be mistaken as model in db() call')
+        with self.assertRaises(TypeError):
+            db(user5)
         print(f' - [x] get_insert_query is OK')
         self.assertEqual(
-            db(user5).get_insert_query(),
+            db.get_insert_query(user5),
             ('INSERT INTO "BigUser2" ("name","age") VALUES ($1, $2) RETURNING "id"', ['Jahidul Hamid', 31])
         )
         # print(await db(user5).insert())
@@ -176,18 +179,27 @@ class TestMethods(unittest.TestCase):
         # print(db(user6).get_update_query())
         print(f' - [x] Check save() calls update() and they are ok')
         self.assertEqual(
-            await db(user6).save(),
+            await db.save(user6),
             'UPDATE 1'
         )
-        # print(db(user6).get_update_query())
         usern = BigUser2(name='dummy john', profession='Student', age=23, hobby='collection', salary='0')
         print(f' - [x] Check save()')
-        self.assertTrue(await db(usern).save() > 0)
+        self.assertTrue(await db.save(usern) > 0)
+
+        print(f'\n# Checking db(Model).update() method\n')
+        f = BigUser2.Meta.f
+        data = {
+            f.name: 'John Doe',
+            f.profession: 'Student',
+            f.age: 23,
+            f.hobby: 'gardenning',
+        }
+        # db.q(BigUser2).q_()
 
 
     def test_filter_func(self):
         db = DB(SNORM_DB_POOL)
-        q = db(BigUser).filter().qc('', '$1', True).getq()
+        q = db(BigUser).qfilter().qc('', '$1', True).getq()
         self.assertEqual(
             q,
             (' SELECT "name","profession","hobby","status","salary" FROM "BigUser" WHERE $1 ORDER BY "name" ASC,"profession" DESC,"age" DESC', [True])
@@ -198,30 +210,30 @@ class TestMethods(unittest.TestCase):
         db = DB(SNORM_DB_POOL)
         buq = db(BigUser2)
         self.assertEqual(buq.q_(
-            f'SELECT * FROM {buq.table} WHERE {buq.pk}=$1 AND "{buq.f.profession}" = :profession', 2, profession='developer').getq(),
-            (' SELECT * FROM BigUser2 WHERE id=$1 AND "profession" = $2 ', [2, 'developer'])
+            f'SELECT * FROM {buq.db_table} WHERE {buq.pk}=$1 AND {buq.f.profession} = :profession', 2, profession='developer').getq(),
+            (' SELECT * FROM "BigUser2" WHERE "id"=$1 AND "profession" = $2 ', [2, 'developer'])
         )
 
         print('* Misspelling will produce AttributeError')
         with self.assertRaises(AttributeError):
             buq\
-                .q_(f'SELECT * FROM {buq.table} WHERE {buq.pk}=$1 AND "{buq.f.profesion}" = :profession', 2, profession='developer')\
+                .q_(f'SELECT * FROM {buq.db_table} WHERE {buq.pk}=$1 AND "{buq.f.profesion}" = :profession', 2, profession='developer')\
                 .getq()
 
         self.assertEqual(
             buq.reset()\
                 .q(f'SELECT')\
                 .qq('age')\
-                .q(f', "{buq.f.profession}", "{buq.f.hobby}", "{buq.f.status}"')\
-                .q(f'FROM {buq.table} WHERE')\
-                .q_(f'"{buq.f.age}" >= ${buq.c} AND "{buq.f.status}" = :status', 13, status='OK')\
+                .q(f', {buq.f.profession}, {buq.f.hobby}, {buq.f.status}')\
+                .q(f'FROM {buq.db_table} WHERE')\
+                .q_(f'{buq.f.age} >= ${buq.c} AND {buq.f.status} = :status', 13, status='OK')\
                 #fdsfd
                 .q_(f'AND status=:status')\
                 .q_(f'AND hobby=${buq.c}', 'gardening', hobby='Teaching')\
-                .q_(f'AND "{buq.f.salary}"=:status')\
-                .q_(f'AND "{buq.f.hobby}"=:hobby')\
+                .q_(f'AND {buq.f.salary}=:status')\
+                .q_(f'AND {buq.f.hobby}=:hobby')\
                 .getq(),
-            (' SELECT "age" , "profession", "hobby", "status" FROM BigUser2 WHERE "age" >= $1 AND "status" = $2 AND status=$2 AND hobby=$3 AND "salary"=$2 AND "hobby"=$4 ', [13, 'OK', 'gardening', 'Teaching'])
+            (' SELECT "age" , "profession", "hobby", "status" FROM "BigUser2" WHERE "age" >= $1 AND "status" = $2 AND status=$2 AND hobby=$3 AND "salary"=$2 AND "hobby"=$4 ', [13, 'OK', 'gardening', 'Teaching'])
         )
 
 
