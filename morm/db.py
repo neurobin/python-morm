@@ -133,6 +133,7 @@ class DB(object):
         """
         self._pool = pool
         self._con = con
+        self.DATA_NO_CHANGE = 'DATA_NO_CHANGE_TRIGGERED'
 
     @property
     def pool(self) -> Pool:
@@ -248,26 +249,131 @@ class DB(object):
         pool = self.corp()
         return await pool.execute(query, *args, timeout=timeout)
 
-    def __call__(self, model_or_object: ModelType = None):
-        """Return a ModelQuery for model or ObjectQuery for object
-
-        If None is passed it will give a ModelQuery without setting
-        self.model
-
-        Args:
-            model_or_object (ModelType, optional): model class or model object. Defaults to None.
-
-        Raises:
-            TypeError: If invalid model type or object type is passed
+    def get_insert_query(self, mob: ModelBase):
+        """Get insert query for the model object with the current data
 
         Returns:
-            ModelQuery|ObjectQuery
+            (str, list): query, prepared_args
         """
-        if isinstance(model_or_object, ModelType) or model_or_object is None:
-            return ModelQuery(self, model_or_object)
-        elif isinstance(model_or_object, ModelBase):
-            return ObjectQuery(ModelQuery(self, model_or_object.__class__), model_or_object)
-        raise TypeError(f"Invalid model or model object: {model_or_object}")
+        data = mob.Meta._fields_
+        new_data_gen = mob.__class__._get_FieldValue_data_valid_(data, up=True)
+        columns = []
+        values = []
+        markers = []
+        c = 0
+        for n,v in new_data_gen:
+            c += 1
+            columns.append(n)
+            values.append(v.value)
+            markers.append(f'${c}')
+
+        column_q = '","'.join(columns)
+        if column_q:
+            column_q = f'"{column_q}"'
+        marker_q = ', '.join(markers)
+        if column_q:
+            query = f'INSERT INTO "{mob.__class__._get_table_name_()}" ({column_q}) VALUES ({marker_q}) RETURNING "{mob.__class__._get_pk_()}"'
+        else:
+            query = ''
+        return query, values
+
+    def get_update_query(self, mob: ModelBase, reset=False):
+        """Get the update query for the changed data in the model object
+
+        Raises:
+            AttributeError: If primary key does not exists i.e if not updatable
+
+        Returns:
+            str, args: tuple of query, prepared_args
+        """
+        pkval = getattr(mob, mob.__class__._get_pk_()) #save method depends on it's AttributeError
+        data = mob.Meta._fields_
+        new_data_gen = mob.__class__._get_FieldValue_data_valid_(data, up=True)
+        colval = []
+        values = []
+        c = 0
+        for n,v in new_data_gen:
+            if n == mob.__class__._get_pk_(): continue
+            if n in mob.Meta._fromdb_:
+                countover = 1
+            else:
+                countover = 0
+            if v.value_change_count > countover:
+                c += 1
+                colval.append(f'"{n}"=${c}')
+                values.append(v.value)
+                if reset:
+                    v._value_change_count = countover
+
+        where = f'"{mob.__class__._get_pk_()}"=${c+1}'
+        values.append(pkval)
+
+        colval_q = ', '.join(colval)
+        if colval_q:
+            query = f'UPDATE "{mob.__class__._get_table_name_()}" SET {colval_q} WHERE {where}'
+        else:
+            query = ''
+        return query, values
+
+    async def insert(self, mob: ModelBase, timeout: float = None):
+        """Insert the current data state into db
+
+        Returns:
+            Value of primary key of the inserted row
+        """
+        query, args = self.get_insert_query(mob)
+        pkval = await self.fetchval(query, *args, timeout=timeout)
+        if pkval is not None:
+            setattr(mob, mob.__class__._get_pk_(), pkval)
+        return pkval
+
+    async def update(self, mob: ModelBase, timeout: float = None):
+        """Update the current changed data onto db
+
+        Raises:
+            AttributeError: If primary key does not exists.
+
+        Returns:
+            str: status of last sql command
+        """
+        query, args = self.get_update_query(mob, reset=True)
+        if query:
+            return await self.execute(query, *args, timeout=timeout)
+        return self.DATA_NO_CHANGE
+
+
+    async def save(self, mob: ModelBase, timeout: float = None):
+        """Insert if not exists and update if exists.
+
+        update is tried first, if fails, insert is called.
+
+        Returns:
+            int or str: The value of the primary key for insert or
+                            status for update operation.
+        """
+        try:
+            return await self.update(mob, timeout=timeout)
+        except AttributeError:
+            return await self.insert(mob, timeout=timeout)
+
+    def __call__(self, model: ModelType = None):
+        """Return a ModelQuery for model
+
+        If None is passed it will give a ModelQuery without setting
+        self.model on the `ModelQuery` object.
+
+        Args:
+            model (ModelType, optional): model class. Defaults to None.
+
+        Raises:
+            TypeError: If invalid model type is passed
+
+        Returns:
+            ModelQuery: ModelQuery object
+        """
+        if isinstance(model, ModelType) or model is None:
+            return ModelQuery(self, model)
+        raise TypeError(f"Invalid model: {model}. model must be of type {ModelType.__name__}")
 
 
 
@@ -784,128 +890,6 @@ class ModelQuery():
         else:
             ValueError(f"update is already initiated for this {self.__class__.__name__} query: {self}")
         return self
-
-
-
-class ObjectQuery():
-    def __init__(self, mq: ModelQuery, mob: ModelBase):
-        """Initiate object query
-
-        Args:
-            mq (ModelQuery): ModelQuery object
-            mob (ModelBase): Model object
-        """
-        self.mq = mq
-        self.mob = mob
-        self.model = self.mq.model
-        self.DATA_NO_CHANGE = 'DATA_NO_CHANGE_TRIGGERED'
-
-    def get_insert_query(self):
-        """Get insert query for the model object with the current data
-
-        Returns:
-            (str, list): query, prepared_args
-        """
-        data = self.mob.Meta._fields_
-        new_data_gen = self.model._get_FieldValue_data_valid_(data, up=True)
-        columns = []
-        values = []
-        markers = []
-        c = 0
-        for n,v in new_data_gen:
-            c += 1
-            columns.append(n)
-            values.append(v.value)
-            markers.append(f'${c}')
-
-        column_q = '","'.join(columns)
-        if column_q:
-            column_q = f'"{column_q}"'
-        marker_q = ', '.join(markers)
-        if column_q:
-            query = f'INSERT INTO "{self.mq.table}" ({column_q}) VALUES ({marker_q}) RETURNING "{self.mq.pk}"'
-        else:
-            query = ''
-        return query, values
-
-    def get_update_query(self):
-        """Get the update query for the changed data in the model object
-
-        Raises:
-            AttributeError: If primary key does not exists i.e if not updatable
-
-        Returns:
-            str, args: tuple of query, prepared_args
-        """
-        pkval = getattr(self.mob, self.mq.pk) #save method depends on it's AttributeError
-        data = self.mob.Meta._fields_
-        new_data_gen = self.model._get_FieldValue_data_valid_(data, up=True)
-        colval = []
-        values = []
-        c = 0
-        for n,v in new_data_gen:
-            if n == self.mq.pk: continue
-            if n in self.mob.Meta._fromdb_:
-                countover = 1
-            else:
-                countover = 0
-            if v.value_change_count > countover:
-                c += 1
-                colval.append(f'"{n}"=${c}')
-                values.append(v.value)
-                v._value_change_count = 0
-
-        where = f'"{self.mq.pk}"=${c+1}'
-        values.append(pkval)
-
-        colval_q = ', '.join(colval)
-        if colval_q:
-            query = f'UPDATE "{self.mq.table}" SET {colval_q} WHERE {where}'
-        else:
-            query = ''
-        return query, values
-
-
-    async def insert(self):
-        """Insert the current data state into db
-
-        Returns:
-            Value of primary key of the inserted row
-        """
-        query, args = self.get_insert_query()
-        pkval = await self.mq.db.fetchval(query, *args)
-        if pkval is not None:
-            setattr(self.mob, self.mq.pk, pkval)
-        return pkval
-
-    async def update(self):
-        """Update the current changed data onto db
-
-        Raises:
-            AttributeError: If primary key does not exists.
-
-        Returns:
-            str: status of last sql command
-        """
-        query, args = self.get_update_query()
-        if query:
-            return await self.mq.db.execute(query, *args)
-        return self.DATA_NO_CHANGE
-
-
-    async def save(self):
-        """Insert if not exists and update if exists.
-
-        update is tried first, if fails, insert is called.
-
-        Returns:
-            int or str: The value of the primary key for insert or
-                            status for update operation.
-        """
-        try:
-            return await self.update()
-        except AttributeError:
-            return await self.insert()
 
 
 

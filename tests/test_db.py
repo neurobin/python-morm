@@ -122,23 +122,21 @@ class TestMethods(unittest.TestCase):
             self.clean()
 
     async def _test_db_filter_data(self):
+        print('## CRUD methods\n')
         db = DB(SNORM_DB_POOL)
         mq = db(BigUser).filter().qc('', '$1', True)
         mq2 = db(BigUser2).filter().qc('', '$1', True)
         mqq = ' SELECT "name","profession","hobby","status","salary" FROM "BigUser" WHERE $1 ORDER BY "name" ASC,"profession" DESC,"age" DESC'
         mqq2 = ' SELECT "id","name","profession" FROM "BigUser2" WHERE $1 '
-        print(mq2.getq())
         res = await mq.fetch()
         res2 = await mq2.fetch()
         big_user1 = await db(BigUser2).get(2)
+        print(f' - [x] Check get by pk')
         self.assertEqual(big_user1.id, 2)
-        print(res)
-        print(res2)
-        print(big_user1)
         big_user3 = await db(BigUser2).get('dev', col='profession')
+        print(f' - [x] Check get by arbitrary column')
         self.assertEqual(big_user3.profession, 'dev')
-        print(big_user3)
-        print('\n## Exclude fields and values\n')
+        print('\n### Exclude fields and values\n')
 
         print('* fields_down and exclude_fields_down control which fields will be retrieved from db and accessed from model object')
         self.assertEqual(mq.getq()[0], mqq)
@@ -165,23 +163,35 @@ class TestMethods(unittest.TestCase):
             res2[0].status
 
         user5 = BigUser2(name='Jahidul Hamid', age=31)
-        print(db(user5).get_insert_query())
+        print(f' - [x] get_insert_query is OK')
+        self.assertEqual(
+            db(user5).get_insert_query(),
+            ('INSERT INTO "BigUser2" ("name","age") VALUES ($1, $2) RETURNING "id"', ['Jahidul Hamid', 31])
+        )
         # print(await db(user5).insert())
         user6 = await db(BigUser2).get(6)
         user6.hobby = 'something4'
         # user6.hobby = 'something2'
         # print(db(user6).get_update_query())
         # print(db(user6).get_update_query())
-        print(await db(user6).save())
-        print(db(user6).get_update_query())
+        print(f' - [x] Check save() calls update() and they are ok')
+        self.assertEqual(
+            await db(user6).save(),
+            'UPDATE 1'
+        )
+        # print(db(user6).get_update_query())
         usern = BigUser2(name='dummy john', profession='Student', age=23, hobby='collection', salary='0')
-        print(await db(usern).save())
+        print(f' - [x] Check save()')
+        self.assertTrue(await db(usern).save() > 0)
 
 
     def test_filter_func(self):
         db = DB(SNORM_DB_POOL)
         q = db(BigUser).filter().qc('', '$1', True).getq()
-        print(q)
+        self.assertEqual(
+            q,
+            (' SELECT "name","profession","hobby","status","salary" FROM "BigUser" WHERE $1 ORDER BY "name" ASC,"profession" DESC,"age" DESC', [True])
+        )
         asyncio.get_event_loop().run_until_complete(self._test_db_filter_data())
 
     def test_q_qq(self):
@@ -251,7 +261,7 @@ class TestMethods(unittest.TestCase):
 
 if __name__ == "__main__":
     try:
-        unittest.main(verbosity=2)
+        unittest.main(verbosity=0)
     except:
         SNORM_DB_POOL.close()
         raise

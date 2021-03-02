@@ -126,11 +126,6 @@ class FieldValue(object):
         self._field = field
         self._value = Void
         self._value_change_count = 0
-        self._had_previous_value = False
-
-    @property
-    def had_previous_value(self):
-        return self._had_previous_value
 
     @property
     def value_change_count(self):
@@ -171,10 +166,6 @@ class FieldValue(object):
             v (Any): value
             fallback (bool, optional): Whether to fallback to default value if v is invalid. Defaults to False.
         """
-        if self._value is Void:
-            self._had_previous_value = False
-        else:
-            self._had_previous_value = True
         self._value = self._field.clean(v, fallback=fallback)
         self._value_change_count = self._value_change_count + 1 # This must be the last line
         # when the clean method raises exception, it will not be counted as
@@ -184,4 +175,8 @@ class FieldValue(object):
         """Return the value to its initial state.
         """
         self._value = Void
-        self._value_change_count = 0
+        # must not change/decrease _value_change_count
+        # when this value is set again, the counter should increase
+        # according to its previous value.
+        # delete itself is a change but it does not change the value
+        # to a valid value thus the counter should not increase either.
