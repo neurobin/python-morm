@@ -94,10 +94,11 @@ class ModelType(type):
             except AttributeError:
                 raise TypeError(f"This model '{class_name}' can not be a proxy model. It does not have a valid base or super base non-proxy model")
         else:
-            _set_meta_attr('db_table', class_name, inherit=False)
             _set_meta_attr('abstract', False, inherit=False)
-
-
+            if meta_attrs['abstract']:
+                meta_attrs['db_table'] = Void
+            else:
+                _set_meta_attr('db_table', class_name, inherit=False)
 
         new_attrs = {}
 
