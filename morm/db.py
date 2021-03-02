@@ -298,6 +298,7 @@ class ModelQuery():
         self._named_args_mapper = {}
         self.__filter_initiated = False
         self._ordering = ''
+        self.__update_initiated = False
 
         return self
 
@@ -330,6 +331,10 @@ class ModelQuery():
 
     @property
     def ordering(self):
+        """Ordering query in SQL, does not include `ORDER BY`.
+
+        Example: `"price" ASC, "quantity" DESC`
+        """
         if not self._ordering:
             self._ordering = ','.join([' '.join(y) for y in self.model._get_ordering_(quote='"')])
         return self._ordering
@@ -359,10 +364,13 @@ class ModelQuery():
         """
         return self._fn
 
-    def _update_args(self, q: str, *args, **kwargs) -> str:
-        self._prepared_args.extend(args)
-        self._arg_count += len(args)
+    def _process_positional_args(self, *args):
+        if args:
+            self._prepared_args.extend(args)
+            self._arg_count += len(args)
 
+
+    def _process_keyword_args(self, q: str, **kwargs) -> str:
         # TODO: improvents need to be done
         # 1. needs to handle only unquoted keyword :field_name
         #    and ignore ':field_name' or ":field_name"
@@ -377,6 +385,24 @@ class ModelQuery():
                     self._arg_count += 1
                     self._named_args_mapper[k] = self._arg_count
         return q
+
+    def q_(self, q: str, *args):
+        """Add raw query without parsing to check for keyword arguments
+
+        This is an efficient way to add query that do not have any
+        keyword arguments to handle, compared to `q()` which checks for
+        keyword arguments everytime it is called.
+
+        Args:
+            q (str): raw query string
+
+        Returns:
+            ModelQuery: self, enables method chaining.
+        """
+        self._process_positional_args(*args)
+        self._query_str_queue.append(q)
+        return self
+
 
     def q(self, q: str, *args, **kwargs):
         """Add a query as given (SQL).
@@ -415,7 +441,8 @@ class ModelQuery():
         Returns:
             ModelQuery: returns `self` to enable method chaining
         """
-        q = self._update_args(q, *args, **kwargs)
+        self._process_positional_args(*args)
+        q = self._process_keyword_args(q, **kwargs)
         self._query_str_queue.append(q)
         return self
 
@@ -498,7 +525,48 @@ class ModelQuery():
         if order.endswith(','):
             order = order[0:-1]
             direction += ','
-        return self.qq(order).q(direction)
+        return self.qq(order).q_(direction)
+
+    def q_returning(self, *args):
+        """Convenience to add a `RETURNING` clause.
+
+        Args:
+            args: column names.
+
+        Returns:
+            ModelQuery: returns `self` to enable method chaining
+        """
+        q = '","'.join(args)
+        if q:
+            q = f'"{q}"'
+        return self.q_(q)
+
+    def qu(self, data: dict):
+        """Convert data to "column"=$n query with prepared args as the
+            values and add to the main query.
+
+        The counter of positional arguments increases by the number of items
+        in `data`. Make use of `self.c` counter to add more queries
+        after using this method.
+
+        Args:
+            data (dict): data in format: `{'column': value}`
+
+        Returns:
+            ModelQuery: returns `self` to enable method chaining
+        """
+        setq = ', '.join([f'"{c}"=${i}' for i,c in enumerate(data, self.c)])
+        return self.q_(setq, *data.values())
+
+    def where(self):
+        """Convenience to add 'WHERE' to the main query.
+
+        Make use of `qc()` method to add conditions.
+
+        Returns:
+            ModelQuery: returns `self` to enable method chaining
+        """
+        return self.q_('WHERE')
 
 
     def qget(self):
@@ -508,7 +576,7 @@ class ModelQuery():
             tuple: (str, list) : (query, parepared_args)
         """
         query = ' '.join(self._query_str_queue)
-        self._query_str_queue = collections.deque([query])
+        self._query_str_queue = [query]
         query = f'{self.start_query_str} {query} {self.end_query_str}'
         return query, self._prepared_args
 
@@ -568,7 +636,7 @@ class ModelQuery():
     def filter(self, no_ordering=False):
         """Initiate a filter.
 
-        This initiates a SELECT query upto WHERE. You can then use the
+        This initiates a `SELECT` query upto `WHERE`. You can then use the
         `qc()` method to add conditions and finally execute the `fetch()`
         method to get all results or execute the `fetchrow()` method
         to get single row.
@@ -587,13 +655,13 @@ class ModelQuery():
         """
         if not self.__filter_initiated:
             down_fields = ','.join([Q(x) for x in self.model._get_fields_(up=False)])
-            self.q(f'SELECT {down_fields} FROM "{self.model._get_db_table_()}" WHERE')
+            self.q_(f'SELECT {down_fields} FROM "{self.model._get_db_table_()}" WHERE')
             self.__filter_initiated = True
             order_by = self.ordering
             if order_by and not no_ordering:
-                self.end_query_str = 'ORDER BY ' + order_by
+                self.end_query_str = f'ORDER BY {order_by}'
         else:
-            ValueError(f"Filter is already initiated for this {self.__class__.__name__} object: {self}")
+            ValueError(f"Filter is already initiated for this {self.__class__.__name__} query object: {self}")
         return self
 
     async def get(self, *args, col='', comp='=$1'):
@@ -615,6 +683,32 @@ class ModelQuery():
         if not col:
             col = self.model.Meta.pk
         return await self.filter().qc(col, comp, *args).fetchrow()
+
+
+    def update(self, data: dict):
+        """Initiate a UPDATE query for data.
+
+        This initiates an `UPDATE` query upto `WHERE` and leaves you to
+        add conditions with other methods such as `qc` or the generic
+        method `q()`.
+
+        Finally call the `execute()` method to execute the query or
+        call the `fetchval()` method if using `RETURNING` clause.
+
+        Args:
+            data (dict): data in key value dictionary
+
+        Returns:
+            ModelQuery: returns `self` to enable method chaining
+        """
+        if not self.__update_initiated:
+            self.q_(f'UPDATE {self.table} SET').qu(data).where()
+            self.__update_initiated = True
+        else:
+            ValueError(f"update is already initiated for this {self.__class__.__name__} query: {self}")
+        return self
+
+
 
 class ObjectQuery():
     def __init__(self, mq: ModelQuery, mob: ModelBase):
@@ -666,7 +760,7 @@ class ObjectQuery():
         Returns:
             str, args: tuple of query, prepared_args
         """
-        pkval = getattr(self.mob, self.mq.pk) #save method depends on this
+        pkval = getattr(self.mob, self.mq.pk) #save method depends on it's AttributeError
         data = self.mob.Meta._fields_
         new_data_gen = self.model._get_FieldValue_data_valid_(data, up=True)
         colval = []
