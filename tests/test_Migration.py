@@ -85,6 +85,7 @@ class TestMethods(unittest.TestCase):
         #     print(msg)
         #     print(sql)
         class User(Model):
+            id = Field('SERIAL', sql_onadd='NOT NULL')
             name = Field('varchar(255)')
             profession = Field('varchar(65)')
 
@@ -93,8 +94,8 @@ class TestMethods(unittest.TestCase):
 
         for query, msg, newdata in mgo._migration_query_generator():
             print(msg)
-            print(query)
-            print(newdata)
+            # print(query)
+            # print(newdata)
 
 
 
