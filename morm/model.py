@@ -98,6 +98,9 @@ class ModelType(type):
             else:
                 _set_meta_attr('db_table', class_name, inherit=False)
 
+        # db_table must be finalized by now, look below where
+        # v.sql_conf.conf['table_name'] = meta_attrs['db_table']
+
         new_attrs = {}
 
         # https://www.python.org/dev/peps/pep-0520
@@ -114,6 +117,7 @@ class ModelType(type):
                 if meta_attrs['proxy'] and n in attrs:
                     raise ValueError(f"Proxy model '{class_name}' can not define new field: {n}")
                 v.name = n
+                v.sql_conf.conf['table_name'] = meta_attrs['db_table']
                 meta_attrs['_field_defs_'][n] = v
             elif n in attrs:
                 new_attrs[n] = attrs[n]

@@ -5,6 +5,7 @@ import pickle
 from typing import Dict, List, Tuple, Any
 from morm.types import Void, VoidType
 import morm.migration as mg
+from morm.model import Model, ModelType, Field
 
 
 
@@ -77,12 +78,23 @@ class TestMethods(unittest.TestCase):
 
 
         }
-        all_altdefs = mg._get_changed_fields(curs, pres)
-        print('\n')
-        for k, v in all_altdefs.items():
-            sql, msg = _get_alter_column_sql(self, v)
+        # all_altdefs = mg._get_changed_fields(curs, pres)
+        # print('\n')
+        # for k, v in all_altdefs.items():
+        #     sql, msg = _get_alter_column_sql(self, v)
+        #     print(msg)
+        #     print(sql)
+        class User(Model):
+            name = Field('varchar(255)')
+            profession = Field('varchar(65)')
+
+        mgo = mg.Migration(User, '/home/jahid/Git/Github/neurobin/morm/migration_data')
+        print(User.Meta._field_defs_['name'])
+
+        for query, msg, newdata in mgo._migration_query_generator():
             print(msg)
-            print(sql)
+            print(query)
+            print(newdata)
 
 
 

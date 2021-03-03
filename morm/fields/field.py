@@ -6,7 +6,7 @@ __copyright__ = 'Copyright © Md Jahidul Hamid <https://github.com/neurobin/>'
 __license__ = '[BSD](http://www.opensource.org/licenses/bsd-license.php)'
 __version__ = '0.0.1'
 
-from typing import Any, Optional, Callable, Tuple, Dict, List
+from typing import Any, Optional, Callable, Tuple, Dict, List, Union
 from morm.types import Void
 
 
@@ -32,16 +32,126 @@ def nomodify(value: Any) -> Any:
     """
     return value
 
-class SqlConf():
-    def __init__(self, sql_type: str, **kwargs):
+class ColumnConfig():
+    """This class is easily derivable from a json config.
+    """
+    def __init__(self, **kwargs):
         """Initialize a sql definition for Field.
+        """
+        self.conf: Dict[str, str] = kwargs
+
+    def __eq__(self, other: 'ColumnConfig') -> bool:
+        return self.conf == other.conf
+
+    def __repr__(self):
+        reprs = []
+        for k, v in self.conf.items():
+            reprs.append(f'{k}={repr(v)}')
+        body = ', '.join(reprs)
+        return f'{self.__class__.__name__}({body})'
+
+    def to_json(self) -> Dict[str, str]:
+        return self.conf
+
+    def get_query_column_add(self) -> Tuple[str, str]:
+        """Get a sql query to add the column.
+
+        Returns:
+            Tuple[str, str]: sql query, message
+        """
+        query = f'ALTER TABLE "{self.conf["table_name"]}" ADD COLUMN "{self.conf["column_name"]}" {self.conf["sql_type"]} {self.conf["sql_onadd"]};'
+        msg = f'\n* > ADD: {self.conf["column_name"]}: {self.conf["sql_type"]}'
+        if self.conf['sql_engine'] == 'postgresql':
+            return query, msg
+        else:
+            raise ValueError(f"{self.conf['sql_engine']} not supported yet.")
+
+    def get_query_column_drop(self) -> Tuple[str, str]:
+        """Get a sql query to drop the column.
+
+        Returns:
+            Tuple[str, str]: sql query, message
+        """
+        query = f'ALTER TABLE "{self.conf["table_name"]}" DROP COLUMN "{self.conf["column_name"]}" {self.conf["sql_ondrop"]};'
+        msg = f'\n* > DROP: {self.conf["column_name"]} {self.conf["sql_ondrop"]}'
+        if self.conf['sql_engine'] == 'postgresql':
+            return query, msg
+        else:
+            raise ValueError(f"{self.conf['sql_engine']} not supported yet.")
+
+    def get_query_column_rename(self, old_column_name: str) -> Tuple[str, str]:
+        """Get a sql query to rename the column.
 
         Args:
-            sql_type (str): Data type in SQL.
+            old_column_name (str)
+
+        Returns:
+            Tuple[str, str]: sql query, message
         """
-        self.sql_type = sql_type
-        for k, v in kwargs.items():
-            setattr(self, k, v)
+        query = f'ALTER TABLE "{self.conf["table_name"]}" RENAME COLUMN "{old_column_name}" TO "{self.conf["column_name"]}";'
+        msg = f"\n* > RENAME: {old_column_name} --> {self.conf['column_name']}"
+        if self.conf['sql_engine'] == 'postgresql':
+            return query, msg
+        else:
+            raise ValueError(f"{self.conf['sql_engine']} not supported yet.")
+
+    def get_query_column_modify(self, prev: 'ColumnConfig') -> Tuple[str, str]:
+        """Get a sql query to modify data type of the column.
+
+        Args:
+            prev (ColumnConfig): previous column config
+
+        Returns:
+            Tuple[str, str]: sql query, message
+        """
+        # TODO: handle alter settings.
+        queries = []
+        msgs = []
+        if self.conf['sql_type'] != prev.conf['sql_type']:
+            q = f'ALTER TABLE "{self.conf["table_name"]}" ALTER COLUMN "{self.conf["column_name"]}" SET DATA TYPE {self.conf["sql_type"]};'
+            queries.append(q)
+            msg = f"\n* > MODIFY: {prev.conf['column_name']}: {prev.conf['sql_type']} --> {self.conf['sql_type']}"
+            msgs.append(msg)
+
+        settings_query, msg = self.get_query_column_settings(prev)
+        queries.append(settings_query)
+        msgs.append(msg)
+
+
+        if self.conf['sql_engine'] == 'postgresql':
+            return ''.join(queries), ''.join(msgs)
+        else:
+            raise ValueError(f"{self.conf['sql_engine']} not supported yet.")
+
+    def get_query_column_settings(self, prev: 'ColumnConfig') -> Tuple[str, str]:
+        """Get a sql query to apply the sql_alter settings comparing with
+        another config: prev.
+
+        Args:
+            prev (ColumnConfig): previous column config
+
+        Returns:
+            Tuple[str, str]: sql query, message
+        """
+        query = ''
+        msgs = []
+        query_stubs = []
+        for qs in self.conf['sql_alter']:
+            if qs not in prev.conf['sql_alter']:
+                # new settings
+                query_stubs.append(qs)
+                msgs.append(f"\n* + {qs}")
+        query_stub = ', '.join([f'ALTER COLUMN "{self.conf["column_name"]}" {x}' for x in query_stubs])
+        if query_stub:
+            query = f'ALTER TABLE "{self.conf["table_name"]}" {query_stub};'
+
+        if self.conf['sql_engine'] == 'postgresql':
+            return query, ''.join(msgs)
+        else:
+            raise ValueError(f"{self.conf['sql_engine']} not supported yet.")
+
+
+
 
 
 class Field(object):
@@ -50,40 +160,79 @@ class Field(object):
     Field object stores the sql definition of the model field,
     validator function, modifier function and the default and provides
     some utilities:
-
-    `Field().clean(value, fallback=False)` provides a cleaning method.
-
-    `Field().get_default()` gives you the default value.
     """
     def __init__(self, sql_type: str,
-                default: Any=Void,
-                validator: Callable=always_valid,
-                modifier: Callable=nomodify,
-                fallback=False,
                 sql_onadd='',
                 sql_ondrop='',
                 sql_alter: Tuple[str] = (),
-                sql_engine='postgresql'):
-        """Initialize the Field object.
+                sql_engine='postgresql',
+                default: Any=Void,
+                validator: Callable=always_valid,
+                modifier: Callable=nomodify,
+                fallback=False,):
+        """Initialize the Field object with data type (sql).
+
+        Example sql_type: `'varchar(255)'`, `'int'`, etc..
+
+        Example sql_onadd: `'PRIMARY KEY'`, `'NOT NULL'`, `'UNIQUE'`, `'FOREIGHN KEY'` etc..
+
+        Example sql_ondrop: `'CASCADE'` and `'RESTRICT'`
+
+        Example sql_alter settings
+
+        ```sql
+        SET DEFAULT expression
+        DROP DEFAULT
+        { SET | DROP } NOT NULL
+        SET STATISTICS integer
+        SET ( attribute_option = value [, ... ] )
+        RESET ( attribute_option [, ... ] )
+        SET STORAGE { PLAIN | EXTERNAL | EXTENDED | MAIN }
+        ```
 
         Args:
             sql_type (str): Data type in SQL.
+            sql_onadd (str): sql to add in ADD clause after 'ADD COLUMN column_name data_type'
+            sql_ondrop (str): Either 'RESTRICT' or 'CASCADE'.
+            sql_alter (Tuple[str]): multiple alter column sql; added after 'ALTER [ COLUMN ] column_name'. Example: ('DROP DEFAULT', 'SET NOT NULL') will alter the default and null settings accordingly.
+            sql_engine (str): db engine, postgresql, mysql etc.. Defaults to 'postgresql'
             default (Any, optional): Pythonic default value (can be a callable). Defaults to Void. (Do not use mutable values, use function instead)
             validator (callable, optional): A callable that accepts exactly one argument. Validates the value in `clean` method. Defaults to always_valid.
             modifier (callable, optional): A callable that accepts exactly one argument. Modifies the value if validation fails when the `clean` method is called.. Defaults to nomodify.
             fallback (bool, optional): Whether invalid value should fallback to default value suppressing exception. (May hide bugs in your program)
-            sql_onadd (str): sql to add in ADD clause after 'ADD COLUMN column_name data_type'
-            sql_ondrop (str): Either 'RESTRICT' or 'CASCADE'.
-            sql_alter (Tuple[str]): multiple alter column sql; added after 'ALTER [ COLUMN ] column_name'. Example: ('DROP DEFAULT', 'SET NOT NULL') will alter the default and null settings accordingly.
-            sql_engine (str): db engine, postgresql, mysql etc..
         """
         self.sql_type = sql_type
-        self.sql_conf = SqlConf(sql_type, sql_onadd=sql_onadd, sql_ondrop=sql_ondrop, sql_alter=sql_alter, sql_engine=sql_engine)
+        self.sql_conf = ColumnConfig(sql_type=sql_type, sql_onadd=sql_onadd, sql_ondrop=sql_ondrop, sql_alter=sql_alter, sql_engine=sql_engine)
         self.default = default
         self.validator = validator
         self.modifier = modifier
-        self.name = ''
+        self._name = ''
         self.fallback = fallback
+
+    def __eq__(self, other: 'Field') -> bool:
+        return self.sql_conf == other.sql_conf
+
+    def __repr__(self):
+        reprs = [repr(self.sql_type)]
+        cc = ['sql_onadd','sql_ondrop','sql_alter','sql_engine',]
+        for k in cc:
+            reprs.append(f'{k}={repr(self.sql_conf.conf[k])}')
+        s = ['default','validator','modifier','fallback',]
+        for k in s:
+            reprs.append(f'{k}={repr(self.__dict__[k])}')
+        body = ', '.join(reprs)
+        return f'{self.__class__.__name__}({body})'
+
+    @property
+    def name(self) -> str:
+        """Get the name of the field"""
+        return self._name
+
+    @name.setter
+    def name(self, v: str):
+        """Set the name of the field"""
+        self._name = v
+        self.sql_conf.conf['column_name'] = v
 
     def clean(self, value: Any, fallback: bool=False):
         """Clean the value by calling validator -> modifier -> validator

@@ -7,7 +7,7 @@ __license__ = '[BSD](http://www.opensource.org/licenses/bsd-license.php)'
 __version__ = '0.0.1'
 
 
-from typing import Dict, List, Tuple, Any, Union
+from typing import Dict, List, Tuple, Any, Union, Iterator
 import re
 import os
 import glob
@@ -16,12 +16,13 @@ import json
 from morm.db import DB
 from morm.model import ModelBase, ModelType
 import morm.exceptions as exc
+from morm.fields.field import ColumnConfig
 
 def Open(path: str, mode: str, **kwargs) -> type(open):
     return open(path, mode, encoding='utf-8', **kwargs)
 
-def _get_changed_fields(curs: Dict[str, str], pres: Dict[str, str]) -> Dict[str, str]:
-    ops = {}
+def _get_changed_fields(curs: Dict[str, ColumnConfig], pres: Dict[str, ColumnConfig]) -> Dict[str, Dict[str, ColumnConfig]]:
+    ops: Dict[str, Dict[str, ColumnConfig]] = {}
     cl = len(curs)
     pl = len(pres)
     bl = cl if cl >= pl else pl
@@ -67,8 +68,6 @@ def _get_changed_fields(curs: Dict[str, str], pres: Dict[str, str]) -> Dict[str,
                     'op': 'add',
                     'cur_key': ck,
                     'cur_def': curs[ck],
-                    'pre_key': '',
-                    'pre_def': '',
                     'key_before': key_before,
                 }
         if pk:
@@ -109,13 +108,14 @@ def _get_changed_fields(curs: Dict[str, str], pres: Dict[str, str]) -> Dict[str,
                         'op': 'delete',
                         'pre_key': pk,
                         'pre_def': pres[pk],
-                        'cur_key': '',
-                        'cur_def': '',
                         'key_before': key_before,
                     }
 
         key_before = pk
     return ops
+
+
+
 
 class Migration():
     def __init__(self, model: ModelType, migration_base_path: str, index_length=8):
@@ -136,22 +136,66 @@ class Migration():
         self.current_file_name = self._get_current_migration_file_name(self.previous_file_name)
         self.current_file_path = os.path.join(self.migration_dir, self.current_file_name)
 
-        with Open(self.previous_file_path, 'r') as f:
-            self.previous_json = json.load(f)
-        with Open(self.current_file_path, 'r') as f:
-            self.current_json = json.load(f)
-
         self.default_json = {
             'db_table': self.db_table,
-            'fields': [],
+            'fields': {},
         }
         self.fields = self._get_fields()
 
-    def _get_fields(self):
+    def _get_fields(self) -> Dict[str, ColumnConfig]:
         fields = self.model._get_all_fields_()
-        for k, v in fields:
-            fields[k] = v.sql_def
-        return fields
+        fieldscc: Dict[str, ColumnConfig] = {}
+        for k, v in fields.items():
+            fieldscc[k] = v.sql_conf
+        return fieldscc
+
+    def _get_json_from_file(self, path: str) -> Dict[str, Any]:
+        """Get json from file or return a default json if file does not exist.
+
+        Args:
+            path (str): file path
+
+        Returns:
+            Dict[str, Any]: json dict
+        """
+        if not path:
+            return self.default_json
+        try:
+            with Open(path, 'r') as f:
+                return json.load(f)
+        except FileNotFoundError:
+            return self.default_json
+
+    def _migration_query_generator(self) -> Iterator[Tuple[str, str]]:
+        """Detect changes on model fields and yield query, discriptive message
+
+        Yields:
+            Iterator[Tuple[str, str]]: yield query, descriptive_message
+        """
+        pjson = self._get_json_from_file(self.previous_file_path)
+        fields = pjson['fields']
+        pfields: Dict[str, ColumnConfig] = {}
+        for k, v in fields.items():
+            pfields[k] = ColumnConfig(**v)
+        cfields = self.fields
+        changed = _get_changed_fields(cfields, pfields)
+        for k, v in changed.items():
+            op = v['op']
+            if op == 'add':
+                query, msg = v['cur_def'].get_query_column_add()
+            elif op == 'delete':
+                query, msg = v['pre_def'].get_query_column_drop()
+            elif op == 'mod':
+                query, msg = v['cur_def'].get_query_column_modify(v['pre_def'])
+            elif op == 'rename':
+                rnm_query, rnm_msg = v['cur_def'].get_query_column_rename(v['pre_key'])
+                mod_query, mod_msg = v['cur_def'].get_query_column_modify()
+                query = f'{rnm_query} {mod_query}'
+                msg = f"{rnm_msg}\n{mod_msg}"
+            else:
+                raise ValueError(f"Invalid operation: {op}")
+            yield query, f'\n{"*"*79}{msg}\n\n{query}\n{"*"*79}', cfields
+
 
     def _get_previous_migration_file_path(self) -> str:
         """Get latest migration file.

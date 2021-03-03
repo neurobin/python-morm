@@ -61,6 +61,9 @@ class VoidType(object, metaclass=SingletonMeta):
         raise NotImplementedError(self.__class__.__name__
                                  + " does not support setting attributes")
 
+    def __repr__(self):
+        return 'Void'
+
 # this one needs to be defined here.
 Void = object.__new__(VoidType)
 '''Used internally to represent non-existent value, thus `None` retains its usual meaning.'''
