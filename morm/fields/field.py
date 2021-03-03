@@ -6,7 +6,7 @@ __copyright__ = 'Copyright © Md Jahidul Hamid <https://github.com/neurobin/>'
 __license__ = '[BSD](http://www.opensource.org/licenses/bsd-license.php)'
 __version__ = '0.0.1'
 
-from typing import Any, Optional, Callable
+from typing import Any, Optional, Callable, Tuple, Dict, List
 from morm.types import Void
 
 
@@ -32,6 +32,17 @@ def nomodify(value: Any) -> Any:
     """
     return value
 
+class SqlConf():
+    def __init__(self, sql_type: str, **kwargs):
+        """Initialize a sql definition for Field.
+
+        Args:
+            sql_type (str): Data type in SQL.
+        """
+        self.sql_type = sql_type
+        for k, v in kwargs.items():
+            setattr(self, k, v)
+
 
 class Field(object):
     """# Field class.
@@ -44,20 +55,30 @@ class Field(object):
 
     `Field().get_default()` gives you the default value.
     """
-    def __init__(self, sql_def: str, default: Any=Void,
-                 validator: Callable=always_valid,
-                 modifier: Callable=nomodify,
-                 fallback=False):
+    def __init__(self, sql_type: str,
+                default: Any=Void,
+                validator: Callable=always_valid,
+                modifier: Callable=nomodify,
+                fallback=False,
+                sql_onadd='',
+                sql_ondrop='',
+                sql_alter: Tuple[str] = (),
+                sql_engine='postgresql'):
         """Initialize the Field object.
 
         Args:
-            sql_def (str): SQL definition of the model Field
-            default (Any, optional): Default value (can be a callable). Defaults to Void. (Do not use mutable values, use function instead)
+            sql_type (str): Data type in SQL.
+            default (Any, optional): Pythonic default value (can be a callable). Defaults to Void. (Do not use mutable values, use function instead)
             validator (callable, optional): A callable that accepts exactly one argument. Validates the value in `clean` method. Defaults to always_valid.
             modifier (callable, optional): A callable that accepts exactly one argument. Modifies the value if validation fails when the `clean` method is called.. Defaults to nomodify.
             fallback (bool, optional): Whether invalid value should fallback to default value suppressing exception. (May hide bugs in your program)
+            sql_onadd (str): sql to add in ADD clause after 'ADD COLUMN column_name data_type'
+            sql_ondrop (str): Either 'RESTRICT' or 'CASCADE'.
+            sql_alter (Tuple[str]): multiple alter column sql; added after 'ALTER [ COLUMN ] column_name'. Example: ('DROP DEFAULT', 'SET NOT NULL') will alter the default and null settings accordingly.
+            sql_engine (str): db engine, postgresql, mysql etc..
         """
-        self.sql_def = sql_def
+        self.sql_type = sql_type
+        self.sql_conf = SqlConf(sql_type, sql_onadd=sql_onadd, sql_ondrop=sql_ondrop, sql_alter=sql_alter, sql_engine=sql_engine)
         self.default = default
         self.validator = validator
         self.modifier = modifier
