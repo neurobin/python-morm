@@ -20,8 +20,104 @@ import morm.exceptions as exc
 def Open(path: str, mode: str, **kwargs) -> type(open):
     return open(path, mode, encoding='utf-8', **kwargs)
 
+def _get_changed_fields(curs: Dict[str, str], pres: Dict[str, str]) -> Dict[str, str]:
+    ops = {}
+    cl = len(curs)
+    pl = len(pres)
+    bl = cl if cl >= pl else pl
 
-class MigrationQuery():
+    curs_k = iter(curs)
+    pres_k = iter(pres)
+
+    c = 0
+    key_before = None
+    while c < bl:
+        c += 1 # loop control
+        try:
+            ck = next(curs_k)
+        except StopIteration:
+            ck = None
+        try:
+            pk = next(pres_k)
+        except StopIteration:
+            pk = None
+        if ck:
+            if ck in pres:
+                # this field existed before
+                if curs[ck] != pres[ck]:
+                    # This field has been modified.
+                    # Things can happen:
+                    # 1. The field definition has been modified
+                    # Can not handle the following:
+                    # 2. The field was deleted and added a new (ignore)
+                    # 3. The field was deleted and another one was renamed to this one.
+                    # 4. The field was renamed and another one was renamed to this one.
+                    ops[ck] = {
+                        'op': 'mod',
+                        'cur_key': ck,
+                        'cur_def': curs[ck],
+                        'pre_key': ck,
+                        'pre_def': pres[ck],
+                        'key_before': key_before,
+                    }
+            else:
+                # This field did not exist before, this is
+                # undoubtedly a new field. Either add or rename
+                ops[ck] = {
+                    'op': 'add',
+                    'cur_key': ck,
+                    'cur_def': curs[ck],
+                    'pre_key': '',
+                    'pre_def': '',
+                    'key_before': key_before,
+                }
+        if pk:
+            if pk in curs:
+                # It will be handled by curs handler above.
+                pass
+            else:
+                # pk is either deleted or renamed.
+                if ck and ck not in pres:
+                    # ck is new and at the position of pk
+                    # take as renamed
+                    ops[ck] = { # rename overlaps add in above.
+                        'op': 'rename',
+                        'cur_key': ck,
+                        'cur_def': curs[ck],
+                        'pre_key': pk,
+                        'pre_def': pres[pk],
+                        'key_before': key_before,
+                    }
+                    # if the values are not equal,
+                    # then it can happen that pk was deleted and
+                    # ck was added at its position, but it can
+                    # also happen that pk was renamed and
+                    # modified at the same time.
+                    # Deleting will be loss of data, thus
+                    # throwing error in renaming when the
+                    # column definition does not comply
+                    # seems much more sensible. One can
+                    # do the changes one step at a time
+                    # to avoid that error.
+                # elif ck and ck in pres:
+                #     # ck is not new and at the position of pk.
+                #     # where pk no longer exists.
+                #     pass
+                else:
+                    # pk is deleted.
+                    ops[pk] = {
+                        'op': 'delete',
+                        'pre_key': pk,
+                        'pre_def': pres[pk],
+                        'cur_key': '',
+                        'cur_def': '',
+                        'key_before': key_before,
+                    }
+
+        key_before = pk
+    return ops
+
+class Migration():
     def __init__(self, model: ModelType, migration_base_path: str, index_length=8):
         if model._is_abstract_():
             raise exc.MigrationModelNotAllowedError(f'Abstract model ({model.__name__}) can not be in database')
@@ -49,6 +145,13 @@ class MigrationQuery():
             'db_table': self.db_table,
             'fields': [],
         }
+        self.fields = self._get_fields()
+
+    def _get_fields(self):
+        fields = self.model._get_all_fields_()
+        for k, v in fields:
+            fields[k] = v.sql_def
+        return fields
 
     def _get_previous_migration_file_path(self) -> str:
         """Get latest migration file.
