@@ -87,7 +87,7 @@ class TestMethods(unittest.TestCase):
         class User(Model):
             id = Field('SERIAL', sql_onadd='NOT NULL')
             name = Field('varchar(255)')
-            profession = Field('varchar(65)')
+            profession = Field('varchar(65)', sql_alter=("SET DEFAULT 'Teacher'",'SET NOT NULL'))
 
         mgo = mg.Migration(User, '/home/jahid/Git/Github/neurobin/morm/migration_data')
         print(User.Meta._field_defs_['name'])

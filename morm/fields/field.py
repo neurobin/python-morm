@@ -59,10 +59,17 @@ class ColumnConfig():
         Returns:
             Tuple[str, str]: sql query, message
         """
-        query = f'ALTER TABLE "{self.conf["table_name"]}" ADD COLUMN "{self.conf["column_name"]}" {self.conf["sql_type"]} {self.conf["sql_onadd"]};'
-        msg = f'\n* > ADD: {self.conf["column_name"]}: {self.conf["sql_type"]}'
+        queries = []
+        msgs = []
+        queries.append(f'ALTER TABLE "{self.conf["table_name"]}" ADD COLUMN "{self.conf["column_name"]}" {self.conf["sql_type"]} {self.conf["sql_onadd"]};')
+        msgs.append(f'\n* > ADD: {self.conf["column_name"]}: {self.conf["sql_type"]}')
+
+        q, m = self.get_query_column_settings(())
+        queries.append(q)
+        msgs.append(m)
+
         if self.conf['sql_engine'] == 'postgresql':
-            return query, msg
+            return '\n'.join(queries), ''.join(msgs)
         else:
             raise ValueError(f"{self.conf['sql_engine']} not supported yet.")
 
@@ -113,31 +120,35 @@ class ColumnConfig():
             msg = f"\n* > MODIFY: {prev.conf['column_name']}: {prev.conf['sql_type']} --> {self.conf['sql_type']}"
             msgs.append(msg)
 
-        settings_query, msg = self.get_query_column_settings(prev)
+        settings_query, msg = self.get_query_column_settings(prev.conf['sql_alter'])
         queries.append(settings_query)
         msgs.append(msg)
 
 
         if self.conf['sql_engine'] == 'postgresql':
-            return ''.join(queries), ''.join(msgs)
+            return '\n'.join(queries), ''.join(msgs)
         else:
             raise ValueError(f"{self.conf['sql_engine']} not supported yet.")
 
-    def get_query_column_settings(self, prev: 'ColumnConfig') -> Tuple[str, str]:
+    def get_query_column_settings(self, prev_sql_alter: Tuple[str]) -> Tuple[str, str]:
         """Get a sql query to apply the sql_alter settings comparing with
         another config: prev.
 
         Args:
-            prev (ColumnConfig): previous column config
+            prev_sql_alter (Tuple[str]): previous sql_alter
 
         Returns:
             Tuple[str, str]: sql query, message
         """
+        if not isinstance(prev_sql_alter, tuple):
+            raise TypeError(f"sql_alter {prev_sql_alter} must be a tuple, {type(prev_sql_alter)} given")
+        if not isinstance(self.conf['sql_alter'], tuple):
+            raise TypeError(f"sql_alter {prev_sql_alter} must be a tuple, {type(self.conf['sql_alter'])} given")
         query = ''
         msgs = []
         query_stubs = []
         for qs in self.conf['sql_alter']:
-            if qs not in prev.conf['sql_alter']:
+            if qs not in prev_sql_alter:
                 # new settings
                 query_stubs.append(qs)
                 msgs.append(f"\n* + {qs}")
