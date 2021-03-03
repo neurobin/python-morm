@@ -290,7 +290,7 @@ class ModelType(type):
         return self.Meta.abstract
 
     def _is_proxy_(self) -> bool:
-        """Whether its is proxy model or not
+        """Whether it is a proxy model or not
         """
         return self.Meta.proxy
 

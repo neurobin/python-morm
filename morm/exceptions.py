@@ -9,3 +9,5 @@ __version__ = '0.0.1'
 
 class ItemDoesNotExistError(Exception): pass
 class TransactionError(Exception): pass
+class MigrationError(Exception): pass
+class MigrationModelNotAllowedError(Exception): pass
