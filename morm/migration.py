@@ -115,6 +115,14 @@ def _get_changed_fields(curs: Dict[str, ColumnConfig], pres: Dict[str, ColumnCon
     return ops
 
 
+class MigrationHook():
+    """Run some pre and after steps for migration.
+
+    You can
+    """
+    def run_before(self, db): pass
+    def run_after(self, db): pass
+
 
 
 class Migration():
