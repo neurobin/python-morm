@@ -9,7 +9,7 @@ __version__ = '0.0.1'
 
 from typing import Dict, List, Tuple, Any, Union, Iterator
 import re
-import os
+import os, sys
 import glob
 import datetime
 import json
@@ -128,19 +128,55 @@ class Migration():
         self.index_length = index_length
         self.db_table = model._get_db_table_()
         self.migration_dir = os.path.join(migration_base_path, self.db_table)
+        self.migration_queue_dir = os.path.join(self.migration_dir, '.queue')
         self.migration_file_pattern = os.path.join(self.migration_dir, f'{self.db_table}_*.json')
         os.makedirs(self.migration_dir, exist_ok=True)
+        os.makedirs(self.migration_queue_dir, exist_ok=True)
 
         self.previous_file_path = self._get_previous_migration_file_path()
         self.previous_file_name = os.path.basename(self.previous_file_path)
         self.current_file_name = self._get_current_migration_file_name(self.previous_file_name)
         self.current_file_path = os.path.join(self.migration_dir, self.current_file_name)
+        self.current_sql_file_name = f'{self.current_file_name}.sql'
+        self.current_sql_file_path = os.path.join(self.migration_queue_dir, self.current_sql_file_name)
 
         self.default_json = {
             'db_table': self.db_table,
             'fields': {},
         }
-        self.fields = self._get_fields()
+        self._fields = self._get_fields()
+
+        pjson = self._get_json_from_file(self.previous_file_path)
+        fields = pjson['fields']
+        self._pfields: Dict[str, ColumnConfig] = {}
+        for k, v in fields.items():
+            self._pfields[k] = ColumnConfig(**v)
+
+        self.cjson_fields = {}
+        for k, v in self.cfields.items():
+            self.cjson_fields[k] = v.to_json()
+
+        self.current_json = self.default_json
+        self.current_json['fields'] = self.cjson_fields
+
+
+    @property
+    def cfields(self) -> Dict[str, ColumnConfig]:
+        """ColumnConfig for all fields in a dict.
+
+        Returns:
+            Dict[str, ColumnConfig]
+        """
+        return self._fields
+
+    @property
+    def pfields(self) -> Dict[str, ColumnConfig]:
+        """ColumnConfig for all previous fields in a dict.
+
+        Returns:
+            Dict[str, ColumnConfig]
+        """
+        return self._pfields
 
     def _get_fields(self) -> Dict[str, ColumnConfig]:
         fields = self.model._get_all_fields_()
@@ -148,6 +184,37 @@ class Migration():
         for k, v in fields.items():
             fieldscc[k] = v.sql_conf
         return fieldscc
+
+    def _get_create_table_query(self, fields: Dict[str, ColumnConfig]) -> str:
+        """Get the complete create table query
+
+        Args:
+            fields (Dict[str, ColumnConfig]): fields that will be used to create the create quey
+
+        Returns:
+            str: query string
+        """
+        cq0 = f'CREATE TABLE "{self.db_table}" (\n'
+        cq = []
+        aq = []
+        for k, v in fields.items():
+            q, alq = v.get_query_column_create_stub()
+            cq.append(f'    {q}')
+            aq.append(alq)
+        cqm = ',\n'.join(cq)
+        cqe = '\n);'
+        create_q = f'{cq0}{cqm}{cqe}'
+        alter_q = '\n'.join(aq)
+        total_q = f'{create_q}{alter_q}'
+        return total_q
+
+    def get_create_table_query(self) -> str:
+        """Get a create table query for current fields
+
+        Returns:
+            str: query string
+        """
+        return self._get_create_table_query(self.cfields)
 
     def _get_json_from_file(self, path: str) -> Dict[str, Any]:
         """Get json from file or return a default json if file does not exist.
@@ -166,19 +233,49 @@ class Migration():
         except FileNotFoundError:
             return self.default_json
 
+    def _take_yn(self):
+        yn = input("Is this correct? [Y/n]: ")
+        print('\n\n')
+        if yn != 'Y' and yn != 'y': sys.exit()
+        return True
+
+
+    def make_migration(self, yes=False, silent=False):
+        print(f'############ Model: {self.model.__name__} ###############')
+        query = ''
+        qs = []
+        if self.pfields:
+            # changes only
+            for q, m in self._migration_query_generator():
+                if not q: continue
+                if not silent or not yes:
+                    print(m)
+                if not yes:
+                    self._take_yn()
+                qs.append(q)
+            query = '\n'.join(qs)
+        else:
+            # new table
+            query = self.get_create_table_query()
+            print(query)
+            if not yes:
+                self._take_yn()
+        if not query:
+            if not silent:
+                print("=== No changes detected ===")
+            return None
+        with open(self.current_sql_file_path, 'w') as f:
+            f.write(query)
+            with open(self.current_file_path, 'w') as jf:
+                json.dump(self.current_json, jf)
+
     def _migration_query_generator(self) -> Iterator[Tuple[str, str]]:
         """Detect changes on model fields and yield query, discriptive message
 
         Yields:
             Iterator[Tuple[str, str]]: yield query, descriptive_message
         """
-        pjson = self._get_json_from_file(self.previous_file_path)
-        fields = pjson['fields']
-        pfields: Dict[str, ColumnConfig] = {}
-        for k, v in fields.items():
-            pfields[k] = ColumnConfig(**v)
-        cfields = self.fields
-        changed = _get_changed_fields(cfields, pfields)
+        changed = _get_changed_fields(self.cfields, self.pfields)
         for k, v in changed.items():
             op = v['op']
             if op == 'add':
@@ -189,12 +286,12 @@ class Migration():
                 query, msg = v['cur_def'].get_query_column_modify(v['pre_def'])
             elif op == 'rename':
                 rnm_query, rnm_msg = v['cur_def'].get_query_column_rename(v['pre_key'])
-                mod_query, mod_msg = v['cur_def'].get_query_column_modify()
+                mod_query, mod_msg = v['cur_def'].get_query_column_modify(v['pre_def'])
                 query = f'{rnm_query} {mod_query}'
-                msg = f"{rnm_msg}\n{mod_msg}"
+                msg = f"{mod_msg}\n{rnm_msg}"
             else:
                 raise ValueError(f"Invalid operation: {op}")
-            yield query, f'\n{"*"*79}{msg}\n\n{query}\n{"*"*79}', cfields
+            yield query, f'\n{"*"*79}{msg}\n\n{query}\n{"*"*79}'
 
 
     def _get_previous_migration_file_path(self) -> str:
@@ -214,7 +311,7 @@ class Migration():
     def _get_current_migration_file_index(self, previous_file_name: str) -> int:
         if not previous_file_name:
             return 1
-        m = re.match(f'^{self.db_table}_0*(\\d+)\\D*\.json$', previous_file_name)
+        m = re.match(f'^{self.db_table}_0*(\\d+)_.*\.json$', previous_file_name)
         try:
             return int(m.group(1)) + 1
         except AttributeError:

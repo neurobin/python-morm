@@ -6,8 +6,10 @@ __copyright__ = 'Copyright © Md Jahidul Hamid <https://github.com/neurobin/>'
 __license__ = '[BSD](http://www.opensource.org/licenses/bsd-license.php)'
 __version__ = '0.0.1'
 
+import copy
 from typing import Any, Optional, Callable, Tuple, Dict, List, Union
 from morm.types import Void
+
 
 
 def always_valid(value: Any)-> bool:
@@ -53,6 +55,19 @@ class ColumnConfig():
     def to_json(self) -> Dict[str, str]:
         return self.conf
 
+    def get_query_column_create_stub(self) -> Tuple[str, str]:
+        """Get create query along with alter query for this field
+
+        Can be used to make the create table query.
+
+        Returns:
+            Tuple[str, str]: create_query, alter_query
+        """
+        create_q = f'"{self.conf["column_name"]}" {self.conf["sql_type"]} {self.conf["sql_onadd"]}'
+        alter_q, msg = self.get_query_column_settings(())
+        return create_q, alter_q
+
+
     def get_query_column_add(self) -> Tuple[str, str]:
         """Get a sql query to add the column.
 
@@ -65,8 +80,9 @@ class ColumnConfig():
         msgs.append(f'\n* > ADD: {self.conf["column_name"]}: {self.conf["sql_type"]}')
 
         q, m = self.get_query_column_settings(())
-        queries.append(q)
-        msgs.append(m)
+        if q:
+            queries.append(q)
+            msgs.append(m)
 
         if self.conf['sql_engine'] == 'postgresql':
             return '\n'.join(queries), ''.join(msgs)
@@ -121,8 +137,9 @@ class ColumnConfig():
             msgs.append(msg)
 
         settings_query, msg = self.get_query_column_settings(prev.conf['sql_alter'])
-        queries.append(settings_query)
-        msgs.append(msg)
+        if settings_query:
+            queries.append(settings_query)
+            msgs.append(msg)
 
 
         if self.conf['sql_engine'] == 'postgresql':
@@ -140,9 +157,9 @@ class ColumnConfig():
         Returns:
             Tuple[str, str]: sql query, message
         """
-        if not isinstance(prev_sql_alter, tuple):
+        if not isinstance(prev_sql_alter, (tuple, list,)):
             raise TypeError(f"sql_alter {prev_sql_alter} must be a tuple, {type(prev_sql_alter)} given")
-        if not isinstance(self.conf['sql_alter'], tuple):
+        if not isinstance(self.conf['sql_alter'], (tuple, list,)):
             raise TypeError(f"sql_alter {prev_sql_alter} must be a tuple, {type(self.conf['sql_alter'])} given")
         query = ''
         msgs = []

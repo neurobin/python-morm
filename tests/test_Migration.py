@@ -6,58 +6,20 @@ from typing import Dict, List, Tuple, Any
 from morm.types import Void, VoidType
 import morm.migration as mg
 from morm.model import Model, ModelType, Field
-
-
-
-def _get_alter_column_sql(self, altdefs: Dict[str, str]) -> Tuple[str, str]:
-    """Get alter column sql
-
-    altdefs need to be a dictionary of the following format:
-
-    ```python
-    altdefs = {
-        'op': str # one of add, delete, rename and mod (modify)
-        'cur_key': str # target name of column
-        'cur_def': str # definition of target column
-        'pre_key': str # current name of column
-        'pre_def': str # current definition
-        'key_before': str # name of the key (pre_key, current column) before this column, None for first column.
-    }
-    ```
-
-    Args:
-        altdefs (Dict[str, Any]): altdefs dict
-
-    Returns:
-        str, str: sql, msg
-    """
-    self.db_table = '"BigUserTable"'
-    op = altdefs['op']
-    pre_key = altdefs['pre_key']
-    pre_def = altdefs['pre_def']
-    cur_key = altdefs['cur_key']
-    cur_def = altdefs['cur_def']
-    if altdefs['op'] == 'rename':
-        msg = f"> RENAME: {pre_key}: {pre_def} --> {cur_key}: {cur_def}"
-        if pre_def != cur_def:
-            alter_type = f'ALTER TABLE {self.db_table} ALTER COLUMN "{pre_key}" TYPE {cur_def}; '
-        else:
-            alter_type = ''
-        return f'{alter_type}ALTER TABLE {self.db_table} RENAME "{pre_key}" TO "{cur_key}";', msg
-    elif op == 'mod':
-        msg = f"> MODIFY: {pre_key}: {pre_def} --> {cur_def}"
-        return f'ALTER TABLE {self.db_table} ALTER COLUMN "{pre_key}" TYPE {cur_def}', msg
-    elif op == 'delete':
-        msg = f"> DELETE: {pre_key} {pre_def}"
-        return f'ALTER TABLE {self.db_table} DROP COLUMN "{pre_key}"', msg
-    elif op == 'add':
-        msg = f"> ADD   : {cur_key} {cur_def}"
-        return f'ALTER TABLE {self.db_table} ADD "{cur_key}" {cur_def}', msg
-    return '', ''
+from morm.fields.field import ColumnConfig
+import os, shutil
 
 
 
 class TestMethods(unittest.TestCase):
+    migration_path = '/home/jahid/Git/Github/neurobin/morm/migration_data'
+    def setUp(self):
+        pass
+
+    def tearDown(self):
+        shutil.rmtree(self.migration_path)
+
+
     def test_func(self):
 
         curs = {
@@ -89,13 +51,75 @@ class TestMethods(unittest.TestCase):
             name = Field('varchar(255)')
             profession = Field('varchar(65)', sql_alter=("SET DEFAULT 'Teacher'",'SET NOT NULL'))
 
-        mgo = mg.Migration(User, '/home/jahid/Git/Github/neurobin/morm/migration_data')
-        print(User.Meta._field_defs_['name'])
+        mgo = mg.Migration(User, '/tmp/..Non-Existent')
+        print(' - [x] Field init checks: 1. repr implementation 2. default values')
+        self.assertTrue( "Field('varchar(255)', sql_onadd='', sql_ondrop='', sql_alter=(), sql_engine='postgresql'," in repr(User.Meta._field_defs_['name']))
 
-        for query, msg, newdata in mgo._migration_query_generator():
-            print(msg)
-            # print(query)
-            # print(newdata)
+        print(' - [x] Checking pfields and cfields')
+        cfields = {'id': ColumnConfig(sql_type='SERIAL', sql_onadd='NOT NULL', sql_ondrop='', sql_alter=(), sql_engine='postgresql', column_name='id', table_name='User'), 'name': ColumnConfig(sql_type='varchar(255)', sql_onadd='', sql_ondrop='', sql_alter=(), sql_engine='postgresql', column_name='name', table_name='User'), 'profession': ColumnConfig(sql_type='varchar(65)', sql_onadd='', sql_ondrop='', sql_alter=("SET DEFAULT 'Teacher'", 'SET NOT NULL'), sql_engine='postgresql', column_name='profession', table_name='User')}
+        self.assertTrue(mgo.cfields == cfields)
+        self.assertTrue({} == mgo.pfields)
+
+        mgq = mgo._migration_query_generator()
+
+        print(' - [x] Checking add column sql for id')
+        query, msg = next(mgq)
+        self.assertTrue('''
+*******************************************************************************
+* > ADD: id: SERIAL
+
+ALTER TABLE "User" ADD COLUMN "id" SERIAL NOT NULL;
+*******************************************************************************''' == msg)
+        self.assertTrue(query == 'ALTER TABLE "User" ADD COLUMN "id" SERIAL NOT NULL;')
+
+        print(' - [x] Checking add column sql for name')
+        query, msg = next(mgq)
+        self.assertTrue('''
+*******************************************************************************
+* > ADD: name: varchar(255)
+
+ALTER TABLE "User" ADD COLUMN "name" varchar(255) ;
+*******************************************************************************''' == msg)
+        self.assertTrue(query == 'ALTER TABLE "User" ADD COLUMN "name" varchar(255) ;')
+
+        print(' - [x] Checking add column sql for profession')
+        query, msg = next(mgq)
+        # print(msg)
+        self.assertTrue('''
+*******************************************************************************
+* > ADD: profession: varchar(65)
+* + SET DEFAULT 'Teacher'
+* + SET NOT NULL
+
+ALTER TABLE "User" ADD COLUMN "profession" varchar(65) ;
+ALTER TABLE "User" ALTER COLUMN "profession" SET DEFAULT 'Teacher', ALTER COLUMN "profession" SET NOT NULL;
+*******************************************************************************''' == msg)
+        self.assertTrue(query == """ALTER TABLE "User" ADD COLUMN "profession" varchar(65) ;
+ALTER TABLE "User" ALTER COLUMN "profession" SET DEFAULT 'Teacher', ALTER COLUMN "profession" SET NOT NULL;""")
+
+        self.assertEqual(mgo.get_create_table_query(), """
+CREATE TABLE "User" (
+    "id" SERIAL NOT NULL,
+    "name" varchar(255) ,
+    "profession" varchar(65) @
+);
+
+ALTER TABLE "User" ALTER COLUMN "profession" SET DEFAULT 'Teacher', ALTER COLUMN "profession" SET NOT NULL;""".replace('@', '').strip())
+
+        mgo = mg.Migration(User, '/home/jahid/Git/Github/neurobin/morm/migration_data')
+        mgo.make_migration()
+
+        class User(Model):
+            id = Field('SERIAL', sql_onadd='NOT NULL')
+            name = Field('varchar(256)')
+            profession_name = Field('varchar(265)', sql_alter=("SET DEFAULT 'Teacher'",'SET NOT NULL'))
+            hobby = Field('varchar(45)')
+
+        mgo = mg.Migration(User, '/home/jahid/Git/Github/neurobin/morm/migration_data')
+        mgo.make_migration()
+
+        input('Enter to exit')
+
 
 
 
@@ -103,4 +127,4 @@ class TestMethods(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main(verbosity=2)
+    unittest.main(verbosity=0)
