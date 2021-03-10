@@ -90,6 +90,9 @@ class VoidType(object, metaclass=SingletonMeta):
         raise NotImplementedError(self.__class__.__name__
                                  + &#34; does not support setting attributes&#34;)
 
+    def __repr__(self):
+        return &#39;Void&#39;
+
 # this one needs to be defined here.
 Void = object.__new__(VoidType)
 &#39;&#39;&#39;Used internally to represent non-existent value, thus `None` retains its usual meaning.&#39;&#39;&#39;</code></pre>
@@ -197,7 +200,10 @@ with non-existent value.</p></div>
 
     def __setattr__(self, key, value):
         raise NotImplementedError(self.__class__.__name__
-                                 + &#34; does not support setting attributes&#34;)</code></pre>
+                                 + &#34; does not support setting attributes&#34;)
+
+    def __repr__(self):
+        return &#39;Void&#39;</code></pre>
 </details>
 </dd>
 </dl>

@@ -39,6 +39,8 @@ import collections
 import re
 import asyncio
 from contextlib import asynccontextmanager
+import atexit
+import logging
 
 import asyncpg # type: ignore
 from asyncpg import Record, Connection # type: ignore
@@ -49,6 +51,8 @@ from morm.model import ModelType, Model, ModelBase, FieldNames
 from morm.q import Q
 from morm.types import Void
 
+LOGGER_NAME = &#39;morm.db-&#39;
+log = logging.getLogger(LOGGER_NAME)
 
 def record_to_model(record: Record, model_class: ModelType) -&gt; Model:
     &#34;&#34;&#34;Convert a Record object to Model object.
@@ -105,7 +109,8 @@ class Pool(object):
         self.connect_kwargs = connect_kwargs
 
         self._pool = None
-        self.open()
+        self._open()
+        atexit.register(self._close)
 
     @property
     def pool(self) -&gt; asyncpg.pool.Pool:
@@ -130,20 +135,22 @@ class Pool(object):
                                         loop=self.loop,
                                         connection_class=self.connection_class,
                                         **self.connect_kwargs)
-    def open(self):
-        &#34;&#34;&#34;Open the pool
+    def _open(self):
+        &#34;&#34;&#34;Open the pool. Called on init so not need to call this
+        method explicitly.
         &#34;&#34;&#34;
         if not self._pool:
             self._pool = asyncio.get_event_loop().run_until_complete(self.__create_pool())
-            print(&#34;Pool opened&#34;)
+            log.debug(&#34;Pool opened&#34;)
 
-    def close(self):
-        &#34;&#34;&#34;Attempt to close the pool gracefully.
+    def _close(self):
+        &#34;&#34;&#34;Attempt to close the pool gracefully. registered with atexit.
+        You do not need to call this method explicitly.
         &#34;&#34;&#34;
         if self._pool:
             asyncio.get_event_loop().run_until_complete(self._pool.close())
             self._pool = None
-            print(&#34;Pool closed&#34;)
+            log.debug(&#34;Pool closed&#34;)
 
 
 class DB(object):
@@ -163,15 +170,6 @@ class DB(object):
         self._pool = pool
         self._con = con
         self.DATA_NO_CHANGE = &#39;DATA_NO_CHANGE_TRIGGERED&#39;
-
-    @property
-    def pool(self) -&gt; Pool:
-        &#34;&#34;&#34;Return the Pool object
-
-        Returns:
-            Pool: Pool object
-        &#34;&#34;&#34;
-        return self._pool
 
     def corp(self) -&gt; Union[asyncpg.pool.Pool, Connection]:
         &#34;&#34;&#34;Return the connection if available, otherwise return a Pool.
@@ -274,11 +272,12 @@ class DB(object):
         pool = self.corp()
         return await pool.execute(query, *args, timeout=timeout)
 
-    def get_insert_query(self, mob: ModelBase) -&gt; Tuple[str, List[Any]]:
+    def get_insert_query(self, mob: ModelBase, reset=False) -&gt; Tuple[str, List[Any]]:
         &#34;&#34;&#34;Get insert query for the model object (mob) with its current data
 
         Args:
             mob (ModelBase): Model object
+            reset (bool): Reset the value change counter. Defaults to False
 
         Returns:
             (str, list): query, prepared_args
@@ -291,15 +290,16 @@ class DB(object):
         c = 0
         for n,v in new_data_gen:
             c += 1
+            if reset:
+                v._value_change_count = 0
+                mob.Meta._fromdb_ = []
             columns.append(n)
             values.append(v.value)
             markers.append(f&#39;${c}&#39;)
-
         column_q = &#39;&#34;,&#34;&#39;.join(columns)
         if column_q:
             column_q = f&#39;&#34;{column_q}&#34;&#39;
-        marker_q = &#39;, &#39;.join(markers)
-        if column_q:
+            marker_q = &#39;, &#39;.join(markers)
             query = f&#39;INSERT INTO &#34;{mob.__class__._get_db_table_()}&#34; ({column_q}) VALUES ({marker_q}) RETURNING &#34;{mob.__class__._get_pk_()}&#34;&#39;
         else:
             query = &#39;&#39;
@@ -336,12 +336,10 @@ class DB(object):
                 values.append(v.value)
                 if reset:
                     v._value_change_count = countover
-
-        where = f&#39;&#34;{mob.__class__._get_pk_()}&#34;=${c+1}&#39;
-        values.append(pkval)
-
         colval_q = &#39;, &#39;.join(colval)
         if colval_q:
+            where = f&#39;&#34;{mob.__class__._get_pk_()}&#34;=${c+1}&#39;
+            values.append(pkval)
             query = f&#39;UPDATE &#34;{mob.__class__._get_db_table_()}&#34; SET {colval_q} WHERE {where}&#39;
         else:
             query = &#39;&#39;
@@ -357,7 +355,7 @@ class DB(object):
         Returns:
             (Any): Value of primary key of the inserted row
         &#34;&#34;&#34;
-        query, args = self.get_insert_query(mob)
+        query, args = self.get_insert_query(mob, reset=True)
         pkval = await self.fetchval(query, *args, timeout=timeout)
         if pkval is not None:
             setattr(mob, mob.__class__._get_pk_(), pkval)
@@ -580,7 +578,7 @@ class ModelQuery():
                     self._named_args_mapper[k] = self._arg_count
         return q
 
-    def q(self, q: str, *args) -&gt; &#39;ModelQuery&#39;:
+    def q(self, q: str, *args: Any) -&gt; &#39;ModelQuery&#39;:
         &#34;&#34;&#34;Add raw query stub without parsing to check for keyword arguments
 
         Use `$1`, `$2` etc. for prepared arguments.
@@ -614,6 +612,7 @@ class ModelQuery():
 
         Args:
             q (str): raw query string
+            *args (Any): prepared positional arguments
 
         Returns:
             ModelQuery: self, enables method chaining.
@@ -713,6 +712,14 @@ class ModelQuery():
         &#34;&#34;&#34;
         return self.qq(word).q_(rest, *args, **kwargs)
 
+    def qorder(self):
+        &#34;&#34;&#34;Add ORDER BY
+
+        Returns:
+            ModelQuery: returns `self` to enable method chaining
+        &#34;&#34;&#34;
+        return self.q(&#39;ORDER BY&#39;)
+
     def qo(self, order: str) -&gt; &#39;ModelQuery&#39;:
         &#34;&#34;&#34;Convert `+/-field_name,` to proper order_by criteria and add to query.
 
@@ -769,7 +776,7 @@ class ModelQuery():
         &#34;&#34;&#34;
         q = &#39;&#34;,&#34;&#39;.join(column_names)
         if q:
-            q = f&#39;&#34;{q}&#34;&#39;
+            q = f&#39;RETURNING &#34;{q}&#34;&#39;
         return self.q(q)
 
     def qwhere(self) -&gt; &#39;ModelQuery&#39;:
@@ -804,13 +811,13 @@ class ModelQuery():
         &#34;&#34;&#34;
         if not self.__filter_initiated:
             down_fields = &#39;,&#39;.join([Q(x) for x in self.model._get_fields_(up=False)]) #type: ignore
-            self.q(f&#39;SELECT {down_fields} FROM &#34;{self.model._get_db_table_()}&#34; WHERE&#39;) #type: ignore
+            self.reset().q(f&#39;SELECT {down_fields} FROM &#34;{self.model._get_db_table_()}&#34; WHERE&#39;) #type: ignore
             self.__filter_initiated = True
             order_by = self.ordering
             if order_by and not no_ordering:
                 self.end_query_str = f&#39;ORDER BY {order_by}&#39;
         else:
-            ValueError(f&#34;Filter is already initiated for this {self.__class__.__name__} query object: {self}&#34;)
+            raise ValueError(f&#34;Filter is already initiated for this {self.__class__.__name__} query object: {self}&#34;)
         return self
 
     def qupdate(self, data: dict) -&gt; &#39;ModelQuery&#39;:
@@ -830,10 +837,10 @@ class ModelQuery():
             ModelQuery: returns `self` to enable method chaining
         &#34;&#34;&#34;
         if not self.__update_initiated:
-            self.q(f&#39;UPDATE {self.db_table} SET&#39;).qu(data).qwhere()
+            self.reset().q(f&#39;UPDATE {self.db_table} SET&#39;).qu(data).qwhere()
             self.__update_initiated = True
         else:
-            ValueError(f&#34;update is already initiated for this {self.__class__.__name__} query: {self}&#34;)
+            raise ValueError(f&#34;update is already initiated for this {self.__class__.__name__} query: {self}&#34;)
         return self
 
 
@@ -901,7 +908,7 @@ class ModelQuery():
         query, parepared_args = self.getq()
         return await self.db.execute(query, *parepared_args, timeout=timeout)
 
-    async def get(self, *vals, col: str = &#39;&#39;, comp: str = &#39;=$1&#39;) -&gt; Union[ModelBase, Record]:
+    async def get(self, *vals: Any, col: str = &#39;&#39;, comp: str = &#39;=$1&#39;) -&gt; Union[ModelBase, Record]:
         &#34;&#34;&#34;Get the first row found by column and value.
 
         If `col` is not given, it defaults to the primary key (`pk`) of
@@ -919,14 +926,7 @@ class ModelQuery():
         &#34;&#34;&#34;
         if not col:
             col = self.model.Meta.pk    #type: ignore
-        return await self.qfilter().qc(col, comp, *vals).fetchrow()
-
-
-
-
-
-
-
+        return await self.reset().qfilter().qc(col, comp, *vals).fetchrow()
 
 
 class Transaction():
@@ -942,7 +942,8 @@ class Transaction():
             readonly (bool, optional): Specifies whether or not this transaction is read-only. Defaults to False.
             deferrable (bool, optional): Specifies whether or not this transaction is deferrable. Defaults to False.
         &#34;&#34;&#34;
-        self.db = DB(pool)
+        self._pool = pool
+        self.db = DB(None) # type: ignore
         self.tr = None
         self.tr_args = {
             &#39;isolation&#39;: isolation,
@@ -964,12 +965,12 @@ class Transaction():
         &#34;&#34;&#34;
         if self.db._con:
             raise exceptions.TransactionError(&#39;Another transaction is running (or not ended properly) with this Transaction object&#39;)
-        self.db._con = await self.db._pool.pool.acquire() # type: ignore
+        self.db._con = await self._pool.pool.acquire() # type: ignore
         self.tr = self.db._con.transaction(**self.tr_args) # type: ignore
         await self.tr.start() # type: ignore
         # return self.db
         # test with returning con directly
-        return self.db._con
+        return self.db
 
     async def rollback(self):
         &#34;&#34;&#34;Rollback the transaction.
@@ -990,7 +991,7 @@ class Transaction():
         &#34;&#34;&#34;
         try:
             if self.db._con:
-                await self.db._pool.pool.release(self.db._con)
+                await self._pool.pool.release(self.db._con)
         finally:
             self.db._con = None
             self.tr = None
@@ -1093,15 +1094,6 @@ connection pool defined by a Pool object.</p>
         self._con = con
         self.DATA_NO_CHANGE = &#39;DATA_NO_CHANGE_TRIGGERED&#39;
 
-    @property
-    def pool(self) -&gt; Pool:
-        &#34;&#34;&#34;Return the Pool object
-
-        Returns:
-            Pool: Pool object
-        &#34;&#34;&#34;
-        return self._pool
-
     def corp(self) -&gt; Union[asyncpg.pool.Pool, Connection]:
         &#34;&#34;&#34;Return the connection if available, otherwise return a Pool.
 
@@ -1203,11 +1195,12 @@ connection pool defined by a Pool object.</p>
         pool = self.corp()
         return await pool.execute(query, *args, timeout=timeout)
 
-    def get_insert_query(self, mob: ModelBase) -&gt; Tuple[str, List[Any]]:
+    def get_insert_query(self, mob: ModelBase, reset=False) -&gt; Tuple[str, List[Any]]:
         &#34;&#34;&#34;Get insert query for the model object (mob) with its current data
 
         Args:
             mob (ModelBase): Model object
+            reset (bool): Reset the value change counter. Defaults to False
 
         Returns:
             (str, list): query, prepared_args
@@ -1220,15 +1213,16 @@ connection pool defined by a Pool object.</p>
         c = 0
         for n,v in new_data_gen:
             c += 1
+            if reset:
+                v._value_change_count = 0
+                mob.Meta._fromdb_ = []
             columns.append(n)
             values.append(v.value)
             markers.append(f&#39;${c}&#39;)
-
         column_q = &#39;&#34;,&#34;&#39;.join(columns)
         if column_q:
             column_q = f&#39;&#34;{column_q}&#34;&#39;
-        marker_q = &#39;, &#39;.join(markers)
-        if column_q:
+            marker_q = &#39;, &#39;.join(markers)
             query = f&#39;INSERT INTO &#34;{mob.__class__._get_db_table_()}&#34; ({column_q}) VALUES ({marker_q}) RETURNING &#34;{mob.__class__._get_pk_()}&#34;&#39;
         else:
             query = &#39;&#39;
@@ -1265,12 +1259,10 @@ connection pool defined by a Pool object.</p>
                 values.append(v.value)
                 if reset:
                     v._value_change_count = countover
-
-        where = f&#39;&#34;{mob.__class__._get_pk_()}&#34;=${c+1}&#39;
-        values.append(pkval)
-
         colval_q = &#39;, &#39;.join(colval)
         if colval_q:
+            where = f&#39;&#34;{mob.__class__._get_pk_()}&#34;=${c+1}&#39;
+            values.append(pkval)
             query = f&#39;UPDATE &#34;{mob.__class__._get_db_table_()}&#34; SET {colval_q} WHERE {where}&#39;
         else:
             query = &#39;&#39;
@@ -1286,7 +1278,7 @@ connection pool defined by a Pool object.</p>
         Returns:
             (Any): Value of primary key of the inserted row
         &#34;&#34;&#34;
-        query, args = self.get_insert_query(mob)
+        query, args = self.get_insert_query(mob, reset=True)
         pkval = await self.fetchval(query, *args, timeout=timeout)
         if pkval is not None:
             setattr(mob, mob.__class__._get_pk_(), pkval)
@@ -1369,31 +1361,6 @@ connection pool defined by a Pool object.</p>
             return ModelQuery(self, model)
         raise TypeError(f&#34;Invalid model: {model}. model must be of type {ModelType.__name__}. Make sure you did not pass a model object by mistake.&#34;)</code></pre>
 </details>
-<h3>Instance variables</h3>
-<dl>
-<dt id="morm.db.DB.pool"><code class="name">var <span class="ident">pool</span> : <a title="morm.db.Pool" href="#morm.db.Pool">Pool</a></code></dt>
-<dd>
-<div class="desc"><p>Return the Pool object</p>
-<h2 id="returns">Returns</h2>
-<dl>
-<dt><code><a title="morm.db.Pool" href="#morm.db.Pool">Pool</a></code></dt>
-<dd>Pool object</dd>
-</dl></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">@property
-def pool(self) -&gt; Pool:
-    &#34;&#34;&#34;Return the Pool object
-
-    Returns:
-        Pool: Pool object
-    &#34;&#34;&#34;
-    return self._pool</code></pre>
-</details>
-</dd>
-</dl>
 <h3>Methods</h3>
 <dl>
 <dt id="morm.db.DB.corp"><code class="name flex">
@@ -1608,7 +1575,7 @@ def pool(self) -&gt; Pool:
 </details>
 </dd>
 <dt id="morm.db.DB.get_insert_query"><code class="name flex">
-<span>def <span class="ident">get_insert_query</span></span>(<span>self, mob: <a title="morm.model.ModelBase" href="model.html#morm.model.ModelBase">ModelBase</a>) ‑> Tuple[str, List[Any]]</span>
+<span>def <span class="ident">get_insert_query</span></span>(<span>self, mob: <a title="morm.model.ModelBase" href="model.html#morm.model.ModelBase">ModelBase</a>, reset=False) ‑> Tuple[str, List[Any]]</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Get insert query for the model object (mob) with its current data</p>
@@ -1616,6 +1583,8 @@ def pool(self) -&gt; Pool:
 <dl>
 <dt><strong><code>mob</code></strong> :&ensp;<code>ModelBase</code></dt>
 <dd>Model object</dd>
+<dt><strong><code>reset</code></strong> :&ensp;<code>bool</code></dt>
+<dd>Reset the value change counter. Defaults to False</dd>
 </dl>
 <h2 id="returns">Returns</h2>
 <p>(str, list): query, prepared_args</p></div>
@@ -1623,11 +1592,12 @@ def pool(self) -&gt; Pool:
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def get_insert_query(self, mob: ModelBase) -&gt; Tuple[str, List[Any]]:
+<pre><code class="python">def get_insert_query(self, mob: ModelBase, reset=False) -&gt; Tuple[str, List[Any]]:
     &#34;&#34;&#34;Get insert query for the model object (mob) with its current data
 
     Args:
         mob (ModelBase): Model object
+        reset (bool): Reset the value change counter. Defaults to False
 
     Returns:
         (str, list): query, prepared_args
@@ -1640,15 +1610,16 @@ def pool(self) -&gt; Pool:
     c = 0
     for n,v in new_data_gen:
         c += 1
+        if reset:
+            v._value_change_count = 0
+            mob.Meta._fromdb_ = []
         columns.append(n)
         values.append(v.value)
         markers.append(f&#39;${c}&#39;)
-
     column_q = &#39;&#34;,&#34;&#39;.join(columns)
     if column_q:
         column_q = f&#39;&#34;{column_q}&#34;&#39;
-    marker_q = &#39;, &#39;.join(markers)
-    if column_q:
+        marker_q = &#39;, &#39;.join(markers)
         query = f&#39;INSERT INTO &#34;{mob.__class__._get_db_table_()}&#34; ({column_q}) VALUES ({marker_q}) RETURNING &#34;{mob.__class__._get_pk_()}&#34;&#39;
     else:
         query = &#39;&#39;
@@ -1712,12 +1683,10 @@ def pool(self) -&gt; Pool:
             values.append(v.value)
             if reset:
                 v._value_change_count = countover
-
-    where = f&#39;&#34;{mob.__class__._get_pk_()}&#34;=${c+1}&#39;
-    values.append(pkval)
-
     colval_q = &#39;, &#39;.join(colval)
     if colval_q:
+        where = f&#39;&#34;{mob.__class__._get_pk_()}&#34;=${c+1}&#39;
+        values.append(pkval)
         query = f&#39;UPDATE &#34;{mob.__class__._get_db_table_()}&#34; SET {colval_q} WHERE {where}&#39;
     else:
         query = &#39;&#39;
@@ -1752,7 +1721,7 @@ def pool(self) -&gt; Pool:
     Returns:
         (Any): Value of primary key of the inserted row
     &#34;&#34;&#34;
-    query, args = self.get_insert_query(mob)
+    query, args = self.get_insert_query(mob, reset=True)
     pkval = await self.fetchval(query, *args, timeout=timeout)
     if pkval is not None:
         setattr(mob, mob.__class__._get_pk_(), pkval)
@@ -2072,7 +2041,7 @@ last existing argument position plus 1.</p>
                     self._named_args_mapper[k] = self._arg_count
         return q
 
-    def q(self, q: str, *args) -&gt; &#39;ModelQuery&#39;:
+    def q(self, q: str, *args: Any) -&gt; &#39;ModelQuery&#39;:
         &#34;&#34;&#34;Add raw query stub without parsing to check for keyword arguments
 
         Use `$1`, `$2` etc. for prepared arguments.
@@ -2106,6 +2075,7 @@ last existing argument position plus 1.</p>
 
         Args:
             q (str): raw query string
+            *args (Any): prepared positional arguments
 
         Returns:
             ModelQuery: self, enables method chaining.
@@ -2205,6 +2175,14 @@ last existing argument position plus 1.</p>
         &#34;&#34;&#34;
         return self.qq(word).q_(rest, *args, **kwargs)
 
+    def qorder(self):
+        &#34;&#34;&#34;Add ORDER BY
+
+        Returns:
+            ModelQuery: returns `self` to enable method chaining
+        &#34;&#34;&#34;
+        return self.q(&#39;ORDER BY&#39;)
+
     def qo(self, order: str) -&gt; &#39;ModelQuery&#39;:
         &#34;&#34;&#34;Convert `+/-field_name,` to proper order_by criteria and add to query.
 
@@ -2261,7 +2239,7 @@ last existing argument position plus 1.</p>
         &#34;&#34;&#34;
         q = &#39;&#34;,&#34;&#39;.join(column_names)
         if q:
-            q = f&#39;&#34;{q}&#34;&#39;
+            q = f&#39;RETURNING &#34;{q}&#34;&#39;
         return self.q(q)
 
     def qwhere(self) -&gt; &#39;ModelQuery&#39;:
@@ -2296,13 +2274,13 @@ last existing argument position plus 1.</p>
         &#34;&#34;&#34;
         if not self.__filter_initiated:
             down_fields = &#39;,&#39;.join([Q(x) for x in self.model._get_fields_(up=False)]) #type: ignore
-            self.q(f&#39;SELECT {down_fields} FROM &#34;{self.model._get_db_table_()}&#34; WHERE&#39;) #type: ignore
+            self.reset().q(f&#39;SELECT {down_fields} FROM &#34;{self.model._get_db_table_()}&#34; WHERE&#39;) #type: ignore
             self.__filter_initiated = True
             order_by = self.ordering
             if order_by and not no_ordering:
                 self.end_query_str = f&#39;ORDER BY {order_by}&#39;
         else:
-            ValueError(f&#34;Filter is already initiated for this {self.__class__.__name__} query object: {self}&#34;)
+            raise ValueError(f&#34;Filter is already initiated for this {self.__class__.__name__} query object: {self}&#34;)
         return self
 
     def qupdate(self, data: dict) -&gt; &#39;ModelQuery&#39;:
@@ -2322,10 +2300,10 @@ last existing argument position plus 1.</p>
             ModelQuery: returns `self` to enable method chaining
         &#34;&#34;&#34;
         if not self.__update_initiated:
-            self.q(f&#39;UPDATE {self.db_table} SET&#39;).qu(data).qwhere()
+            self.reset().q(f&#39;UPDATE {self.db_table} SET&#39;).qu(data).qwhere()
             self.__update_initiated = True
         else:
-            ValueError(f&#34;update is already initiated for this {self.__class__.__name__} query: {self}&#34;)
+            raise ValueError(f&#34;update is already initiated for this {self.__class__.__name__} query: {self}&#34;)
         return self
 
 
@@ -2393,7 +2371,7 @@ last existing argument position plus 1.</p>
         query, parepared_args = self.getq()
         return await self.db.execute(query, *parepared_args, timeout=timeout)
 
-    async def get(self, *vals, col: str = &#39;&#39;, comp: str = &#39;=$1&#39;) -&gt; Union[ModelBase, Record]:
+    async def get(self, *vals: Any, col: str = &#39;&#39;, comp: str = &#39;=$1&#39;) -&gt; Union[ModelBase, Record]:
         &#34;&#34;&#34;Get the first row found by column and value.
 
         If `col` is not given, it defaults to the primary key (`pk`) of
@@ -2411,7 +2389,7 @@ last existing argument position plus 1.</p>
         &#34;&#34;&#34;
         if not col:
             col = self.model.Meta.pk    #type: ignore
-        return await self.qfilter().qc(col, comp, *vals).fetchrow()</code></pre>
+        return await self.reset().qfilter().qc(col, comp, *vals).fetchrow()</code></pre>
 </details>
 <h3>Instance variables</h3>
 <dl>
@@ -2665,7 +2643,7 @@ def pk(self) -&gt; str:
 </details>
 </dd>
 <dt id="morm.db.ModelQuery.get"><code class="name flex">
-<span>async def <span class="ident">get</span></span>(<span>self, *vals, col: str = '', comp: str = '=$1') ‑> Union[<a title="morm.model.ModelBase" href="model.html#morm.model.ModelBase">ModelBase</a>, asyncpg.Record]</span>
+<span>async def <span class="ident">get</span></span>(<span>self, *vals: Any, col: str = '', comp: str = '=$1') ‑> Union[<a title="morm.model.ModelBase" href="model.html#morm.model.ModelBase">ModelBase</a>, asyncpg.Record]</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Get the first row found by column and value.</p>
@@ -2687,7 +2665,7 @@ the model.</p>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">async def get(self, *vals, col: str = &#39;&#39;, comp: str = &#39;=$1&#39;) -&gt; Union[ModelBase, Record]:
+<pre><code class="python">async def get(self, *vals: Any, col: str = &#39;&#39;, comp: str = &#39;=$1&#39;) -&gt; Union[ModelBase, Record]:
     &#34;&#34;&#34;Get the first row found by column and value.
 
     If `col` is not given, it defaults to the primary key (`pk`) of
@@ -2705,7 +2683,7 @@ the model.</p>
     &#34;&#34;&#34;
     if not col:
         col = self.model.Meta.pk    #type: ignore
-    return await self.qfilter().qc(col, comp, *vals).fetchrow()</code></pre>
+    return await self.reset().qfilter().qc(col, comp, *vals).fetchrow()</code></pre>
 </details>
 </dd>
 <dt id="morm.db.ModelQuery.getq"><code class="name flex">
@@ -2735,7 +2713,7 @@ the model.</p>
 </details>
 </dd>
 <dt id="morm.db.ModelQuery.q"><code class="name flex">
-<span>def <span class="ident">q</span></span>(<span>self, q: str, *args) ‑> <a title="morm.db.ModelQuery" href="#morm.db.ModelQuery">ModelQuery</a></span>
+<span>def <span class="ident">q</span></span>(<span>self, q: str, *args: Any) ‑> <a title="morm.db.ModelQuery" href="#morm.db.ModelQuery">ModelQuery</a></span>
 </code></dt>
 <dd>
 <div class="desc"><p>Add raw query stub without parsing to check for keyword arguments</p>
@@ -2758,6 +2736,8 @@ mq        .q('SELECT * FROM &quot;table&quot; WHERE $1', True)        .q('AND &q
 <dl>
 <dt><strong><code>q</code></strong> :&ensp;<code>str</code></dt>
 <dd>raw query string</dd>
+<dt><strong><code>*args</code></strong> :&ensp;<code>Any</code></dt>
+<dd>prepared positional arguments</dd>
 </dl>
 <h2 id="returns">Returns</h2>
 <dl>
@@ -2768,7 +2748,7 @@ mq        .q('SELECT * FROM &quot;table&quot; WHERE $1', True)        .q('AND &q
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def q(self, q: str, *args) -&gt; &#39;ModelQuery&#39;:
+<pre><code class="python">def q(self, q: str, *args: Any) -&gt; &#39;ModelQuery&#39;:
     &#34;&#34;&#34;Add raw query stub without parsing to check for keyword arguments
 
     Use `$1`, `$2` etc. for prepared arguments.
@@ -2802,6 +2782,7 @@ mq        .q('SELECT * FROM &quot;table&quot; WHERE $1', True)        .q('AND &q
 
     Args:
         q (str): raw query string
+        *args (Any): prepared positional arguments
 
     Returns:
         ModelQuery: self, enables method chaining.
@@ -3008,13 +2989,13 @@ execute the <code>fetch()</code> method to get all results or execute the
     &#34;&#34;&#34;
     if not self.__filter_initiated:
         down_fields = &#39;,&#39;.join([Q(x) for x in self.model._get_fields_(up=False)]) #type: ignore
-        self.q(f&#39;SELECT {down_fields} FROM &#34;{self.model._get_db_table_()}&#34; WHERE&#39;) #type: ignore
+        self.reset().q(f&#39;SELECT {down_fields} FROM &#34;{self.model._get_db_table_()}&#34; WHERE&#39;) #type: ignore
         self.__filter_initiated = True
         order_by = self.ordering
         if order_by and not no_ordering:
             self.end_query_str = f&#39;ORDER BY {order_by}&#39;
     else:
-        ValueError(f&#34;Filter is already initiated for this {self.__class__.__name__} query object: {self}&#34;)
+        raise ValueError(f&#34;Filter is already initiated for this {self.__class__.__name__} query object: {self}&#34;)
     return self</code></pre>
 </details>
 </dd>
@@ -3071,6 +3052,29 @@ execute the <code>fetch()</code> method to get all results or execute the
         order = order[0:-1]
         direction += &#39;,&#39;
     return self.qq(order).q(direction)</code></pre>
+</details>
+</dd>
+<dt id="morm.db.ModelQuery.qorder"><code class="name flex">
+<span>def <span class="ident">qorder</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Add ORDER BY</p>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code><a title="morm.db.ModelQuery" href="#morm.db.ModelQuery">ModelQuery</a></code></dt>
+<dd>returns <code>self</code> to enable method chaining</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def qorder(self):
+    &#34;&#34;&#34;Add ORDER BY
+
+    Returns:
+        ModelQuery: returns `self` to enable method chaining
+    &#34;&#34;&#34;
+    return self.q(&#39;ORDER BY&#39;)</code></pre>
 </details>
 </dd>
 <dt id="morm.db.ModelQuery.qq"><code class="name flex">
@@ -3154,7 +3158,7 @@ as <code>"status"</code>.</p>
     &#34;&#34;&#34;
     q = &#39;&#34;,&#34;&#39;.join(column_names)
     if q:
-        q = f&#39;&#34;{q}&#34;&#39;
+        q = f&#39;RETURNING &#34;{q}&#34;&#39;
     return self.q(q)</code></pre>
 </details>
 </dd>
@@ -3240,10 +3244,10 @@ call the <code>fetchval()</code> method if using <code>RETURNING</code> clause.<
         ModelQuery: returns `self` to enable method chaining
     &#34;&#34;&#34;
     if not self.__update_initiated:
-        self.q(f&#39;UPDATE {self.db_table} SET&#39;).qu(data).qwhere()
+        self.reset().q(f&#39;UPDATE {self.db_table} SET&#39;).qu(data).qwhere()
         self.__update_initiated = True
     else:
-        ValueError(f&#34;update is already initiated for this {self.__class__.__name__} query: {self}&#34;)
+        raise ValueError(f&#34;update is already initiated for this {self.__class__.__name__} query: {self}&#34;)
     return self</code></pre>
 </details>
 </dd>
@@ -3378,7 +3382,8 @@ Must be a subclass of <code>asyncpg.connection.Connection</code>. Defaults to as
         self.connect_kwargs = connect_kwargs
 
         self._pool = None
-        self.open()
+        self._open()
+        atexit.register(self._close)
 
     @property
     def pool(self) -&gt; asyncpg.pool.Pool:
@@ -3403,20 +3408,22 @@ Must be a subclass of <code>asyncpg.connection.Connection</code>. Defaults to as
                                         loop=self.loop,
                                         connection_class=self.connection_class,
                                         **self.connect_kwargs)
-    def open(self):
-        &#34;&#34;&#34;Open the pool
+    def _open(self):
+        &#34;&#34;&#34;Open the pool. Called on init so not need to call this
+        method explicitly.
         &#34;&#34;&#34;
         if not self._pool:
             self._pool = asyncio.get_event_loop().run_until_complete(self.__create_pool())
-            print(&#34;Pool opened&#34;)
+            log.debug(&#34;Pool opened&#34;)
 
-    def close(self):
-        &#34;&#34;&#34;Attempt to close the pool gracefully.
+    def _close(self):
+        &#34;&#34;&#34;Attempt to close the pool gracefully. registered with atexit.
+        You do not need to call this method explicitly.
         &#34;&#34;&#34;
         if self._pool:
             asyncio.get_event_loop().run_until_complete(self._pool.close())
             self._pool = None
-            print(&#34;Pool closed&#34;)</code></pre>
+            log.debug(&#34;Pool closed&#34;)</code></pre>
 </details>
 <h3>Instance variables</h3>
 <dl>
@@ -3432,44 +3439,6 @@ def pool(self) -&gt; asyncpg.pool.Pool:
     &#34;&#34;&#34;Property pool that is an asyncpg.pool.Pool object
     &#34;&#34;&#34;
     return self._pool</code></pre>
-</details>
-</dd>
-</dl>
-<h3>Methods</h3>
-<dl>
-<dt id="morm.db.Pool.close"><code class="name flex">
-<span>def <span class="ident">close</span></span>(<span>self)</span>
-</code></dt>
-<dd>
-<div class="desc"><p>Attempt to close the pool gracefully.</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">def close(self):
-    &#34;&#34;&#34;Attempt to close the pool gracefully.
-    &#34;&#34;&#34;
-    if self._pool:
-        asyncio.get_event_loop().run_until_complete(self._pool.close())
-        self._pool = None
-        print(&#34;Pool closed&#34;)</code></pre>
-</details>
-</dd>
-<dt id="morm.db.Pool.open"><code class="name flex">
-<span>def <span class="ident">open</span></span>(<span>self)</span>
-</code></dt>
-<dd>
-<div class="desc"><p>Open the pool</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">def open(self):
-    &#34;&#34;&#34;Open the pool
-    &#34;&#34;&#34;
-    if not self._pool:
-        self._pool = asyncio.get_event_loop().run_until_complete(self.__create_pool())
-        print(&#34;Pool opened&#34;)</code></pre>
 </details>
 </dd>
 </dl>
@@ -3508,7 +3477,8 @@ def pool(self) -&gt; asyncpg.pool.Pool:
             readonly (bool, optional): Specifies whether or not this transaction is read-only. Defaults to False.
             deferrable (bool, optional): Specifies whether or not this transaction is deferrable. Defaults to False.
         &#34;&#34;&#34;
-        self.db = DB(pool)
+        self._pool = pool
+        self.db = DB(None) # type: ignore
         self.tr = None
         self.tr_args = {
             &#39;isolation&#39;: isolation,
@@ -3530,12 +3500,12 @@ def pool(self) -&gt; asyncpg.pool.Pool:
         &#34;&#34;&#34;
         if self.db._con:
             raise exceptions.TransactionError(&#39;Another transaction is running (or not ended properly) with this Transaction object&#39;)
-        self.db._con = await self.db._pool.pool.acquire() # type: ignore
+        self.db._con = await self._pool.pool.acquire() # type: ignore
         self.tr = self.db._con.transaction(**self.tr_args) # type: ignore
         await self.tr.start() # type: ignore
         # return self.db
         # test with returning con directly
-        return self.db._con
+        return self.db
 
     async def rollback(self):
         &#34;&#34;&#34;Rollback the transaction.
@@ -3556,7 +3526,7 @@ def pool(self) -&gt; asyncpg.pool.Pool:
         &#34;&#34;&#34;
         try:
             if self.db._con:
-                await self.db._pool.pool.release(self.db._con)
+                await self._pool.pool.release(self.db._con)
         finally:
             self.db._con = None
             self.tr = None
@@ -3605,7 +3575,7 @@ def pool(self) -&gt; asyncpg.pool.Pool:
     &#34;&#34;&#34;
     try:
         if self.db._con:
-            await self.db._pool.pool.release(self.db._con)
+            await self._pool.pool.release(self.db._con)
     finally:
         self.db._con = None
         self.tr = None</code></pre>
@@ -3657,12 +3627,12 @@ def pool(self) -&gt; asyncpg.pool.Pool:
     &#34;&#34;&#34;
     if self.db._con:
         raise exceptions.TransactionError(&#39;Another transaction is running (or not ended properly) with this Transaction object&#39;)
-    self.db._con = await self.db._pool.pool.acquire() # type: ignore
+    self.db._con = await self._pool.pool.acquire() # type: ignore
     self.tr = self.db._con.transaction(**self.tr_args) # type: ignore
     await self.tr.start() # type: ignore
     # return self.db
     # test with returning con directly
-    return self.db._con</code></pre>
+    return self.db</code></pre>
 </details>
 </dd>
 </dl>
@@ -3699,7 +3669,6 @@ def pool(self) -&gt; asyncpg.pool.Pool:
 <li><code><a title="morm.db.DB.get_insert_query" href="#morm.db.DB.get_insert_query">get_insert_query</a></code></li>
 <li><code><a title="morm.db.DB.get_update_query" href="#morm.db.DB.get_update_query">get_update_query</a></code></li>
 <li><code><a title="morm.db.DB.insert" href="#morm.db.DB.insert">insert</a></code></li>
-<li><code><a title="morm.db.DB.pool" href="#morm.db.DB.pool">pool</a></code></li>
 <li><code><a title="morm.db.DB.q" href="#morm.db.DB.q">q</a></code></li>
 <li><code><a title="morm.db.DB.save" href="#morm.db.DB.save">save</a></code></li>
 <li><code><a title="morm.db.DB.update" href="#morm.db.DB.update">update</a></code></li>
@@ -3725,6 +3694,7 @@ def pool(self) -&gt; asyncpg.pool.Pool:
 <li><code><a title="morm.db.ModelQuery.qc_" href="#morm.db.ModelQuery.qc_">qc_</a></code></li>
 <li><code><a title="morm.db.ModelQuery.qfilter" href="#morm.db.ModelQuery.qfilter">qfilter</a></code></li>
 <li><code><a title="morm.db.ModelQuery.qo" href="#morm.db.ModelQuery.qo">qo</a></code></li>
+<li><code><a title="morm.db.ModelQuery.qorder" href="#morm.db.ModelQuery.qorder">qorder</a></code></li>
 <li><code><a title="morm.db.ModelQuery.qq" href="#morm.db.ModelQuery.qq">qq</a></code></li>
 <li><code><a title="morm.db.ModelQuery.qreturning" href="#morm.db.ModelQuery.qreturning">qreturning</a></code></li>
 <li><code><a title="morm.db.ModelQuery.qu" href="#morm.db.ModelQuery.qu">qu</a></code></li>
@@ -3736,8 +3706,6 @@ def pool(self) -&gt; asyncpg.pool.Pool:
 <li>
 <h4><code><a title="morm.db.Pool" href="#morm.db.Pool">Pool</a></code></h4>
 <ul class="">
-<li><code><a title="morm.db.Pool.close" href="#morm.db.Pool.close">close</a></code></li>
-<li><code><a title="morm.db.Pool.open" href="#morm.db.Pool.open">open</a></code></li>
 <li><code><a title="morm.db.Pool.pool" href="#morm.db.Pool.pool">pool</a></code></li>
 </ul>
 </li>

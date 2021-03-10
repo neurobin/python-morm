@@ -513,6 +513,8 @@ class Model(ModelBase):
 
 
 class ModelPostgresql(Model):
+    """A model that defines default columns (postgresql)
+    """
     class Meta:
         abstract = True
     id = Field('SERIAL', sql_onadd='NOT NULL')

@@ -127,6 +127,8 @@ class ModelType(type):
             else:
                 _set_meta_attr(&#39;db_table&#39;, class_name, inherit=False)
 
+        # db_table must be finalized by now, look below where
+
         new_attrs = {}
 
         # https://www.python.org/dev/peps/pep-0520
@@ -143,6 +145,7 @@ class ModelType(type):
                 if meta_attrs[&#39;proxy&#39;] and n in attrs:
                     raise ValueError(f&#34;Proxy model &#39;{class_name}&#39; can not define new field: {n}&#34;)
                 v.name = n
+                # v.sql_conf.conf[&#39;table_name&#39;] = meta_attrs[&#39;db_table&#39;] # Field must not contain table_name, because it is void when model is abstract and it gets inherited.
                 meta_attrs[&#39;_field_defs_&#39;][n] = v
             elif n in attrs:
                 new_attrs[n] = attrs[n]
@@ -319,7 +322,7 @@ class ModelType(type):
         return self.Meta.abstract
 
     def _is_proxy_(self) -&gt; bool:
-        &#34;&#34;&#34;Whether its is proxy model or not
+        &#34;&#34;&#34;Whether it is a proxy model or not
         &#34;&#34;&#34;
         return self.Meta.proxy
 
@@ -405,10 +408,11 @@ class ModelBase(metaclass=ModelType):
             self.Meta._fields_[k] = FieldValue(v)
         for arg in args:
             try:
-                for k,v in arg.items():
-                    setattr(self, k, v)
+                arg_items = arg.items()
             except AttributeError:
                 raise TypeError(f&#34;Invalid argument type ({type(arg)}) to Model __init__ method. Expected: dictionary or keyword argument&#34;)
+            for k,v in arg_items:
+                setattr(self, k, v)
         for k,v in kwargs.items():
             setattr(self, k, v)
 
@@ -536,385 +540,11 @@ class Model(ModelBase):
         &#34;&#34;&#34;
         super(Model, self).__init__(*args, **kwargs)
 
-# class _Model_(metaclass=ModelType):
-#     _db_no_check_: bool = True # internal use only
 
-#     _db_: typing.Any = None
-#     &#39;&#39;&#39;_db_ will be inherited in subclasses&#39;&#39;&#39;
-#     _table_name_: typing.Optional[str] = None
-#     &#34;&#34;&#34;_table_name_ will not be inherited in subclasses&#34;&#34;&#34;
-
-#     _exclude_fields_up_: tuple = ()
-#     &#39;&#39;&#39;Exclude columns for these keys when saving the data to database&#39;&#39;&#39;
-#     _exclude_values_up_: tuple = ()
-#     &#39;&#39;&#39;Exclude columns for these values when saving the data to database&#39;&#39;&#39;
-#     _exclude_fields_down_ : tuple= ()    # TODO: implement in select
-#     &#39;&#39;&#39;Exclude columns for these keys when retrieving data from database&#39;&#39;&#39;
-#     _exclude_values_down: tuple = ()   # TODO: implement in select
-#     &#39;&#39;&#39;Exclude columns for these values when retrieving data from database&#39;&#39;&#39;
-
-
-#     @classmethod
-#     def _get_table_name_(cls):
-#         if cls._table_name_:
-#             return cls._table_name_
-#         else:
-#             return cls.__name__
-
-#     @classmethod
-#     async def _select_(cls, what=&#39;*&#39;, where=&#39;true&#39;, prepared_args=(), con=None):
-#         &#34;&#34;&#34;Make a select query for this model.
-
-#         Args:
-#             what (str, optional): Columns. Defaults to &#39;*&#39;.
-#             where (str, optional): Where conditon (sql). Defaults to &#39;true&#39;.
-#             prepared_args (tuple, optional): prepared arguments. Defaults to ().
-#             con (asyncpg.Connection, optional): Defaults to None.
-
-#         Returns:
-#             list: List of model instances
-#         &#34;&#34;&#34;
-#         query = &#39;SELECT %s FROM &#34;%s&#34; WHERE %s&#39; % (what, cls._get_table_name_(), where)
-#         return await cls._db_.fetch(query, *prepared_args, model_class=cls, con=con)
-
-#     @classmethod
-#     async def _filter_(cls, where=&#39;true&#39;, prepared_args=(), con=None):
-#         &#34;&#34;&#34;Filter according to where condition
-
-#         e.g: &#34;name like &#39;%dummy%&#39; and profession=&#39;teacher&#39;&#34;
-
-#         Args:
-#             where (str, optional): where condition. Defaults to &#39;true&#39;.
-#             prepared_args (tuple, optional): prepared arguments. Defaults to ().
-#             con (asyncpg.Connection, optional): Defaults to None.
-
-#         Returns:
-#             list: List of model instances.
-#         &#34;&#34;&#34;
-#         return await cls._select_(where=where, prepared_args=prepared_args, con=con)
-
-#     @classmethod
-#     async def _select1_(cls, what=&#39;*&#39;, where=&#39;true&#39;, prepared_args=(), con=None):
-#         &#34;&#34;&#34;Make a select query to retrieve one item from this model.
-
-#         &#39;LIMIT 1&#39; is added at the end of the query.
-
-#         Args:
-#             what (str, optional): Columns. Defaults to &#39;*&#39;.
-#             where (str, optional): Where condition. Defaults to &#39;true&#39;.
-#             prepared_args (tuple, optional): prepared arguments. Defaults to ().
-#             con (asyncpg.Connection, optional): Defaults to None.
-
-#         Returns:
-#             Model: A model instance.
-#         &#34;&#34;&#34;
-#         query = &#39;SELECT %s FROM &#34;%s&#34; WHERE %s LIMIT 1&#39; % (what, cls._get_table_name_(), where)
-#         return await cls._db_.fetchrow(query, *prepared_args, model_class=cls, con=con)
-
-#     @classmethod
-#     async def _get_(cls, where=&#39;true&#39;, prepared_args=(), con=None):
-#         &#34;&#34;&#34;Get the first item that matches the where condition
-
-#         e.g: &#34;name like &#39;%dummy%&#39; and profession=&#39;teacher&#39;&#34;
-
-#         Args:
-#             where (str, optional): where condition. Defaults to &#39;true&#39;.
-#             prepared_args (tuple, optional): prepared args. Defaults to ().
-#             con (asyncpg.Connection, optional): Defaults to None.
-
-#         Returns:
-#             Model: A model instance
-#         &#34;&#34;&#34;
-#         return await cls._select1_(where=where, prepared_args=prepared_args, con=con)
-
-#     @classmethod
-#     async def _update_(cls, what: str = &#39;&#39;,
-#                         where: str = &#39;&#39;,
-#                         prepared_args=(),
-#                         returning_column=0,
-#                         con=None):
-#         &#34;&#34;&#34;Make an update query.
-
-#         Args:
-#             what (str, optional): what query, e.g &#34;name=&#39;John Doe&#39;&#34;. Defaults to &#39;&#39;.
-#             where (str, optional): where query, e.g &#34;id=2&#34;. Defaults to &#39;&#39;.
-#             prepared_args (tuple, optional): Defaults to ().
-#             returning_column (int, optional): index of column from the result to return. Defaults to 0.
-#             con (asyncpg.Connection, optional): Connection object. Defaults to None.
-
-#         Raises:
-#             ValueError: If what or where query is not given
-
-#         Returns:
-#             Any: value of the index &#39;column&#39; from the query result.
-#         &#34;&#34;&#34;
-#         if not what or not where:
-#             raise ValueError(&#34;what or where value missing.&#34;)
-#         query = &#39;UPDATE &#34;%s&#34; SET %s WHERE %s&#39; % (cls._get_table_name_(), what, where)
-#         return await cls._db_.fetchval(query, *prepared_args, column=returning_column, con=con) # type: ignore
-
-
-
-#     def _active_fields_(self, exclude_values: tuple, exclude_keys: tuple):
-#         for k,field in self._fields_.items():   # type: ignore
-#             if k in exclude_keys \
-#                 or k in self._exclude_fields_up_:
-#                 continue
-#             v = getattr(self, k, Void)
-#             if v is Void or v is None:
-#                 v = field.get_default()
-#             if v is Void:
-#                 # we don&#39;t have any value for k
-#                 continue
-#             if v in exclude_values \
-#                 or v in self._exclude_values_up_:
-#                 continue
-#             yield k, v, field
-
-#     def _get_insert_query_(self, exclude_values=(), exclude_keys=()):
-#         pk = self._pk_     # type: ignore
-#         table = self.__class__._get_table_name_()
-#         query = f&#34;INSERT INTO \&#34;{table}\&#34;&#34;
-#         columns = &#39;(&#39;
-#         values = &#39;(&#39;
-#         args = []
-#         c = 0
-#         for k, v, field in self._active_fields_(exclude_values, exclude_keys):
-#             c = c + 1
-#             columns = f&#34;{columns} \&#34;{k}\&#34;,&#34;
-#             values = f&#34;{values} ${c},&#34;
-#             args.append(v)
-#         columns = columns.strip(&#39;,&#39;)
-#         values = values.strip(&#39;,&#39;)
-
-#         query = f&#34;{query} {columns}) VALUES {values})  RETURNING {pk}&#34;
-#         return query, args
-
-#     def _get_update_query_(self, exclude_values=(), exclude_keys=()):
-#         table = self.__class__._get_table_name_()
-#         pk = self._pk_     # type: ignore
-#         try:
-#             pkval = getattr(self, pk)
-#             if not pkval:
-#                 raise ItemDoesNotExistError(&#34;Can not update. Item does not exist.&#34;)
-#         except AttributeError:
-#             raise ItemDoesNotExistError(&#34;Can not update. Item does not exist.&#34;)
-#         query = f&#34;UPDATE \&#34;{table}\&#34; SET &#34;
-#         args = []
-#         c = 0
-#         for k, v, field in self._active_fields_(exclude_values, exclude_keys):
-#             c = c + 1
-#             query = f&#34;{query} \&#34;{k}\&#34;=${c},&#34;
-#             args.append(v)
-#         query = query.strip(&#39;,&#39;)
-
-#         c = c + 1
-#         query = f&#34;{query} WHERE {pk}=${c}&#34;
-#         args.append(pkval)
-
-#         return query, args
-
-#     async def _insert_me_(self, exclude_values=(), exclude_keys=(), con=None):
-#         &#34;&#34;&#34;Attempt an insert with the data on this model instance.
-
-#         Args:
-#             exclude_values (tuple, optional): Exclude columns that matches one of these values. Defaults to ().
-#             exclude_keys (tuple, optional): Exclude columns that matches one of these keys. Defaults to ().
-#             con (asyncpg.Connection, optional): Defaults to None.
-#         &#34;&#34;&#34;
-#         query, args = self._get_insert_query_(exclude_values=exclude_values, exclude_keys=exclude_keys)
-#         cls = self.__class__
-#         pkval = await cls._db_.fetchval(query, *args, column=0, con=con)
-#         setattr(self, self._pk_, pkval)
-
-#     async def _update_me_(self, exclude_values=(), exclude_keys=(), con=None):
-#         &#34;&#34;&#34;Attempt an update with the data on this model instance.
-
-#         Args:
-#             exclude_values (tuple, optional): Exclude columns that matches one of these values. Defaults to ().
-#             exclude_keys (tuple, optional): Exclude columns that matches one of these keys. Defaults to ().
-#             con (asyncpg.Connection, optional): Defaults to None.
-#         &#34;&#34;&#34;
-#         query, args = self._get_update_query_(exclude_values=exclude_values, exclude_keys=exclude_keys)
-#         cls = self.__class__
-#         await cls._db_.fetchrow(query, *args, model_class=cls, con=con)
-
-#     async def _save_(self, exclude_values=(), exclude_keys=(), con=None):
-#         &#34;&#34;&#34;Attempt to save the data on this model instance.
-
-#         If pk exists, the data is updated and if pk does not exist,
-#         the data is inserted.
-
-#         Args:
-#             exclude_values (tuple, optional): Exclude columns that matches one of these values. Defaults to ().
-#             exclude_keys (tuple, optional): Exclude columns that matches one of these keys. Defaults to ().
-#             con (asyncpg.Connection, optional): Defaults to None.
-#         &#34;&#34;&#34;
-#         try:
-#             await self._update_me_(exclude_values=exclude_values, exclude_keys=exclude_keys, con=con)
-#         except ItemDoesNotExistError:
-#             await self._insert_me_(exclude_values=exclude_values, exclude_keys=exclude_keys, con=con)
-
-
-
-# class Model(_Model_):
-#     &#34;&#34;&#34;Base model class that must be inherited to make a model.
-
-#     example model classes would look like:
-
-#     ```python
-#     from morm import Model, Field
-#     from morm.db import DB, Pool
-
-#     class Base(Model):
-#         _db_ = DB(MORM_DB_POOL)
-#         # we generally will not create any table for this model.
-
-#     class User(Base):
-#         _table_name_ = &#39;User&#39; # if not given, class name will be table name.
-
-#         name = Field(&#39;varchar(100)&#39;)
-#         email = Field(&#39;varchar(256)&#39;)
-#         password = Field(&#39;varchar(256)&#39;)
-#     ```
-
-#     `MORM_DB_POOL` is a `Pool` object with database settings. Example:
-
-#     ```python
-#     MORM_DB_POOL = Pool(
-#         dsn=&#39;postgres://&#39;,
-#         host=&#39;localhost&#39;,
-#         port=5432,
-#         user=&#39;jahid&#39;,
-#         password=&#39;jahid&#39;,
-#         database=&#39;test&#39;,
-#         min_size=10,
-#         max_size=100,
-#     )
-#     ```
-
-#     The default primary key is `id`. If you want to set a custom primary
-#     key, you must define `_pk_` accordingly (`_pk_ = &#39;id&#39;` by default)
-
-#     You must not use any custom name that starts with a single underscore and
-#     ends with a single underscore. This naming convention is reserved by
-#     Model class intself and all predefined variable names and method names
-#     follow this rule.
-
-#     For field names, do not start with an underscore. This way, you will
-#     be protected from spelling mistakes. For example, if you have defined
-#     a field named `name` and then try to do
-
-#     ```python
-#     user.namee = &#39;John Doe&#39; # throws AttributeError
-#     ```
-
-#     you will get an Attribute error.
-
-#     # Handling data
-
-#     ## Save/Update/Insert
-
-#     ```python
-#     user = User(name=&#39;John Doe&#39;, email=&#39;jd@ex.com&#39;)
-#     user._save_() # saves the data in db (update if exists, otherwise insert)
-#     ```
-
-#     ## Select/Filter/Get
-
-#     ### Select
-
-#     ```python
-#     users = User._select_(what=&#39;*&#39;, where=&#34;name like &#39;%Doe%&#39;&#34;)
-#     # users is a list of User object
-#     ```
-
-#     ### Select one item (first item)
-
-#     ```python
-#     # LIMIT 1 is added to the where quey, do not add it explicitly
-#     user = User._select1_(what=&#39;*&#39;, where=&#34;name like &#39;%Doe%&#39; order by name asc&#34;)
-#     # user is a User object
-#     ```
-
-#     ### Filter
-
-#     ```python
-#     users = User._filter_(where=&#34;name like &#39;%Doe%&#39;&#34;)
-#     # users is a list of User object
-#     ```
-
-#     ### Get
-
-#     ```python
-#     # LIMIT 1 is added to the where quey, do not add it explicitly
-#     user = User._get_(where=&#39;id=3&#39;)
-#     # user is a User object
-#     ```
-
-#     **where query accepts prepared statement**. All of the above methods
-#     can take a keyword argument `prepared_args` which is a list (or tuple) of
-#     prepared arguments. Example:
-
-#     ```python
-#     # LIMIT 1 is added to the where quey, do not add it explicitly
-#     user = User._get_(where=&#39;id=$1&#39;, prepared_args=[3])
-#     # user is a User object
-#     ```
-
-#     &#34;&#34;&#34;
-
-#     _db_no_check_: bool = True # internal use only
-
-#     _db_: typing.Any = None
-#     &#39;&#39;&#39;_db_ will be inherited in subclasses&#39;&#39;&#39;
-
-#     _table_name_: typing.Optional[str] = None
-#     &#34;&#34;&#34;_table_name_ will not be inherited in subclasses&#34;&#34;&#34;
-
-#     _pk_: str = &#39;id&#39;
-#     &#39;&#39;&#39;If you use different primary key, you must define it accordingly&#39;&#39;&#39;
-
-#     id = Field(&#39;SERIAL NOT NULL PRIMARY KEY&#39;)
-#     &#39;&#39;&#39;Default primary key&#39;&#39;&#39;
-
-#     def __init__(self, *args, **kwargs):
-#         &#34;&#34;&#34;# Initialize a model instance.
-
-#         keyword arguments initialize corresponding fields according to
-#         the keys.
-
-#         Positional arguments must be dictionaries of
-#         keys and values.
-
-#         Example:
-
-#         ```
-#         Model(name=&#39;John Doe&#39;, profession=&#39;Teacher&#39;)
-#         Model({&#39;name&#39;: &#39;John Doe&#39;, &#39;profession&#39;: &#39;Teacher&#39;})
-#         Model({&#39;name&#39;: &#39;John Doe&#39;, &#39;profession&#39;: &#39;Teacher&#39;}, age=34)
-#         Model({&#39;name&#39;: &#39;John Doe&#39;, &#39;profession&#39;: &#39;Teacher&#39;, &#39;active&#39;: True}, age=34)
-#         ```
-
-#         Raises:
-#             TypeError: If invalid type of argument is provided.
-#         &#34;&#34;&#34;
-#         for arg in args:
-#             try:
-#                 for k,v in arg.items():
-#                     setattr(self, k, v)
-#             except AttributeError:
-#                 raise TypeError(&#34;Invalid argument type to Model __init__ method. Expected: dictionary or keyword argument&#34;)
-#         for k,v in kwargs.items():
-#             setattr(self, k, v)
-
-
-#     def __setattr__(self, k, v):
-#         if not k.startswith(&#39;_&#39;) and k not in self._fields_:
-#             raise AttributeError(f&#34;No such attribute (&#39;{k}&#39;) in model &#39;{self.__class__.__name__}&#39;&#39;&#34;)
-#         if k in self._fields_:
-#             v = self._fields_[k].clean(v)
-#         super().__setattr__(k, v)</code></pre>
+class ModelPostgresql(Model):
+    class Meta:
+        abstract = True
+    id = Field(&#39;SERIAL&#39;, sql_onadd=&#39;NOT NULL&#39;)</code></pre>
 </details>
 </section>
 <section>
@@ -1092,6 +722,10 @@ Model({'name': 'John Doe', 'profession': 'Teacher', 'active': True}, age=34)
 <ul class="hlist">
 <li><a title="morm.model.ModelBase" href="#morm.model.ModelBase">ModelBase</a></li>
 </ul>
+<h3>Subclasses</h3>
+<ul class="hlist">
+<li><a title="morm.model.ModelPostgresql" href="#morm.model.ModelPostgresql">ModelPostgresql</a></li>
+</ul>
 <h3>Inherited members</h3>
 <ul class="hlist">
 <li><code><b><a title="morm.model.ModelBase" href="#morm.model.ModelBase">ModelBase</a></b></code>:
@@ -1169,10 +803,11 @@ it accordingly if you use this model as your base model.</p>
             self.Meta._fields_[k] = FieldValue(v)
         for arg in args:
             try:
-                for k,v in arg.items():
-                    setattr(self, k, v)
+                arg_items = arg.items()
             except AttributeError:
                 raise TypeError(f&#34;Invalid argument type ({type(arg)}) to Model __init__ method. Expected: dictionary or keyword argument&#34;)
+            for k,v in arg_items:
+                setattr(self, k, v)
         for k,v in kwargs.items():
             setattr(self, k, v)
 
@@ -1231,6 +866,86 @@ it accordingly if you use this model as your base model.</p>
 <div class="desc"><p>Meta that holds metadata for model</p></div>
 </dd>
 </dl>
+</dd>
+<dt id="morm.model.ModelPostgresql"><code class="flex name class">
+<span>class <span class="ident">ModelPostgresql</span></span>
+<span>(</span><span>*args, **kwargs)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Base model to be inherited by other models.</p>
+<p>It's more than a good practice to define a Base model first:</p>
+<pre><code class="language-python">import morm.model as mdl
+
+class Base(mdl.Model):
+    class Meta:
+        pk = 'id' # setting primary key, it is defaulted to 'id'
+        abstract = True
+
+    id = Field('SERIAL NOT NULL PRIMARY KEY') #postgresql example
+</code></pre>
+<p>Then a minimal model could look like this:</p>
+<pre><code class="language-python">class User(Base):
+    name = Field('varchar(65)')
+    email = Field('varchar(255)')
+    password = Field('varchar(255)')
+</code></pre>
+<p>An advanced model could look like:</p>
+<pre><code class="language-python">import random
+
+def get_rand():
+    return random.randint(1, 9)
+
+class User(Base):
+    class Meta:
+        db_table = 'myapp_user'
+        abstract = False    # default is False
+        proxy = False       # default is False
+        # ... etc...
+
+    name = Field('varchar(65)')
+    email = Field('varchar(255)')
+    password = Field('varchar(255)')
+    profession = Field('varchar(255)', default='Unknown')
+    random = Field('int', default=get_rand) # function can be default
+</code></pre>
+<h1 id="initialize-a-model-instance">Initialize a model instance.</h1>
+<p>keyword arguments initialize corresponding fields according to
+the keys.</p>
+<p>Positional arguments must be dictionaries of
+keys and values.</p>
+<p>Example:</p>
+<pre><code>Model(name='John Doe', profession='Teacher')
+Model({'name': 'John Doe', 'profession': 'Teacher'})
+Model({'name': 'John Doe', 'profession': 'Teacher'}, age=34)
+Model({'name': 'John Doe', 'profession': 'Teacher', 'active': True}, age=34)
+</code></pre>
+<h2 id="raises">Raises</h2>
+<dl>
+<dt><code>TypeError</code></dt>
+<dd>If invalid type of argument is provided.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class ModelPostgresql(Model):
+    class Meta:
+        abstract = True
+    id = Field(&#39;SERIAL&#39;, sql_onadd=&#39;NOT NULL&#39;)</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="morm.model.Model" href="#morm.model.Model">Model</a></li>
+<li><a title="morm.model.ModelBase" href="#morm.model.ModelBase">ModelBase</a></li>
+</ul>
+<h3>Inherited members</h3>
+<ul class="hlist">
+<li><code><b><a title="morm.model.Model" href="#morm.model.Model">Model</a></b></code>:
+<ul class="hlist">
+<li><code><a title="morm.model.Model.Meta" href="#morm.model.ModelBase.Meta">Meta</a></code></li>
+</ul>
+</li>
+</ul>
 </dd>
 <dt id="morm.model.ModelType"><code class="flex name class">
 <span>class <span class="ident">ModelType</span></span>
@@ -1306,6 +1021,8 @@ type(name, bases, dict) -&gt; a new type</p></div>
             else:
                 _set_meta_attr(&#39;db_table&#39;, class_name, inherit=False)
 
+        # db_table must be finalized by now, look below where
+
         new_attrs = {}
 
         # https://www.python.org/dev/peps/pep-0520
@@ -1322,6 +1039,7 @@ type(name, bases, dict) -&gt; a new type</p></div>
                 if meta_attrs[&#39;proxy&#39;] and n in attrs:
                     raise ValueError(f&#34;Proxy model &#39;{class_name}&#39; can not define new field: {n}&#34;)
                 v.name = n
+                # v.sql_conf.conf[&#39;table_name&#39;] = meta_attrs[&#39;db_table&#39;] # Field must not contain table_name, because it is void when model is abstract and it gets inherited.
                 meta_attrs[&#39;_field_defs_&#39;][n] = v
             elif n in attrs:
                 new_attrs[n] = attrs[n]
@@ -1498,7 +1216,7 @@ type(name, bases, dict) -&gt; a new type</p></div>
         return self.Meta.abstract
 
     def _is_proxy_(self) -&gt; bool:
-        &#34;&#34;&#34;Whether its is proxy model or not
+        &#34;&#34;&#34;Whether it is a proxy model or not
         &#34;&#34;&#34;
         return self.Meta.proxy
 
@@ -1568,6 +1286,9 @@ type(name, bases, dict) -&gt; a new type</p></div>
 <ul class="">
 <li><code><a title="morm.model.ModelBase.Meta" href="#morm.model.ModelBase.Meta">Meta</a></code></li>
 </ul>
+</li>
+<li>
+<h4><code><a title="morm.model.ModelPostgresql" href="#morm.model.ModelPostgresql">ModelPostgresql</a></code></h4>
 </li>
 <li>
 <h4><code><a title="morm.model.ModelType" href="#morm.model.ModelType">ModelType</a></code></h4>

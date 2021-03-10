@@ -35,8 +35,11 @@ __copyright__ = &#39;Copyright © Md Jahidul Hamid &lt;https://github.com/neurob
 __license__ = &#39;[BSD](http://www.opensource.org/licenses/bsd-license.php)&#39;
 __version__ = &#39;0.0.1&#39;
 
-from typing import Any, Optional, Callable
+import copy
+from typing import Any, Optional, Callable, Tuple, Dict, List, Union
 from morm.types import Void
+import morm.exceptions as ex
+
 
 
 def always_valid(value: Any)-&gt; bool:
@@ -61,6 +64,153 @@ def nomodify(value: Any) -&gt; Any:
     &#34;&#34;&#34;
     return value
 
+class ColumnConfig():
+    &#34;&#34;&#34;This class is easily derivable from a json config.
+    &#34;&#34;&#34;
+    def __init__(self, **kwargs):
+        &#34;&#34;&#34;Initialize a sql definition for Field.
+        &#34;&#34;&#34;
+        self.conf: Dict[str, Union[str, Tuple[str, ...]]] = kwargs
+
+    def __eq__(self, other: &#39;ColumnConfig&#39;) -&gt; bool: # type: ignore
+        return self.conf == other.conf
+
+    def __repr__(self):
+        reprs = []
+        for k, v in self.conf.items():
+            reprs.append(f&#39;{k}={repr(v)}&#39;)
+        body = &#39;, &#39;.join(reprs)
+        return f&#39;{self.__class__.__name__}({body})&#39;
+
+    def to_json(self) -&gt; Dict[str, Union[str, Tuple[str, ...]]]:
+        return self.conf
+
+    def get_query_column_create_stub(self, table_name: str) -&gt; Tuple[str, str]:
+        &#34;&#34;&#34;Get create query along with alter query for this field
+
+        Can be used to make the create table query.
+
+        Returns:
+            Tuple[str, str]: create_query, alter_query
+        &#34;&#34;&#34;
+        create_q = f&#39;&#34;{self.conf[&#34;column_name&#34;]}&#34; {self.conf[&#34;sql_type&#34;]} {self.conf[&#34;sql_onadd&#34;]}&#39;
+        alter_q, msg = self.get_query_column_settings((), table_name)
+        return create_q, alter_q
+
+
+    def get_query_column_add(self, table_name: str) -&gt; Tuple[str, str]:
+        &#34;&#34;&#34;Get a sql query to add the column.
+
+        Returns:
+            Tuple[str, str]: sql query, message
+        &#34;&#34;&#34;
+        queries = []
+        msgs = []
+        queries.append(f&#39;ALTER TABLE &#34;{table_name}&#34; ADD COLUMN &#34;{self.conf[&#34;column_name&#34;]}&#34; {self.conf[&#34;sql_type&#34;]} {self.conf[&#34;sql_onadd&#34;]};&#39;)
+        msgs.append(f&#39;\n* &gt; ADD: {self.conf[&#34;column_name&#34;]}: {self.conf[&#34;sql_type&#34;]}&#39;)
+
+        q, m = self.get_query_column_settings((), table_name)
+        if q:
+            queries.append(q)
+            msgs.append(m)
+
+        if self.conf[&#39;sql_engine&#39;] == &#39;postgresql&#39;:
+            return &#39;\n&#39;.join(queries), &#39;&#39;.join(msgs)
+        else:
+            raise ex.UnsupportedError(f&#34;{self.conf[&#39;sql_engine&#39;]} not supported yet.&#34;)
+
+    def get_query_column_drop(self, table_name: str) -&gt; Tuple[str, str]:
+        &#34;&#34;&#34;Get a sql query to drop the column.
+
+        Returns:
+            Tuple[str, str]: sql query, message
+        &#34;&#34;&#34;
+        query = f&#39;ALTER TABLE &#34;{table_name}&#34; DROP COLUMN &#34;{self.conf[&#34;column_name&#34;]}&#34; {self.conf[&#34;sql_ondrop&#34;]};&#39;
+        msg = f&#39;\n* &gt; DROP: {self.conf[&#34;column_name&#34;]} {self.conf[&#34;sql_ondrop&#34;]}&#39;
+        if self.conf[&#39;sql_engine&#39;] == &#39;postgresql&#39;:
+            return query, msg
+        else:
+            raise ex.UnsupportedError(f&#34;{self.conf[&#39;sql_engine&#39;]} not supported yet.&#34;)
+
+    def get_query_column_rename(self, old_column_name: str, table_name: str) -&gt; Tuple[str, str]:
+        &#34;&#34;&#34;Get a sql query to rename the column.
+
+        Args:
+            old_column_name (str)
+
+        Returns:
+            Tuple[str, str]: sql query, message
+        &#34;&#34;&#34;
+        query = f&#39;ALTER TABLE &#34;{table_name}&#34; RENAME COLUMN &#34;{old_column_name}&#34; TO &#34;{self.conf[&#34;column_name&#34;]}&#34;;&#39;
+        msg = f&#34;\n* &gt; RENAME: {old_column_name} --&gt; {self.conf[&#39;column_name&#39;]}&#34;
+        if self.conf[&#39;sql_engine&#39;] == &#39;postgresql&#39;:
+            return query, msg
+        else:
+            raise ex.UnsupportedError(f&#34;{self.conf[&#39;sql_engine&#39;]} not supported yet.&#34;)
+
+    def get_query_column_modify(self, prev: &#39;ColumnConfig&#39;, table_name: str) -&gt; Tuple[str, str]:
+        &#34;&#34;&#34;Get a sql query to modify data type of the column.
+
+        Args:
+            prev (ColumnConfig): previous column config
+
+        Returns:
+            Tuple[str, str]: sql query, message
+        &#34;&#34;&#34;
+        # TODO: handle alter settings.
+        queries = []
+        msgs = []
+        if self.conf[&#39;sql_type&#39;] != prev.conf[&#39;sql_type&#39;]:
+            q = f&#39;ALTER TABLE &#34;{table_name}&#34; ALTER COLUMN &#34;{self.conf[&#34;column_name&#34;]}&#34; SET DATA TYPE {self.conf[&#34;sql_type&#34;]};&#39;
+            queries.append(q)
+            msg = f&#34;\n* &gt; MODIFY: {prev.conf[&#39;column_name&#39;]}: {prev.conf[&#39;sql_type&#39;]} --&gt; {self.conf[&#39;sql_type&#39;]}&#34;
+            msgs.append(msg)
+
+        settings_query, msg = self.get_query_column_settings(prev.conf[&#39;sql_alter&#39;], table_name) # type: ignore
+        if settings_query:
+            queries.append(settings_query)
+            msgs.append(msg)
+
+
+        if self.conf[&#39;sql_engine&#39;] == &#39;postgresql&#39;:
+            return &#39;\n&#39;.join(queries), &#39;&#39;.join(msgs)
+        else:
+            raise ex.UnsupportedError(f&#34;{self.conf[&#39;sql_engine&#39;]} not supported yet.&#34;)
+
+    def get_query_column_settings(self, prev_sql_alter: Tuple[str, ...], table_name: str) -&gt; Tuple[str, str]:
+        &#34;&#34;&#34;Get a sql query to apply the sql_alter settings comparing with
+        another config: prev.
+
+        Args:
+            prev_sql_alter (Tuple[str]): previous sql_alter
+
+        Returns:
+            Tuple[str, str]: sql query, message
+        &#34;&#34;&#34;
+        if not isinstance(prev_sql_alter, (tuple, list,)):
+            raise TypeError(f&#34;sql_alter {prev_sql_alter} must be a tuple, {type(prev_sql_alter)} given&#34;)
+        if not isinstance(self.conf[&#39;sql_alter&#39;], (tuple, list,)):
+            raise TypeError(f&#34;sql_alter {self.conf[&#39;sql_alter&#39;]} must be a tuple, {type(self.conf[&#39;sql_alter&#39;])} given&#34;)
+        query = &#39;&#39;
+        msgs = []
+        query_stubs = []
+        for qs in self.conf[&#39;sql_alter&#39;]:
+            if qs not in prev_sql_alter:
+                # new settings
+                query_stubs.append(qs)
+                msgs.append(f&#34;\n* + {qs}&#34;)
+        query_stub = &#39;, &#39;.join([f&#39;ALTER COLUMN &#34;{self.conf[&#34;column_name&#34;]}&#34; {x}&#39; for x in query_stubs])
+        if query_stub:
+            query = f&#39;ALTER TABLE &#34;{table_name}&#34; {query_stub};&#39;
+
+        if self.conf[&#39;sql_engine&#39;] == &#39;postgresql&#39;:
+            return query, &#39;&#39;.join(msgs)
+        else:
+            raise ex.UnsupportedError(f&#34;{self.conf[&#39;sql_engine&#39;]} not supported yet.&#34;)
+
+
+
+
 
 class Field(object):
     &#34;&#34;&#34;# Field class.
@@ -68,30 +218,79 @@ class Field(object):
     Field object stores the sql definition of the model field,
     validator function, modifier function and the default and provides
     some utilities:
-
-    `Field().clean(value, fallback=False)` provides a cleaning method.
-
-    `Field().get_default()` gives you the default value.
     &#34;&#34;&#34;
-    def __init__(self, sql_def: str, default: Any=Void,
-                 validator: Callable=always_valid,
-                 modifier: Callable=nomodify,
-                 fallback=False):
-        &#34;&#34;&#34;Initialize the Field object.
+    def __init__(self, sql_type: str,
+                sql_onadd=&#39;&#39;,
+                sql_ondrop=&#39;&#39;,
+                sql_alter: Tuple[str, ...] = (),
+                sql_engine=&#39;postgresql&#39;,
+                default: Any=Void,
+                validator: Callable=always_valid,
+                modifier: Callable=nomodify,
+                fallback=False,):
+        &#34;&#34;&#34;Initialize the Field object with data type (sql).
+
+        Example sql_type: `&#39;varchar(255)&#39;`, `&#39;int&#39;`, etc..
+
+        Example sql_onadd: `&#39;PRIMARY KEY&#39;`, `&#39;NOT NULL&#39;`, `&#39;UNIQUE&#39;`, `&#39;FOREIGHN KEY&#39;` etc..
+
+        Example sql_ondrop: `&#39;CASCADE&#39;` and `&#39;RESTRICT&#39;`
+
+        Example sql_alter settings
+
+        ```sql
+        SET DEFAULT expression
+        DROP DEFAULT
+        { SET | DROP } NOT NULL
+        SET STATISTICS integer
+        SET ( attribute_option = value [, ... ] )
+        RESET ( attribute_option [, ... ] )
+        SET STORAGE { PLAIN | EXTERNAL | EXTENDED | MAIN }
+        ```
 
         Args:
-            sql_def (str): SQL definition of the model Field
-            default (Any, optional): Default value (can be a callable). Defaults to Void. (Do not use mutable values, use function instead)
+            sql_type (str): Data type in SQL.
+            sql_onadd (str): sql to add in ADD clause after &#39;ADD COLUMN column_name data_type&#39;
+            sql_ondrop (str): Either &#39;RESTRICT&#39; or &#39;CASCADE&#39;.
+            sql_alter (Tuple[str]): multiple alter column sql; added after &#39;ALTER [ COLUMN ] column_name&#39;. Example: (&#39;DROP DEFAULT&#39;, &#39;SET NOT NULL&#39;) will alter the default and null settings accordingly.
+            sql_engine (str): db engine, postgresql, mysql etc.. Defaults to &#39;postgresql&#39;
+            default (Any, optional): Pythonic default value (can be a callable). Defaults to Void. (Do not use mutable values, use function instead)
             validator (callable, optional): A callable that accepts exactly one argument. Validates the value in `clean` method. Defaults to always_valid.
             modifier (callable, optional): A callable that accepts exactly one argument. Modifies the value if validation fails when the `clean` method is called.. Defaults to nomodify.
             fallback (bool, optional): Whether invalid value should fallback to default value suppressing exception. (May hide bugs in your program)
         &#34;&#34;&#34;
-        self.sql_def = sql_def
+        self.sql_type = sql_type
+        self.sql_conf = ColumnConfig(sql_type=sql_type, sql_onadd=sql_onadd, sql_ondrop=sql_ondrop, sql_alter=sql_alter, sql_engine=sql_engine)
         self.default = default
         self.validator = validator
         self.modifier = modifier
-        self.name = &#39;&#39;
+        self._name = &#39;&#39;
         self.fallback = fallback
+
+    def __eq__(self, other: &#39;Field&#39;) -&gt; bool: # type: ignore
+        return self.sql_conf == other.sql_conf
+
+    def __repr__(self):
+        reprs = [repr(self.sql_type)]
+        cc = [&#39;sql_onadd&#39;,&#39;sql_ondrop&#39;,&#39;sql_alter&#39;,&#39;sql_engine&#39;,]
+        for k in cc:
+            reprs.append(f&#39;{k}={repr(self.sql_conf.conf[k])}&#39;)
+        s = [&#39;default&#39;,&#39;validator&#39;,&#39;modifier&#39;,&#39;fallback&#39;,]
+        for k in s:
+            reprs.append(f&#39;{k}={repr(self.__dict__[k])}&#39;)
+        body = &#39;, &#39;.join(reprs)
+        return f&#39;{self.__class__.__name__}({body})&#39;
+
+    @property
+    def name(self) -&gt; str:
+        &#34;&#34;&#34;Get the name of the field&#34;&#34;&#34;
+        return self._name
+
+    @name.setter
+    def name(self, v: str):
+        &#34;&#34;&#34;Set the name of the field&#34;&#34;&#34;
+        self._name = v
+        self.sql_conf.conf[&#39;column_name&#39;] = v
 
     def clean(self, value: Any, fallback: bool=False):
         &#34;&#34;&#34;Clean the value by calling validator -&gt; modifier -&gt; validator
@@ -137,7 +336,7 @@ class Field(object):
             return self.default
 
 
-class FieldValue(object):
+class FieldValue():
     &#34;&#34;&#34;Field Value Container
 
     `FieldValue().value` is a property that sets and gets the value.
@@ -155,6 +354,9 @@ class FieldValue(object):
         self._field = field
         self._value = Void
         self._value_change_count = 0
+
+    def __eq__(self, other):
+        return self._field == other._field and self._value == other._value
 
     @property
     def value_change_count(self) -&gt; int:
@@ -285,24 +487,440 @@ class FieldValue(object):
 <section>
 <h2 class="section-title" id="header-classes">Classes</h2>
 <dl>
+<dt id="morm.fields.field.ColumnConfig"><code class="flex name class">
+<span>class <span class="ident">ColumnConfig</span></span>
+<span>(</span><span>**kwargs)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>This class is easily derivable from a json config.</p>
+<p>Initialize a sql definition for Field.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class ColumnConfig():
+    &#34;&#34;&#34;This class is easily derivable from a json config.
+    &#34;&#34;&#34;
+    def __init__(self, **kwargs):
+        &#34;&#34;&#34;Initialize a sql definition for Field.
+        &#34;&#34;&#34;
+        self.conf: Dict[str, Union[str, Tuple[str, ...]]] = kwargs
+
+    def __eq__(self, other: &#39;ColumnConfig&#39;) -&gt; bool: # type: ignore
+        return self.conf == other.conf
+
+    def __repr__(self):
+        reprs = []
+        for k, v in self.conf.items():
+            reprs.append(f&#39;{k}={repr(v)}&#39;)
+        body = &#39;, &#39;.join(reprs)
+        return f&#39;{self.__class__.__name__}({body})&#39;
+
+    def to_json(self) -&gt; Dict[str, Union[str, Tuple[str, ...]]]:
+        return self.conf
+
+    def get_query_column_create_stub(self, table_name: str) -&gt; Tuple[str, str]:
+        &#34;&#34;&#34;Get create query along with alter query for this field
+
+        Can be used to make the create table query.
+
+        Returns:
+            Tuple[str, str]: create_query, alter_query
+        &#34;&#34;&#34;
+        create_q = f&#39;&#34;{self.conf[&#34;column_name&#34;]}&#34; {self.conf[&#34;sql_type&#34;]} {self.conf[&#34;sql_onadd&#34;]}&#39;
+        alter_q, msg = self.get_query_column_settings((), table_name)
+        return create_q, alter_q
+
+
+    def get_query_column_add(self, table_name: str) -&gt; Tuple[str, str]:
+        &#34;&#34;&#34;Get a sql query to add the column.
+
+        Returns:
+            Tuple[str, str]: sql query, message
+        &#34;&#34;&#34;
+        queries = []
+        msgs = []
+        queries.append(f&#39;ALTER TABLE &#34;{table_name}&#34; ADD COLUMN &#34;{self.conf[&#34;column_name&#34;]}&#34; {self.conf[&#34;sql_type&#34;]} {self.conf[&#34;sql_onadd&#34;]};&#39;)
+        msgs.append(f&#39;\n* &gt; ADD: {self.conf[&#34;column_name&#34;]}: {self.conf[&#34;sql_type&#34;]}&#39;)
+
+        q, m = self.get_query_column_settings((), table_name)
+        if q:
+            queries.append(q)
+            msgs.append(m)
+
+        if self.conf[&#39;sql_engine&#39;] == &#39;postgresql&#39;:
+            return &#39;\n&#39;.join(queries), &#39;&#39;.join(msgs)
+        else:
+            raise ex.UnsupportedError(f&#34;{self.conf[&#39;sql_engine&#39;]} not supported yet.&#34;)
+
+    def get_query_column_drop(self, table_name: str) -&gt; Tuple[str, str]:
+        &#34;&#34;&#34;Get a sql query to drop the column.
+
+        Returns:
+            Tuple[str, str]: sql query, message
+        &#34;&#34;&#34;
+        query = f&#39;ALTER TABLE &#34;{table_name}&#34; DROP COLUMN &#34;{self.conf[&#34;column_name&#34;]}&#34; {self.conf[&#34;sql_ondrop&#34;]};&#39;
+        msg = f&#39;\n* &gt; DROP: {self.conf[&#34;column_name&#34;]} {self.conf[&#34;sql_ondrop&#34;]}&#39;
+        if self.conf[&#39;sql_engine&#39;] == &#39;postgresql&#39;:
+            return query, msg
+        else:
+            raise ex.UnsupportedError(f&#34;{self.conf[&#39;sql_engine&#39;]} not supported yet.&#34;)
+
+    def get_query_column_rename(self, old_column_name: str, table_name: str) -&gt; Tuple[str, str]:
+        &#34;&#34;&#34;Get a sql query to rename the column.
+
+        Args:
+            old_column_name (str)
+
+        Returns:
+            Tuple[str, str]: sql query, message
+        &#34;&#34;&#34;
+        query = f&#39;ALTER TABLE &#34;{table_name}&#34; RENAME COLUMN &#34;{old_column_name}&#34; TO &#34;{self.conf[&#34;column_name&#34;]}&#34;;&#39;
+        msg = f&#34;\n* &gt; RENAME: {old_column_name} --&gt; {self.conf[&#39;column_name&#39;]}&#34;
+        if self.conf[&#39;sql_engine&#39;] == &#39;postgresql&#39;:
+            return query, msg
+        else:
+            raise ex.UnsupportedError(f&#34;{self.conf[&#39;sql_engine&#39;]} not supported yet.&#34;)
+
+    def get_query_column_modify(self, prev: &#39;ColumnConfig&#39;, table_name: str) -&gt; Tuple[str, str]:
+        &#34;&#34;&#34;Get a sql query to modify data type of the column.
+
+        Args:
+            prev (ColumnConfig): previous column config
+
+        Returns:
+            Tuple[str, str]: sql query, message
+        &#34;&#34;&#34;
+        # TODO: handle alter settings.
+        queries = []
+        msgs = []
+        if self.conf[&#39;sql_type&#39;] != prev.conf[&#39;sql_type&#39;]:
+            q = f&#39;ALTER TABLE &#34;{table_name}&#34; ALTER COLUMN &#34;{self.conf[&#34;column_name&#34;]}&#34; SET DATA TYPE {self.conf[&#34;sql_type&#34;]};&#39;
+            queries.append(q)
+            msg = f&#34;\n* &gt; MODIFY: {prev.conf[&#39;column_name&#39;]}: {prev.conf[&#39;sql_type&#39;]} --&gt; {self.conf[&#39;sql_type&#39;]}&#34;
+            msgs.append(msg)
+
+        settings_query, msg = self.get_query_column_settings(prev.conf[&#39;sql_alter&#39;], table_name) # type: ignore
+        if settings_query:
+            queries.append(settings_query)
+            msgs.append(msg)
+
+
+        if self.conf[&#39;sql_engine&#39;] == &#39;postgresql&#39;:
+            return &#39;\n&#39;.join(queries), &#39;&#39;.join(msgs)
+        else:
+            raise ex.UnsupportedError(f&#34;{self.conf[&#39;sql_engine&#39;]} not supported yet.&#34;)
+
+    def get_query_column_settings(self, prev_sql_alter: Tuple[str, ...], table_name: str) -&gt; Tuple[str, str]:
+        &#34;&#34;&#34;Get a sql query to apply the sql_alter settings comparing with
+        another config: prev.
+
+        Args:
+            prev_sql_alter (Tuple[str]): previous sql_alter
+
+        Returns:
+            Tuple[str, str]: sql query, message
+        &#34;&#34;&#34;
+        if not isinstance(prev_sql_alter, (tuple, list,)):
+            raise TypeError(f&#34;sql_alter {prev_sql_alter} must be a tuple, {type(prev_sql_alter)} given&#34;)
+        if not isinstance(self.conf[&#39;sql_alter&#39;], (tuple, list,)):
+            raise TypeError(f&#34;sql_alter {self.conf[&#39;sql_alter&#39;]} must be a tuple, {type(self.conf[&#39;sql_alter&#39;])} given&#34;)
+        query = &#39;&#39;
+        msgs = []
+        query_stubs = []
+        for qs in self.conf[&#39;sql_alter&#39;]:
+            if qs not in prev_sql_alter:
+                # new settings
+                query_stubs.append(qs)
+                msgs.append(f&#34;\n* + {qs}&#34;)
+        query_stub = &#39;, &#39;.join([f&#39;ALTER COLUMN &#34;{self.conf[&#34;column_name&#34;]}&#34; {x}&#39; for x in query_stubs])
+        if query_stub:
+            query = f&#39;ALTER TABLE &#34;{table_name}&#34; {query_stub};&#39;
+
+        if self.conf[&#39;sql_engine&#39;] == &#39;postgresql&#39;:
+            return query, &#39;&#39;.join(msgs)
+        else:
+            raise ex.UnsupportedError(f&#34;{self.conf[&#39;sql_engine&#39;]} not supported yet.&#34;)</code></pre>
+</details>
+<h3>Methods</h3>
+<dl>
+<dt id="morm.fields.field.ColumnConfig.get_query_column_add"><code class="name flex">
+<span>def <span class="ident">get_query_column_add</span></span>(<span>self, table_name: str) ‑> Tuple[str, str]</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Get a sql query to add the column.</p>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code>Tuple[str, str]</code></dt>
+<dd>sql query, message</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def get_query_column_add(self, table_name: str) -&gt; Tuple[str, str]:
+    &#34;&#34;&#34;Get a sql query to add the column.
+
+    Returns:
+        Tuple[str, str]: sql query, message
+    &#34;&#34;&#34;
+    queries = []
+    msgs = []
+    queries.append(f&#39;ALTER TABLE &#34;{table_name}&#34; ADD COLUMN &#34;{self.conf[&#34;column_name&#34;]}&#34; {self.conf[&#34;sql_type&#34;]} {self.conf[&#34;sql_onadd&#34;]};&#39;)
+    msgs.append(f&#39;\n* &gt; ADD: {self.conf[&#34;column_name&#34;]}: {self.conf[&#34;sql_type&#34;]}&#39;)
+
+    q, m = self.get_query_column_settings((), table_name)
+    if q:
+        queries.append(q)
+        msgs.append(m)
+
+    if self.conf[&#39;sql_engine&#39;] == &#39;postgresql&#39;:
+        return &#39;\n&#39;.join(queries), &#39;&#39;.join(msgs)
+    else:
+        raise ex.UnsupportedError(f&#34;{self.conf[&#39;sql_engine&#39;]} not supported yet.&#34;)</code></pre>
+</details>
+</dd>
+<dt id="morm.fields.field.ColumnConfig.get_query_column_create_stub"><code class="name flex">
+<span>def <span class="ident">get_query_column_create_stub</span></span>(<span>self, table_name: str) ‑> Tuple[str, str]</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Get create query along with alter query for this field</p>
+<p>Can be used to make the create table query.</p>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code>Tuple[str, str]</code></dt>
+<dd>create_query, alter_query</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def get_query_column_create_stub(self, table_name: str) -&gt; Tuple[str, str]:
+    &#34;&#34;&#34;Get create query along with alter query for this field
+
+    Can be used to make the create table query.
+
+    Returns:
+        Tuple[str, str]: create_query, alter_query
+    &#34;&#34;&#34;
+    create_q = f&#39;&#34;{self.conf[&#34;column_name&#34;]}&#34; {self.conf[&#34;sql_type&#34;]} {self.conf[&#34;sql_onadd&#34;]}&#39;
+    alter_q, msg = self.get_query_column_settings((), table_name)
+    return create_q, alter_q</code></pre>
+</details>
+</dd>
+<dt id="morm.fields.field.ColumnConfig.get_query_column_drop"><code class="name flex">
+<span>def <span class="ident">get_query_column_drop</span></span>(<span>self, table_name: str) ‑> Tuple[str, str]</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Get a sql query to drop the column.</p>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code>Tuple[str, str]</code></dt>
+<dd>sql query, message</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def get_query_column_drop(self, table_name: str) -&gt; Tuple[str, str]:
+    &#34;&#34;&#34;Get a sql query to drop the column.
+
+    Returns:
+        Tuple[str, str]: sql query, message
+    &#34;&#34;&#34;
+    query = f&#39;ALTER TABLE &#34;{table_name}&#34; DROP COLUMN &#34;{self.conf[&#34;column_name&#34;]}&#34; {self.conf[&#34;sql_ondrop&#34;]};&#39;
+    msg = f&#39;\n* &gt; DROP: {self.conf[&#34;column_name&#34;]} {self.conf[&#34;sql_ondrop&#34;]}&#39;
+    if self.conf[&#39;sql_engine&#39;] == &#39;postgresql&#39;:
+        return query, msg
+    else:
+        raise ex.UnsupportedError(f&#34;{self.conf[&#39;sql_engine&#39;]} not supported yet.&#34;)</code></pre>
+</details>
+</dd>
+<dt id="morm.fields.field.ColumnConfig.get_query_column_modify"><code class="name flex">
+<span>def <span class="ident">get_query_column_modify</span></span>(<span>self, prev: <a title="morm.fields.field.ColumnConfig" href="#morm.fields.field.ColumnConfig">ColumnConfig</a>, table_name: str) ‑> Tuple[str, str]</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Get a sql query to modify data type of the column.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>prev</code></strong> :&ensp;<code><a title="morm.fields.field.ColumnConfig" href="#morm.fields.field.ColumnConfig">ColumnConfig</a></code></dt>
+<dd>previous column config</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code>Tuple[str, str]</code></dt>
+<dd>sql query, message</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def get_query_column_modify(self, prev: &#39;ColumnConfig&#39;, table_name: str) -&gt; Tuple[str, str]:
+    &#34;&#34;&#34;Get a sql query to modify data type of the column.
+
+    Args:
+        prev (ColumnConfig): previous column config
+
+    Returns:
+        Tuple[str, str]: sql query, message
+    &#34;&#34;&#34;
+    # TODO: handle alter settings.
+    queries = []
+    msgs = []
+    if self.conf[&#39;sql_type&#39;] != prev.conf[&#39;sql_type&#39;]:
+        q = f&#39;ALTER TABLE &#34;{table_name}&#34; ALTER COLUMN &#34;{self.conf[&#34;column_name&#34;]}&#34; SET DATA TYPE {self.conf[&#34;sql_type&#34;]};&#39;
+        queries.append(q)
+        msg = f&#34;\n* &gt; MODIFY: {prev.conf[&#39;column_name&#39;]}: {prev.conf[&#39;sql_type&#39;]} --&gt; {self.conf[&#39;sql_type&#39;]}&#34;
+        msgs.append(msg)
+
+    settings_query, msg = self.get_query_column_settings(prev.conf[&#39;sql_alter&#39;], table_name) # type: ignore
+    if settings_query:
+        queries.append(settings_query)
+        msgs.append(msg)
+
+
+    if self.conf[&#39;sql_engine&#39;] == &#39;postgresql&#39;:
+        return &#39;\n&#39;.join(queries), &#39;&#39;.join(msgs)
+    else:
+        raise ex.UnsupportedError(f&#34;{self.conf[&#39;sql_engine&#39;]} not supported yet.&#34;)</code></pre>
+</details>
+</dd>
+<dt id="morm.fields.field.ColumnConfig.get_query_column_rename"><code class="name flex">
+<span>def <span class="ident">get_query_column_rename</span></span>(<span>self, old_column_name: str, table_name: str) ‑> Tuple[str, str]</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Get a sql query to rename the column.</p>
+<h2 id="args">Args</h2>
+<p>old_column_name (str)</p>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code>Tuple[str, str]</code></dt>
+<dd>sql query, message</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def get_query_column_rename(self, old_column_name: str, table_name: str) -&gt; Tuple[str, str]:
+    &#34;&#34;&#34;Get a sql query to rename the column.
+
+    Args:
+        old_column_name (str)
+
+    Returns:
+        Tuple[str, str]: sql query, message
+    &#34;&#34;&#34;
+    query = f&#39;ALTER TABLE &#34;{table_name}&#34; RENAME COLUMN &#34;{old_column_name}&#34; TO &#34;{self.conf[&#34;column_name&#34;]}&#34;;&#39;
+    msg = f&#34;\n* &gt; RENAME: {old_column_name} --&gt; {self.conf[&#39;column_name&#39;]}&#34;
+    if self.conf[&#39;sql_engine&#39;] == &#39;postgresql&#39;:
+        return query, msg
+    else:
+        raise ex.UnsupportedError(f&#34;{self.conf[&#39;sql_engine&#39;]} not supported yet.&#34;)</code></pre>
+</details>
+</dd>
+<dt id="morm.fields.field.ColumnConfig.get_query_column_settings"><code class="name flex">
+<span>def <span class="ident">get_query_column_settings</span></span>(<span>self, prev_sql_alter: Tuple[str, ...], table_name: str) ‑> Tuple[str, str]</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Get a sql query to apply the sql_alter settings comparing with
+another config: prev.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>prev_sql_alter</code></strong> :&ensp;<code>Tuple[str]</code></dt>
+<dd>previous sql_alter</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code>Tuple[str, str]</code></dt>
+<dd>sql query, message</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def get_query_column_settings(self, prev_sql_alter: Tuple[str, ...], table_name: str) -&gt; Tuple[str, str]:
+    &#34;&#34;&#34;Get a sql query to apply the sql_alter settings comparing with
+    another config: prev.
+
+    Args:
+        prev_sql_alter (Tuple[str]): previous sql_alter
+
+    Returns:
+        Tuple[str, str]: sql query, message
+    &#34;&#34;&#34;
+    if not isinstance(prev_sql_alter, (tuple, list,)):
+        raise TypeError(f&#34;sql_alter {prev_sql_alter} must be a tuple, {type(prev_sql_alter)} given&#34;)
+    if not isinstance(self.conf[&#39;sql_alter&#39;], (tuple, list,)):
+        raise TypeError(f&#34;sql_alter {self.conf[&#39;sql_alter&#39;]} must be a tuple, {type(self.conf[&#39;sql_alter&#39;])} given&#34;)
+    query = &#39;&#39;
+    msgs = []
+    query_stubs = []
+    for qs in self.conf[&#39;sql_alter&#39;]:
+        if qs not in prev_sql_alter:
+            # new settings
+            query_stubs.append(qs)
+            msgs.append(f&#34;\n* + {qs}&#34;)
+    query_stub = &#39;, &#39;.join([f&#39;ALTER COLUMN &#34;{self.conf[&#34;column_name&#34;]}&#34; {x}&#39; for x in query_stubs])
+    if query_stub:
+        query = f&#39;ALTER TABLE &#34;{table_name}&#34; {query_stub};&#39;
+
+    if self.conf[&#39;sql_engine&#39;] == &#39;postgresql&#39;:
+        return query, &#39;&#39;.join(msgs)
+    else:
+        raise ex.UnsupportedError(f&#34;{self.conf[&#39;sql_engine&#39;]} not supported yet.&#34;)</code></pre>
+</details>
+</dd>
+<dt id="morm.fields.field.ColumnConfig.to_json"><code class="name flex">
+<span>def <span class="ident">to_json</span></span>(<span>self) ‑> Dict[str, Union[str, Tuple[str, ...]]]</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def to_json(self) -&gt; Dict[str, Union[str, Tuple[str, ...]]]:
+    return self.conf</code></pre>
+</details>
+</dd>
+</dl>
+</dd>
 <dt id="morm.fields.field.Field"><code class="flex name class">
 <span>class <span class="ident">Field</span></span>
-<span>(</span><span>sql_def: str, default: Any = &lt;morm.types.VoidType object&gt;, validator: Callable = &lt;function always_valid&gt;, modifier: Callable = &lt;function nomodify&gt;, fallback=False)</span>
+<span>(</span><span>sql_type: str, sql_onadd='', sql_ondrop='', sql_alter: Tuple[str, ...] = (), sql_engine='postgresql', default: Any = Void, validator: Callable = &lt;function always_valid&gt;, modifier: Callable = &lt;function nomodify&gt;, fallback=False)</span>
 </code></dt>
 <dd>
 <div class="desc"><h1 id="field-class">Field class.</h1>
 <p>Field object stores the sql definition of the model field,
 validator function, modifier function and the default and provides
 some utilities:</p>
-<p><code>Field().clean(value, fallback=False)</code> provides a cleaning method.</p>
-<p><code><a title="morm.fields.field.Field" href="#morm.fields.field.Field">Field</a>.get_default()</code> gives you the default value.</p>
-<p>Initialize the Field object.</p>
+<p>Initialize the Field object with data type (sql).</p>
+<p>Example sql_type: <code>'varchar(255)'</code>, <code>'int'</code>, etc..</p>
+<p>Example sql_onadd: <code>'PRIMARY KEY'</code>, <code>'NOT NULL'</code>, <code>'UNIQUE'</code>, <code>'FOREIGHN KEY'</code> etc..</p>
+<p>Example sql_ondrop: <code>'CASCADE'</code> and <code>'RESTRICT'</code></p>
+<p>Example sql_alter settings</p>
+<pre><code class="language-sql">SET DEFAULT expression
+DROP DEFAULT
+{ SET | DROP } NOT NULL
+SET STATISTICS integer
+SET ( attribute_option = value [, ... ] )
+RESET ( attribute_option [, ... ] )
+SET STORAGE { PLAIN | EXTERNAL | EXTENDED | MAIN }
+</code></pre>
 <h2 id="args">Args</h2>
 <dl>
-<dt><strong><code>sql_def</code></strong> :&ensp;<code>str</code></dt>
-<dd>SQL definition of the model Field</dd>
+<dt><strong><code>sql_type</code></strong> :&ensp;<code>str</code></dt>
+<dd>Data type in SQL.</dd>
+<dt><strong><code>sql_onadd</code></strong> :&ensp;<code>str</code></dt>
+<dd>sql to add in ADD clause after 'ADD COLUMN column_name data_type'</dd>
+<dt><strong><code>sql_ondrop</code></strong> :&ensp;<code>str</code></dt>
+<dd>Either 'RESTRICT' or 'CASCADE'.</dd>
+<dt><strong><code>sql_alter</code></strong> :&ensp;<code>Tuple[str]</code></dt>
+<dd>multiple alter column sql; added after 'ALTER [ COLUMN ] column_name'. Example: ('DROP DEFAULT', 'SET NOT NULL') will alter the default and null settings accordingly.</dd>
+<dt><strong><code>sql_engine</code></strong> :&ensp;<code>str</code></dt>
+<dd>db engine, postgresql, mysql etc.. Defaults to 'postgresql'</dd>
 <dt><strong><code>default</code></strong> :&ensp;<code>Any</code>, optional</dt>
-<dd>Default value (can be a callable). Defaults to Void. (Do not use mutable values, use function instead)</dd>
+<dd>Pythonic default value (can be a callable). Defaults to Void. (Do not use mutable values, use function instead)</dd>
 <dt><strong><code>validator</code></strong> :&ensp;<code>callable</code>, optional</dt>
 <dd>A callable that accepts exactly one argument. Validates the value in <code>clean</code> method. Defaults to always_valid.</dd>
 <dt><strong><code>modifier</code></strong> :&ensp;<code>callable</code>, optional</dt>
@@ -320,30 +938,79 @@ some utilities:</p>
     Field object stores the sql definition of the model field,
     validator function, modifier function and the default and provides
     some utilities:
-
-    `Field().clean(value, fallback=False)` provides a cleaning method.
-
-    `Field().get_default()` gives you the default value.
     &#34;&#34;&#34;
-    def __init__(self, sql_def: str, default: Any=Void,
-                 validator: Callable=always_valid,
-                 modifier: Callable=nomodify,
-                 fallback=False):
-        &#34;&#34;&#34;Initialize the Field object.
+    def __init__(self, sql_type: str,
+                sql_onadd=&#39;&#39;,
+                sql_ondrop=&#39;&#39;,
+                sql_alter: Tuple[str, ...] = (),
+                sql_engine=&#39;postgresql&#39;,
+                default: Any=Void,
+                validator: Callable=always_valid,
+                modifier: Callable=nomodify,
+                fallback=False,):
+        &#34;&#34;&#34;Initialize the Field object with data type (sql).
+
+        Example sql_type: `&#39;varchar(255)&#39;`, `&#39;int&#39;`, etc..
+
+        Example sql_onadd: `&#39;PRIMARY KEY&#39;`, `&#39;NOT NULL&#39;`, `&#39;UNIQUE&#39;`, `&#39;FOREIGHN KEY&#39;` etc..
+
+        Example sql_ondrop: `&#39;CASCADE&#39;` and `&#39;RESTRICT&#39;`
+
+        Example sql_alter settings
+
+        ```sql
+        SET DEFAULT expression
+        DROP DEFAULT
+        { SET | DROP } NOT NULL
+        SET STATISTICS integer
+        SET ( attribute_option = value [, ... ] )
+        RESET ( attribute_option [, ... ] )
+        SET STORAGE { PLAIN | EXTERNAL | EXTENDED | MAIN }
+        ```
 
         Args:
-            sql_def (str): SQL definition of the model Field
-            default (Any, optional): Default value (can be a callable). Defaults to Void. (Do not use mutable values, use function instead)
+            sql_type (str): Data type in SQL.
+            sql_onadd (str): sql to add in ADD clause after &#39;ADD COLUMN column_name data_type&#39;
+            sql_ondrop (str): Either &#39;RESTRICT&#39; or &#39;CASCADE&#39;.
+            sql_alter (Tuple[str]): multiple alter column sql; added after &#39;ALTER [ COLUMN ] column_name&#39;. Example: (&#39;DROP DEFAULT&#39;, &#39;SET NOT NULL&#39;) will alter the default and null settings accordingly.
+            sql_engine (str): db engine, postgresql, mysql etc.. Defaults to &#39;postgresql&#39;
+            default (Any, optional): Pythonic default value (can be a callable). Defaults to Void. (Do not use mutable values, use function instead)
             validator (callable, optional): A callable that accepts exactly one argument. Validates the value in `clean` method. Defaults to always_valid.
             modifier (callable, optional): A callable that accepts exactly one argument. Modifies the value if validation fails when the `clean` method is called.. Defaults to nomodify.
             fallback (bool, optional): Whether invalid value should fallback to default value suppressing exception. (May hide bugs in your program)
         &#34;&#34;&#34;
-        self.sql_def = sql_def
+        self.sql_type = sql_type
+        self.sql_conf = ColumnConfig(sql_type=sql_type, sql_onadd=sql_onadd, sql_ondrop=sql_ondrop, sql_alter=sql_alter, sql_engine=sql_engine)
         self.default = default
         self.validator = validator
         self.modifier = modifier
-        self.name = &#39;&#39;
+        self._name = &#39;&#39;
         self.fallback = fallback
+
+    def __eq__(self, other: &#39;Field&#39;) -&gt; bool: # type: ignore
+        return self.sql_conf == other.sql_conf
+
+    def __repr__(self):
+        reprs = [repr(self.sql_type)]
+        cc = [&#39;sql_onadd&#39;,&#39;sql_ondrop&#39;,&#39;sql_alter&#39;,&#39;sql_engine&#39;,]
+        for k in cc:
+            reprs.append(f&#39;{k}={repr(self.sql_conf.conf[k])}&#39;)
+        s = [&#39;default&#39;,&#39;validator&#39;,&#39;modifier&#39;,&#39;fallback&#39;,]
+        for k in s:
+            reprs.append(f&#39;{k}={repr(self.__dict__[k])}&#39;)
+        body = &#39;, &#39;.join(reprs)
+        return f&#39;{self.__class__.__name__}({body})&#39;
+
+    @property
+    def name(self) -&gt; str:
+        &#34;&#34;&#34;Get the name of the field&#34;&#34;&#34;
+        return self._name
+
+    @name.setter
+    def name(self, v: str):
+        &#34;&#34;&#34;Set the name of the field&#34;&#34;&#34;
+        self._name = v
+        self.sql_conf.conf[&#39;column_name&#39;] = v
 
     def clean(self, value: Any, fallback: bool=False):
         &#34;&#34;&#34;Clean the value by calling validator -&gt; modifier -&gt; validator
@@ -388,6 +1055,22 @@ some utilities:</p>
         except TypeError:
             return self.default</code></pre>
 </details>
+<h3>Instance variables</h3>
+<dl>
+<dt id="morm.fields.field.Field.name"><code class="name">var <span class="ident">name</span> : str</code></dt>
+<dd>
+<div class="desc"><p>Get the name of the field</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def name(self) -&gt; str:
+    &#34;&#34;&#34;Get the name of the field&#34;&#34;&#34;
+    return self._name</code></pre>
+</details>
+</dd>
+</dl>
 <h3>Methods</h3>
 <dl>
 <dt id="morm.fields.field.Field.clean"><code class="name flex">
@@ -501,7 +1184,7 @@ has been set or changed.</p>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">class FieldValue(object):
+<pre><code class="python">class FieldValue():
     &#34;&#34;&#34;Field Value Container
 
     `FieldValue().value` is a property that sets and gets the value.
@@ -519,6 +1202,9 @@ has been set or changed.</p>
         self._field = field
         self._value = Void
         self._value_change_count = 0
+
+    def __eq__(self, other):
+        return self._field == other._field and self._value == other._value
 
     @property
     def value_change_count(self) -&gt; int:
@@ -700,10 +1386,23 @@ def value_change_count(self) -&gt; int:
 <li><h3><a href="#header-classes">Classes</a></h3>
 <ul>
 <li>
+<h4><code><a title="morm.fields.field.ColumnConfig" href="#morm.fields.field.ColumnConfig">ColumnConfig</a></code></h4>
+<ul class="">
+<li><code><a title="morm.fields.field.ColumnConfig.get_query_column_add" href="#morm.fields.field.ColumnConfig.get_query_column_add">get_query_column_add</a></code></li>
+<li><code><a title="morm.fields.field.ColumnConfig.get_query_column_create_stub" href="#morm.fields.field.ColumnConfig.get_query_column_create_stub">get_query_column_create_stub</a></code></li>
+<li><code><a title="morm.fields.field.ColumnConfig.get_query_column_drop" href="#morm.fields.field.ColumnConfig.get_query_column_drop">get_query_column_drop</a></code></li>
+<li><code><a title="morm.fields.field.ColumnConfig.get_query_column_modify" href="#morm.fields.field.ColumnConfig.get_query_column_modify">get_query_column_modify</a></code></li>
+<li><code><a title="morm.fields.field.ColumnConfig.get_query_column_rename" href="#morm.fields.field.ColumnConfig.get_query_column_rename">get_query_column_rename</a></code></li>
+<li><code><a title="morm.fields.field.ColumnConfig.get_query_column_settings" href="#morm.fields.field.ColumnConfig.get_query_column_settings">get_query_column_settings</a></code></li>
+<li><code><a title="morm.fields.field.ColumnConfig.to_json" href="#morm.fields.field.ColumnConfig.to_json">to_json</a></code></li>
+</ul>
+</li>
+<li>
 <h4><code><a title="morm.fields.field.Field" href="#morm.fields.field.Field">Field</a></code></h4>
 <ul class="">
 <li><code><a title="morm.fields.field.Field.clean" href="#morm.fields.field.Field.clean">clean</a></code></li>
 <li><code><a title="morm.fields.field.Field.get_default" href="#morm.fields.field.Field.get_default">get_default</a></code></li>
+<li><code><a title="morm.fields.field.Field.name" href="#morm.fields.field.Field.name">name</a></code></li>
 </ul>
 </li>
 <li>

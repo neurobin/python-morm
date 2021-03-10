@@ -26,7 +26,8 @@
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">__version__ = &#39;0.0.1&#39;</code></pre>
+<pre><code class="python">__version_info__ = (0, 0, 1)
+__version__ = &#39;.&#39;.join([str(x) for x in __version_info__])</code></pre>
 </details>
 </section>
 <section>

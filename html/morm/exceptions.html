@@ -37,7 +37,10 @@ __version__ = &#39;0.0.1&#39;
 
 
 class ItemDoesNotExistError(Exception): pass
-class TransactionError(Exception): pass</code></pre>
+class TransactionError(Exception): pass
+class MigrationError(Exception): pass
+class MigrationModelNotAllowedError(Exception): pass
+class UnsupportedError(Exception): pass</code></pre>
 </details>
 </section>
 <section>
@@ -67,6 +70,42 @@ class TransactionError(Exception): pass</code></pre>
 <li>builtins.BaseException</li>
 </ul>
 </dd>
+<dt id="morm.exceptions.MigrationError"><code class="flex name class">
+<span>class <span class="ident">MigrationError</span></span>
+<span>(</span><span>*args, **kwargs)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Common base class for all non-exit exceptions.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class MigrationError(Exception): pass</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li>builtins.Exception</li>
+<li>builtins.BaseException</li>
+</ul>
+</dd>
+<dt id="morm.exceptions.MigrationModelNotAllowedError"><code class="flex name class">
+<span>class <span class="ident">MigrationModelNotAllowedError</span></span>
+<span>(</span><span>*args, **kwargs)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Common base class for all non-exit exceptions.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class MigrationModelNotAllowedError(Exception): pass</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li>builtins.Exception</li>
+<li>builtins.BaseException</li>
+</ul>
+</dd>
 <dt id="morm.exceptions.TransactionError"><code class="flex name class">
 <span>class <span class="ident">TransactionError</span></span>
 <span>(</span><span>*args, **kwargs)</span>
@@ -78,6 +117,24 @@ class TransactionError(Exception): pass</code></pre>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">class TransactionError(Exception): pass</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li>builtins.Exception</li>
+<li>builtins.BaseException</li>
+</ul>
+</dd>
+<dt id="morm.exceptions.UnsupportedError"><code class="flex name class">
+<span>class <span class="ident">UnsupportedError</span></span>
+<span>(</span><span>*args, **kwargs)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Common base class for all non-exit exceptions.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class UnsupportedError(Exception): pass</code></pre>
 </details>
 <h3>Ancestors</h3>
 <ul class="hlist">
@@ -105,7 +162,16 @@ class TransactionError(Exception): pass</code></pre>
 <h4><code><a title="morm.exceptions.ItemDoesNotExistError" href="#morm.exceptions.ItemDoesNotExistError">ItemDoesNotExistError</a></code></h4>
 </li>
 <li>
+<h4><code><a title="morm.exceptions.MigrationError" href="#morm.exceptions.MigrationError">MigrationError</a></code></h4>
+</li>
+<li>
+<h4><code><a title="morm.exceptions.MigrationModelNotAllowedError" href="#morm.exceptions.MigrationModelNotAllowedError">MigrationModelNotAllowedError</a></code></h4>
+</li>
+<li>
 <h4><code><a title="morm.exceptions.TransactionError" href="#morm.exceptions.TransactionError">TransactionError</a></code></h4>
+</li>
+<li>
+<h4><code><a title="morm.exceptions.UnsupportedError" href="#morm.exceptions.UnsupportedError">UnsupportedError</a></code></h4>
 </li>
 </ul>
 </li>
