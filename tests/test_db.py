@@ -95,12 +95,12 @@ class TestMethods(unittest.TestCase):
 
     async def _test_transaction(self):
         try:
-            async with Transaction(SNORM_DB_POOL) as con:
+            async with Transaction(SNORM_DB_POOL) as tdb:
                 # b = await BigUser._get_(where="name='__dummy__'", con=con)
                 # b.age += 2
                 # await b._save_(con=con)
                 # # raise Exception
-                await con.execute('CREATE TABLE IF NOT EXISTS "BigUser" (id SERIAL not null PRIMARY KEY, name varchar(255), profession varchar(255), age int)')
+                await tdb.execute('CREATE TABLE IF NOT EXISTS "BigUser" (id SERIAL not null PRIMARY KEY, name varchar(255), profession varchar(255), age int)')
         except:
             raise
         # b = await BigUser._get_(where="name='__dummy__'")

@@ -914,7 +914,8 @@ class Transaction():
             readonly (bool, optional): Specifies whether or not this transaction is read-only. Defaults to False.
             deferrable (bool, optional): Specifies whether or not this transaction is deferrable. Defaults to False.
         """
-        self.db = DB(pool)
+        self._pool = pool
+        self.db = DB(None)
         self.tr = None
         self.tr_args = {
             'isolation': isolation,
@@ -936,12 +937,12 @@ class Transaction():
         """
         if self.db._con:
             raise exceptions.TransactionError('Another transaction is running (or not ended properly) with this Transaction object')
-        self.db._con = await self.db._pool.pool.acquire() # type: ignore
+        self.db._con = await self._pool.pool.acquire() # type: ignore
         self.tr = self.db._con.transaction(**self.tr_args) # type: ignore
         await self.tr.start() # type: ignore
         # return self.db
         # test with returning con directly
-        return self.db._con
+        return self.db
 
     async def rollback(self):
         """Rollback the transaction.
@@ -962,7 +963,7 @@ class Transaction():
         """
         try:
             if self.db._con:
-                await self.db._pool.pool.release(self.db._con)
+                await self._pool.pool.release(self.db._con)
         finally:
             self.db._con = None
             self.tr = None

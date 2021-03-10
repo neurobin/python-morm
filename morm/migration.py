@@ -13,10 +13,15 @@ import os, sys
 import glob
 import datetime
 import json
+from pathlib import Path
 from morm.db import DB, ModelQuery, Transaction
 from morm.model import ModelBase, ModelType
 import morm.exceptions as exc
 from morm.fields.field import ColumnConfig
+
+HOME = str(Path.home())
+MIGRATION_CURSOR_DIR = os.path.join(HOME, '.local/share/morm')
+os.makedirs(MIGRATION_CURSOR_DIR, exist_ok=True)
 
 def Open(path: str, mode: str, **kwargs) -> type(open):
     return open(path, mode, encoding='utf-8', **kwargs)
@@ -114,21 +119,16 @@ def _get_changed_fields(curs: Dict[str, ColumnConfig], pres: Dict[str, ColumnCon
         key_before = pk
     return ops
 
+MIGRATION_RUNNER_TEMPLATE = '''
+import morm
 
-class MigrationRunner():
+class MigrationRunner(morm.migration.MigrationRunner):
     """Run migration with pre and after steps.
     """
-    tdb: Transaction
-    model: ModelType
-
-    migration_query = ''''''
-
-    def __init__(self, tdb: Transaction, model: ModelType):
-        self.tdb = tdb
-        self.model = model
+    migration_query = """{migration_query}"""
 
     def run_before(self):
-        """Add query before the migration query
+        """Run before migration
 
         self.tdb is the db handle (transaction)
         self.model is the model class
@@ -139,7 +139,30 @@ class MigrationRunner():
         # # etc..
 
     def run_after(self):
-        """Add query after the migration query
+        """Run after migration.
+
+        self.tdb is the db handle (transaction)
+        self.model is the model class
+        """
+        dbm = self.tdb(self.model)
+        # # Example
+        # dbm.q('SOME QUERY TO SET "column_1"=$1', 'some_value').execute()
+        # # etc..
+'''
+
+class MigrationRunner():
+    """Run migration with pre and after steps.
+    """
+    tdb: DB
+    model: ModelType
+    migration_query: str
+
+    def __init__(self, tdb: DB, model: ModelType):
+        self.tdb = tdb
+        self.model = model
+
+    def run_before(self):
+        """Run before migration
 
         self.tdb is the db handle (transaction)
         self.model is the model class
@@ -149,13 +172,26 @@ class MigrationRunner():
         # dbm.q('SOME QUERY TO SET "column_1"=$1', 'some_value').execute()
         # # etc..
 
-    def run_migration_query(self):
+    def run_after(self):
+        """Run after migration.
+
+        self.tdb is the db handle (transaction)
+        self.model is the model class
+        """
+        dbm = self.tdb(self.model)
+        # # Example
+        # dbm.q('SOME QUERY TO SET "column_1"=$1', 'some_value').execute()
+        # # etc..
+
+    def _run_migration_query(self):
         dbm = self.tdb(self.model)
         dbm.q(self.migration_query).execute()
 
     def run(self):
+        """Runs run_before, _run_migration_query and run_after sequentially.
+        """
         self.run_before()
-        self.run_migration_query()
+        self._run_migration_query()
         self.run_after()
 
 
@@ -177,13 +213,18 @@ class Migration():
         self.migration_file_pattern = os.path.join(self.migration_dir, f'{self.db_table}_*.json')
         os.makedirs(self.migration_dir, exist_ok=True)
         os.makedirs(self.migration_queue_dir, exist_ok=True)
+        self.flatten_migration_dir = self.migration_dir.replace(os.path.sep, '_')
+        self.migration_cursor_path = os.path.join(MIGRATION_CURSOR_DIR, f'{self.flatten_migration_dir}.cursor')
 
         self.previous_file_path = self._get_previous_migration_file_path()
         self.previous_file_name = os.path.basename(self.previous_file_path)
-        self.current_file_name = self._get_current_migration_file_name(self.previous_file_name)
+        self.current_file_name_without_extention = self._get_current_migration_file_name_without_extension(self.previous_file_name)
+        self.current_file_name = f"{self.current_file_name_without_extention}.json"
         self.current_file_path = os.path.join(self.migration_dir, self.current_file_name)
-        self.current_sql_file_name = f'{self.current_file_name}.sql'
-        self.current_sql_file_path = os.path.join(self.migration_queue_dir, self.current_sql_file_name)
+        # self.current_sql_file_name = f'{self.current_file_name}.sql'
+        # self.current_sql_file_path = os.path.join(self.migration_queue_dir, self.current_sql_file_name)
+        self.current_mgrpy_file_name = f'{self.current_file_name_without_extention}.py'
+        self.current_mgrpy_file_path = os.path.join(self.migration_queue_dir, self.current_mgrpy_file_name)
 
         self.default_json = {
             'db_table': self.db_table,
@@ -204,6 +245,9 @@ class Migration():
         self.current_json = self.default_json
         self.current_json['fields'] = self.cjson_fields
 
+    def _update_migration_cursor(self, path: str):
+        with open(self.migration_cursor_path, 'ab') as f:
+            f.write(bytes(path) + b'\x00')
 
     @property
     def cfields(self) -> Dict[str, ColumnConfig]:
@@ -309,8 +353,8 @@ class Migration():
             if not silent:
                 print("=== No changes detected ===")
             return None
-        with open(self.current_sql_file_path, 'w') as f:
-            f.write(query)
+        with open(self.current_mgrpy_file_path, 'w') as f:
+            f.write(MIGRATION_RUNNER_TEMPLATE.format(migration_query=query))
             with open(self.current_file_path, 'w') as jf:
                 json.dump(self.current_json, jf)
 
@@ -356,13 +400,15 @@ class Migration():
     def _get_current_migration_file_index(self, previous_file_name: str) -> int:
         if not previous_file_name:
             return 1
-        m = re.match(f'^{self.db_table}_0*(\\d+)_.*\.json$', previous_file_name)
+        m = re.match(f'^{self.db_table}_0*(\\d+)_.*\\.json$', previous_file_name)
         try:
             return int(m.group(1)) + 1
         except AttributeError:
             raise ValueError(f"Invalid migration file name: {previous_file_name}")
 
-    def _get_current_migration_file_name(self, previous_file_name: str) -> str:
+    def _get_current_migration_file_name_without_extension(self, previous_file_name: str) -> str:
         cindex = str(self._get_current_migration_file_index(previous_file_name))
         cindex = '0' * (self.index_length - len(cindex)) + cindex
-        return f"{self.db_table}_{cindex}_{str(datetime.datetime.now()).replace(' ', '_')}.json"
+        timestamp = str(datetime.datetime.now())
+        timestamp = re.sub(r'[.:\s-]', '_', timestamp)
+        return f"{self.db_table}_{cindex}_{timestamp}"
