@@ -13,7 +13,7 @@ import os, sys
 import glob
 import datetime
 import json
-from morm.db import DB
+from morm.db import DB, ModelQuery, Transaction
 from morm.model import ModelBase, ModelType
 import morm.exceptions as exc
 from morm.fields.field import ColumnConfig
@@ -115,13 +115,50 @@ def _get_changed_fields(curs: Dict[str, ColumnConfig], pres: Dict[str, ColumnCon
     return ops
 
 
-class MigrationHook():
-    """Run some pre and after steps for migration.
-
-    You can
+class MigrationRunner():
+    """Run migration with pre and after steps.
     """
-    def run_before(self, db): pass
-    def run_after(self, db): pass
+    tdb: Transaction
+    model: ModelType
+
+    migration_query = ''''''
+
+    def __init__(self, tdb: Transaction, model: ModelType):
+        self.tdb = tdb
+        self.model = model
+
+    def run_before(self):
+        """Add query before the migration query
+
+        self.tdb is the db handle (transaction)
+        self.model is the model class
+        """
+        dbm = self.tdb(self.model)
+        # # Example
+        # dbm.q('SOME QUERY TO SET "column_1"=$1', 'some_value').execute()
+        # # etc..
+
+    def run_after(self):
+        """Add query after the migration query
+
+        self.tdb is the db handle (transaction)
+        self.model is the model class
+        """
+        dbm = self.tdb(self.model)
+        # # Example
+        # dbm.q('SOME QUERY TO SET "column_1"=$1', 'some_value').execute()
+        # # etc..
+
+    def run_migration_query(self):
+        dbm = self.tdb(self.model)
+        dbm.q(self.migration_query).execute()
+
+    def run(self):
+        self.run_before()
+        self.run_migration_query()
+        self.run_after()
+
+
 
 
 

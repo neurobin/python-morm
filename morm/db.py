@@ -551,7 +551,7 @@ class ModelQuery():
                     self._named_args_mapper[k] = self._arg_count
         return q
 
-    def q(self, q: str, *args) -> 'ModelQuery':
+    def q(self, q: str, *args: Any) -> 'ModelQuery':
         """Add raw query stub without parsing to check for keyword arguments
 
         Use `$1`, `$2` etc. for prepared arguments.
@@ -585,6 +585,7 @@ class ModelQuery():
 
         Args:
             q (str): raw query string
+            *args (Any): prepared positional arguments
 
         Returns:
             ModelQuery: self, enables method chaining.
