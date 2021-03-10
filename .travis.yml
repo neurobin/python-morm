@@ -10,6 +10,9 @@ python:
   - "nightly"
 before_script:
   - sh ./.travis_before_script.sh
+  - pip install -r requirements.txt
+  - pip install coverage
+  - pip install mypy
 script: 
   - ./run_tests.sh
 after_success:
