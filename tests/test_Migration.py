@@ -1,4 +1,5 @@
 
+import asyncio
 import unittest
 from copy import copy, deepcopy
 import pickle
@@ -8,16 +9,26 @@ import morm.migration as mg
 from morm.model import Model, ModelType, Field
 from morm.fields.field import ColumnConfig
 import os, shutil
-
+from morm.db import DB, Pool, Transaction
 
 
 class TestMethods(unittest.TestCase):
     migration_path = '/home/jahid/Git/Github/neurobin/morm/migration_data'
     def setUp(self):
-        pass
+        self.DB_POOL = Pool(
+            dsn='postgres://',
+            host='localhost',
+            port=5432,
+            user='jahid',
+            password='jahid',
+            database='test',
+            min_size=10,
+            max_size=90,
+        )
 
     def tearDown(self):
-        shutil.rmtree(self.migration_path)
+        # shutil.rmtree(self.migration_path)
+        self.DB_POOL.close()
 
 
     def test_func(self):
@@ -107,7 +118,7 @@ CREATE TABLE "User" (
 ALTER TABLE "User" ALTER COLUMN "profession" SET DEFAULT 'Teacher', ALTER COLUMN "profession" SET NOT NULL;""".replace('@', '').strip())
 
         mgo = mg.Migration(User, '/home/jahid/Git/Github/neurobin/morm/migration_data')
-        mgo.make_migration()
+        mgo.make_migrations()
 
         class User(Model):
             id = Field('SERIAL', sql_onadd='NOT NULL')
@@ -115,13 +126,24 @@ ALTER TABLE "User" ALTER COLUMN "profession" SET DEFAULT 'Teacher', ALTER COLUMN
             profession_name = Field('varchar(265)', sql_alter=("SET DEFAULT 'Teacher'",'SET NOT NULL'))
             hobby = Field('varchar(45)')
 
-        mgo = mg.Migration(User, '/home/jahid/Git/Github/neurobin/morm/migration_data')
-        mgo.make_migration()
+        mgpath = '/home/jahid/Git/Github/neurobin/morm/migration_data'
+        mgo = mg.Migration(User, mgpath)
+        mg.Migration(User, mgpath).make_migrations()
+        mg.Migration(User, mgpath).make_migrations()
+        mg.Migration(User, mgpath).make_migrations()
+
+        input('Enter to migrate')
+        self._migrate(mg.Migration(User, mgpath))
 
         input('Enter to exit')
+        mg.Migration(User, mgpath).delete_migration_files(1, 1)
 
 
-
+    def _migrate(self, mgo: mg.Migration):
+        async def _my_migrate():
+            async with Transaction(self.DB_POOL) as tdb:
+                await mgo.migrate(tdb)
+        asyncio.get_event_loop().run_until_complete(_my_migrate())
 
 
 

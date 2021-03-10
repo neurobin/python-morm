@@ -7,24 +7,32 @@ __license__ = '[BSD](http://www.opensource.org/licenses/bsd-license.php)'
 __version__ = '0.0.1'
 
 
+import asyncio
 from typing import Dict, List, Tuple, Any, Union, Iterator
 import re
-import os, sys
+import os, sys, shutil
 import glob
 import datetime
 import json
 from pathlib import Path
+import importlib
 from morm.db import DB, ModelQuery, Transaction
 from morm.model import ModelBase, ModelType
 import morm.exceptions as exc
 from morm.fields.field import ColumnConfig
 
 HOME = str(Path.home())
-MIGRATION_CURSOR_DIR = os.path.join(HOME, '.local/share/morm')
+MIGRATION_CURSOR_DIR = os.path.join(HOME, '.local', 'share', 'morm')
 os.makedirs(MIGRATION_CURSOR_DIR, exist_ok=True)
 
 def Open(path: str, mode: str, **kwargs) -> type(open):
     return open(path, mode, encoding='utf-8', **kwargs)
+
+def import_from_path(name: str, path: str):
+    spec = importlib.util.spec_from_file_location(name, path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 def _get_changed_fields(curs: Dict[str, ColumnConfig], pres: Dict[str, ColumnConfig]) -> Dict[str, Dict[str, ColumnConfig]]:
     ops: Dict[str, Dict[str, ColumnConfig]] = {}
@@ -127,7 +135,7 @@ class MigrationRunner(morm.migration.MigrationRunner):
     """
     migration_query = """{migration_query}"""
 
-    def run_before(self):
+    async def run_before(self):
         """Run before migration
 
         self.tdb is the db handle (transaction)
@@ -135,10 +143,11 @@ class MigrationRunner(morm.migration.MigrationRunner):
         """
         dbm = self.tdb(self.model)
         # # Example
-        # dbm.q('SOME QUERY TO SET "column_1"=$1', 'some_value').execute()
+        # dbm.q('SOME QUERY TO SET "column_1"=$1', 'some_value')
+        # await dbm.execute()
         # # etc..
 
-    def run_after(self):
+    async def run_after(self):
         """Run after migration.
 
         self.tdb is the db handle (transaction)
@@ -146,7 +155,8 @@ class MigrationRunner(morm.migration.MigrationRunner):
         """
         dbm = self.tdb(self.model)
         # # Example
-        # dbm.q('SOME QUERY TO SET "column_1"=$1', 'some_value').execute()
+        # dbm.q('SOME QUERY TO SET "column_1"=$1', 'some_value')
+        # await dbm.execute()
         # # etc..
 '''
 
@@ -161,7 +171,7 @@ class MigrationRunner():
         self.tdb = tdb
         self.model = model
 
-    def run_before(self):
+    async def run_before(self):
         """Run before migration
 
         self.tdb is the db handle (transaction)
@@ -169,10 +179,11 @@ class MigrationRunner():
         """
         dbm = self.tdb(self.model)
         # # Example
-        # dbm.q('SOME QUERY TO SET "column_1"=$1', 'some_value').execute()
+        # dbm.q('SOME QUERY TO SET "column_1"=$1', 'some_value')
+        # await dbm.execute()
         # # etc..
 
-    def run_after(self):
+    async def run_after(self):
         """Run after migration.
 
         self.tdb is the db handle (transaction)
@@ -180,19 +191,21 @@ class MigrationRunner():
         """
         dbm = self.tdb(self.model)
         # # Example
-        # dbm.q('SOME QUERY TO SET "column_1"=$1', 'some_value').execute()
+        # dbm.q('SOME QUERY TO SET "column_1"=$1', 'some_value')
+        # await dbm.execute()
         # # etc..
 
-    def _run_migration_query(self):
+    async def _run_migration_query(self):
         dbm = self.tdb(self.model)
-        dbm.q(self.migration_query).execute()
+        dbm.q(self.migration_query)
+        await dbm.execute()
 
-    def run(self):
+    async def run(self):
         """Runs run_before, _run_migration_query and run_after sequentially.
         """
-        self.run_before()
-        self._run_migration_query()
-        self.run_after()
+        await self.run_before()
+        await self._run_migration_query()
+        await self.run_after()
 
 
 
@@ -225,6 +238,7 @@ class Migration():
         # self.current_sql_file_path = os.path.join(self.migration_queue_dir, self.current_sql_file_name)
         self.current_mgrpy_file_name = f'{self.current_file_name_without_extention}.py'
         self.current_mgrpy_file_path = os.path.join(self.migration_queue_dir, self.current_mgrpy_file_name)
+        self.mgrpy_file_pattern = os.path.join(self.migration_queue_dir, '*.py')
 
         self.default_json = {
             'db_table': self.db_table,
@@ -244,10 +258,6 @@ class Migration():
 
         self.current_json = self.default_json
         self.current_json['fields'] = self.cjson_fields
-
-    def _update_migration_cursor(self, path: str):
-        with open(self.migration_cursor_path, 'ab') as f:
-            f.write(bytes(path) + b'\x00')
 
     @property
     def cfields(self) -> Dict[str, ColumnConfig]:
@@ -328,8 +338,88 @@ class Migration():
         if yn != 'Y' and yn != 'y': sys.exit()
         return True
 
+    def _move_to_trash(self, path: str):
+        dirn = os.path.dirname(path)
+        # n = os.path.basename(path)
+        trash = os.path.join(dirn, '.trash')
+        os.makedirs(trash, exist_ok=True)
+        shutil.move(path, trash)
 
-    def make_migration(self, yes=False, silent=False):
+    def _move_all_to_trash(self, file_list: List[str]):
+        for f in file_list:
+            self._move_to_trash(f)
+
+    def delete_migration_files(self, start, end):
+        for i in range(start, end+1):
+            si = str(i)
+            si = '0' * (self.index_length - len(si)) + si
+            files = glob.glob(os.path.join(self.migration_dir, f'{self.db_table}_{si}_*.json'))
+            self._move_all_to_trash(files)
+            pypat = os.path.join(self.migration_queue_dir, f'{self.db_table}_{si}_*.py')
+            pyrpat = b'[^\x00]*' + bytes(f'{self.db_table}_{si}_', encoding='utf-8') + b'[^\x00]*\\.py\x00'
+            pyfiles = glob.glob(pypat)
+            self._move_all_to_trash(pyfiles)
+            content = b''
+            with open(self.migration_cursor_path, 'rb') as f:
+                content = f.read()
+                content = re.sub(pyrpat, b'', content)
+            tmpf = self.migration_cursor_path + '.tmp'
+            with open(tmpf, 'wb') as f:
+                f.write(content)
+            os.rename(tmpf, self.migration_cursor_path)
+
+    def _update_migration_cursor(self, path: str):
+        with open(self.migration_cursor_path, 'ab') as f:
+            cont = bytes(path, encoding='utf-8') + b'\x00'
+            f.write(cont)
+
+    def _get_unapplied_migrations(self) -> List[str]:
+        mgrpy_files = sorted(glob.glob(self.mgrpy_file_pattern))
+        print(mgrpy_files)
+        mgr = iter(mgrpy_files)
+        prev_files = []
+        try:
+            with open(self.migration_cursor_path, 'rb') as f:
+                content = f.read().split(sep=b'\x00')
+                for cursor in content:
+                    if not cursor: continue # split includes a last empty element
+                    try:
+                        file = next(mgr)
+                        if cursor != bytes(file, encoding='utf-8'):
+                            raise ValueError(f"Migration file path mismatch, expected {cursor} == {file}")
+                        prev_files.append(file)
+                    except StopIteration:
+                        raise ValueError(f"Migration file/s missing after {cursor}")
+        except FileNotFoundError:
+            pass
+        return mgrpy_files[len(prev_files):]
+
+    async def run_migrations(self, db: DB):
+        """Run the migrations created by makemigrations beforehand.
+
+        Args:
+            db (DB): db handle.
+        """
+        files = self._get_unapplied_migrations()
+        for file in files:
+            mn = os.path.basename(file).replace('.py','')
+            mr = import_from_path(mn, file) # type: ignore
+            mro: MigrationRunner = mr.MigrationRunner(db, self.model)
+            await mro.run()
+            self._update_migration_cursor(file)
+
+    async def migrate(self, db: DB, silent=False):
+        """Make migrations and apply them
+
+        Args:
+            db (DB): db handle.
+            yes (bool, optional): confirm yes to all. Defaults to False.
+            silent (bool, optional): Whether to print message. Defaults to False.
+        """
+        self.make_migrations(yes=True, silent=silent)
+        await self.run_migrations(db)
+
+    def make_migrations(self, yes=False, silent=False):
         print(f'############ Model: {self.model.__name__} ###############')
         query = ''
         qs = []
@@ -392,7 +482,7 @@ class Migration():
         Returns:
             str: file path
         """
-        files = glob.glob(self.migration_file_pattern)
+        files = sorted(glob.glob(self.migration_file_pattern))
         if files:
             return files[-1]
         return ''
