@@ -26,9 +26,27 @@ MIGRATION_CURSOR_DIR = os.path.join(HOME, '.local', 'share', 'morm')
 os.makedirs(MIGRATION_CURSOR_DIR, exist_ok=True)
 
 def Open(path: str, mode: str, **kwargs) -> type(open):
+    """Wrapper for open with utf-8 encoding
+
+    Args:
+        path (str): path to file
+        mode (str): file open mode
+
+    Returns:
+        open: open context manager handle
+    """
     return open(path, mode, encoding='utf-8', **kwargs)
 
-def import_from_path(name: str, path: str):
+def import_from_path(name: str, path: str) -> object:
+    """Import a module from path
+
+    Args:
+        name (str): module name
+        path (str): path
+
+    Returns:
+        object: module object
+    """
     spec = importlib.util.spec_from_file_location(name, path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -349,7 +367,13 @@ class Migration():
         for f in file_list:
             self._move_to_trash(f)
 
-    def delete_migration_files(self, start, end):
+    def delete_migration_files(self, start: int, end: int):
+        """Delete migration files by index.
+
+        Args:
+            start (int): start index
+            end (int): end index
+        """
         for i in range(start, end+1):
             si = str(i)
             si = '0' * (self.index_length - len(si)) + si
@@ -419,6 +443,12 @@ class Migration():
         await self.run_migrations(db)
 
     def make_migrations(self, yes=False, silent=False):
+        """Prepare migration files.
+
+        Args:
+            yes (bool, optional): confirm yes to all. Defaults to False.
+            silent (bool, optional): Suppress message. Defaults to False.
+        """
         print(f'############ Model: {self.model.__name__} ###############')
         query = ''
         qs = []
