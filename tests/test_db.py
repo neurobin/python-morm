@@ -4,11 +4,15 @@ import unittest
 import random
 from uuid import uuid4
 import inspect
+import asyncpg # type: ignore
 
-from morm.db import Pool, DB, Transaction
+from morm.db import Pool, DB, Transaction, ModelQuery
 import morm.model as mdl
 import morm.meta as mt
 from morm.types import Void
+from morm import Field
+# from morm.model import ModelBase as Model
+from morm.model import Model
 
 
 LOGGER_NAME = 'morm-test-model-'
@@ -35,9 +39,6 @@ SNORM_DB_POOL = Pool(
     max_size=90,
 )
 
-from morm import Field
-# from morm.model import ModelBase as Model
-from morm.model import Model
 
 def mprint(*args, **kwargs):
     print("-"*80)
@@ -77,7 +78,8 @@ class BigUser2(Model):
     class Meta:
         fields_down = ('id', 'name', 'profession')
         exclude_values_down = {
-            '': ('developer',)
+            '': ('developer',),
+            'profession': (None,),
             }
 
 
@@ -95,12 +97,26 @@ class TestMethods(unittest.TestCase):
 
     async def _test_transaction(self):
         try:
-            async with Transaction(SNORM_DB_POOL) as tdb:
+            tr = Transaction(SNORM_DB_POOL)
+            async with tr as tdb:
                 # b = await BigUser._get_(where="name='__dummy__'", con=con)
                 # b.age += 2
                 # await b._save_(con=con)
                 # # raise Exception
                 await tdb.execute('CREATE TABLE IF NOT EXISTS "BigUser" (id SERIAL not null PRIMARY KEY, name varchar(255), profession varchar(255), age int)')
+                record = await tdb.fetch('SELECT * FROM "BigUser" where "id"=0')
+                self.assertEqual(record, [])
+                record = await tdb.fetchrow('SELECT * FROM "BigUser" where "id"=0')
+                self.assertEqual(record, None)
+                record = await tdb.q(BigUser).q('SELECT * FROM "BigUser" where "id"=0').fetchrow()
+                self.assertEqual(record, None)
+            try:
+                async with tr as tdb:
+                    print('- [x] Checking transaction rollback')
+                    await tdb.execute('''INSERT INTO "BigUser" ("name", "profession") VALUES ('John Doe', 'Teacher')''')
+                    await tdb.execute('''SELECT * FROM "BigUser" WHERE "name"='John Doe', ''') # wrong sql
+            except asyncpg.exceptions.PostgresSyntaxError:
+                pass
         except:
             raise
         # b = await BigUser._get_(where="name='__dummy__'")
@@ -108,11 +124,13 @@ class TestMethods(unittest.TestCase):
         pass
 
     def clean(self):
-        SNORM_DB_POOL.close()
+        # SNORM_DB_POOL.close() # atexit calls it
+        pass
 
     def test_transaction(self):
         try:
             asyncio.get_event_loop().run_until_complete(self._test_transaction_setup())
+            asyncio.get_event_loop().run_until_complete(self._test_transaction())
             # group = asyncio.gather(self._test_transaction_setup(), *[self._test_transaction() for i in range(10)])
             # group = asyncio.gather( *[self._test_transaction() for i in range(10000)])
             group = asyncio.gather( *[self._test_direct_execute() for i in range(10)])
@@ -124,10 +142,11 @@ class TestMethods(unittest.TestCase):
     async def _test_db_filter_data(self):
         print('## CRUD methods\n')
         db = DB(SNORM_DB_POOL)
-        mq = db(BigUser).qfilter().qc('', '$1', True)
-        mq2 = db(BigUser2).qfilter().qc('', '$1', True)
+        mq = db(BigUser).qfilter().qc('', '$1', True) # this one has ordering
+        mq2 = db(BigUser2).qfilter(no_ordering=True).qc('', '$1', True).qorder().qo('id')
+        # print(mq.getq())
         mqq = ' SELECT "name","profession","hobby","status","salary" FROM "BigUser" WHERE $1 ORDER BY "name" ASC,"profession" DESC,"age" DESC'
-        mqq2 = ' SELECT "id","name","profession" FROM "BigUser2" WHERE $1 '
+        mqq2 = ' SELECT "id","name","profession" FROM "BigUser2" WHERE $1 ORDER BY "id" ASC '
         res = await mq.fetch()
         res2 = await mq2.fetch()
         big_user1 = await db(BigUser2).get(2)
@@ -149,6 +168,7 @@ class TestMethods(unittest.TestCase):
             res[0].profesion
 
         print('* when fields_down is specified, only specified fields will be down')
+        # print(res2[0])
         with self.assertRaises(AttributeError):
             res2[0].profession # developer is in exclude_values_down
         res2[0].name
@@ -185,6 +205,40 @@ class TestMethods(unittest.TestCase):
         usern = BigUser2(name='dummy john', profession='Student', age=23, hobby='collection', salary='0')
         print(f' - [x] Check save()')
         self.assertTrue(await db.save(usern) > 0)
+        self.assertEqual(await db.update(usern), db.DATA_NO_CHANGE)
+        mdq = db(BigUser2)
+        self.assertIn(ModelQuery.__name__, repr(mdq))
+        self.assertEqual(
+            mdq.qc_('status', f'= :status and "age" = ${mdq.c}', 23, status='OK').getq(),
+            (' "status" = $2 and "age" = $1 ', [23, 'OK']))
+        self.assertEqual(
+            mdq.reset().qo('-name,').qo('+age').getq(),
+            (' "name" DESC, "age" ASC ', []))
+        self.assertEqual(
+            mdq.reset().qu({'name': 'John', 'age': 29}).getq(),
+            (' "name"=$1, "age"=$2 ', ['John', 29]))
+        self.assertEqual(
+            mdq.reset().qreturning('name', 'age').getq(),
+            (' RETURNING "name","age" ', []))
+        self.assertEqual(
+            mdq.reset().qwhere().getq(),
+            (' WHERE ', []))
+
+        with self.assertRaises(ValueError):
+            print(mdq.reset().qfilter().qfilter().getq())
+
+        self.assertEqual(
+            mdq.reset().qupdate({'name': 'John', 'age': 29}).getq(),
+            (' UPDATE "BigUser2" SET "name"=$1, "age"=$2 WHERE ', ['John', 29]))
+
+        with self.assertRaises(ValueError):
+            mdq.reset().qupdate({'name': 'John', 'age': 29}).qupdate({'name': 'John', 'age': 29})
+
+        q = mdq.reset().qupdate({'name': 'John', 'age': 29}).q(f'"id"=1').qreturning('name')
+        self.assertEqual(q.getq(), (' UPDATE "BigUser2" SET "name"=$1, "age"=$2 WHERE "id"=1 RETURNING "name" ', ['John', 29]))
+        name1 = await q.fetchval()
+        user1 = await mdq.get(1)
+        self.assertEqual(name1, user1.name)
 
         print(f'\n# Checking db(Model).update() method\n')
         f = BigUser2.Meta.f
@@ -204,6 +258,12 @@ class TestMethods(unittest.TestCase):
             f.profession = 343
 
         # db.q(BigUser2).q_()
+        class BigUser3(Model):pass
+        self.assertEqual(db.get_insert_query(BigUser3()), ('', []))
+        class BigUser3(mdl.ModelPostgresql):pass
+        b = BigUser3()
+        b.id = 3
+        self.assertEqual(db.get_update_query(b), ('', []))
 
 
     def test_filter_func(self):
@@ -284,5 +344,5 @@ if __name__ == "__main__":
     try:
         unittest.main(verbosity=0)
     except:
-        SNORM_DB_POOL.close()
+        SNORM_DB_POOL._close() # at exit calls it, we do not need to call it explicitly. It is called here for coverage report
         raise

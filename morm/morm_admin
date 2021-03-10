@@ -1,0 +1,5 @@
+#!/usr/bin/python
+
+from morm import admin
+
+admin.main()

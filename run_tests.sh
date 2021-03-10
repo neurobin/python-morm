@@ -1,12 +1,15 @@
 #!/bin/bash
 
 tests=(
-    'tests.test_model'
+    'tests.test_admin'
+    'tests.test_db'
     'tests.test_field'
     'tests.test_meta'
+    'tests.test_Migration'
+    'tests.test_model'
     'tests.test_package'
+    'tests.test_q'
     'tests.test_types'
-    'tests.test_db'
 )
 
 print_chars(){
@@ -28,6 +31,8 @@ print_msg(){
 
 }
 
+coverage erase
+rm -r htmlcov
 for test in "${tests[@]}"; do
     cmd="coverage run --source=morm -p -m $test"
     print_msg "$cmd"

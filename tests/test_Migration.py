@@ -8,8 +8,9 @@ from morm.types import Void, VoidType
 import morm.migration as mg
 from morm.model import Model, ModelType, Field
 from morm.fields.field import ColumnConfig
-import os, shutil
+import os, shutil, sys
 from morm.db import DB, Pool, Transaction
+import morm.exceptions as ex
 
 
 class TestMethods(unittest.TestCase):
@@ -28,7 +29,8 @@ class TestMethods(unittest.TestCase):
 
     def tearDown(self):
         # shutil.rmtree(self.migration_path)
-        self.DB_POOL.close()
+        # self.DB_POOL.close() # atexit calls it
+        pass
 
 
     def test_func(self):
@@ -67,7 +69,7 @@ class TestMethods(unittest.TestCase):
         self.assertTrue( "Field('varchar(255)', sql_onadd='', sql_ondrop='', sql_alter=(), sql_engine='postgresql'," in repr(User.Meta._field_defs_['name']))
 
         print(' - [x] Checking pfields and cfields')
-        cfields = {'id': ColumnConfig(sql_type='SERIAL', sql_onadd='NOT NULL', sql_ondrop='', sql_alter=(), sql_engine='postgresql', column_name='id', table_name='User'), 'name': ColumnConfig(sql_type='varchar(255)', sql_onadd='', sql_ondrop='', sql_alter=(), sql_engine='postgresql', column_name='name', table_name='User'), 'profession': ColumnConfig(sql_type='varchar(65)', sql_onadd='', sql_ondrop='', sql_alter=("SET DEFAULT 'Teacher'", 'SET NOT NULL'), sql_engine='postgresql', column_name='profession', table_name='User')}
+        cfields = {'id': ColumnConfig(sql_type='SERIAL', sql_onadd='NOT NULL', sql_ondrop='', sql_alter=(), sql_engine='postgresql', column_name='id'), 'name': ColumnConfig(sql_type='varchar(255)', sql_onadd='', sql_ondrop='', sql_alter=(), sql_engine='postgresql', column_name='name'), 'profession': ColumnConfig(sql_type='varchar(65)', sql_onadd='', sql_ondrop='', sql_alter=("SET DEFAULT 'Teacher'", 'SET NOT NULL'), sql_engine='postgresql', column_name='profession')}
         self.assertTrue(mgo.cfields == cfields)
         self.assertTrue({} == mgo.pfields)
 
@@ -118,7 +120,7 @@ CREATE TABLE "User" (
 ALTER TABLE "User" ALTER COLUMN "profession" SET DEFAULT 'Teacher', ALTER COLUMN "profession" SET NOT NULL;""".replace('@', '').strip())
 
         mgo = mg.Migration(User, '/home/jahid/Git/Github/neurobin/morm/migration_data')
-        mgo.make_migrations()
+        mgo.make_migrations(yes=True)
 
         class User(Model):
             id = Field('SERIAL', sql_onadd='NOT NULL')
@@ -128,15 +130,47 @@ ALTER TABLE "User" ALTER COLUMN "profession" SET DEFAULT 'Teacher', ALTER COLUMN
 
         mgpath = '/home/jahid/Git/Github/neurobin/morm/migration_data'
         mgo = mg.Migration(User, mgpath)
-        mg.Migration(User, mgpath).make_migrations()
-        mg.Migration(User, mgpath).make_migrations()
-        mg.Migration(User, mgpath).make_migrations()
+        mg.Migration(User, mgpath).make_migrations(yes=True)
+        mg.Migration(User, mgpath).make_migrations(yes=True)
+        mg.Migration(User, mgpath).make_migrations(yes=True)
 
-        input('Enter to migrate')
+        self._migrate(mg.Migration(User, mgpath))
         self._migrate(mg.Migration(User, mgpath))
 
-        input('Enter to exit')
         mg.Migration(User, mgpath).delete_migration_files(1, 1)
+
+        class AbstractUser(User):
+            class Meta:
+                abstract = True
+        class ProxyUser(User):
+            class Meta:
+                proxy = True
+        with self.assertRaises(ex.MigrationModelNotAllowedError):
+            mgo = mg.Migration(AbstractUser, mgpath)
+
+        with self.assertRaises(ex.MigrationModelNotAllowedError):
+            mgo = mg.Migration(ProxyUser, mgpath)
+
+        class User(Model):
+            id = Field('SERIAL', sql_onadd='NOT NULL')
+            name = Field('varchar(25)')
+            profession_name = Field('varchar(265)', sql_alter=("SET DEFAULT 'Teacher'",'SET NOT NULL'))
+            hobby = Field('varchar(45)')
+        sys.argv = [__file__, 'makemigrations', '-y']
+        mg.migration_manager(self.DB_POOL, mgpath, [User])
+        sys.argv = [__file__, 'migrate']
+        mg.migration_manager(self.DB_POOL, mgpath, [User])
+        sys.argv = [__file__, 'delete_migration_files', '1', '1']
+        mg.migration_manager(self.DB_POOL, mgpath, [User])
+        sys.argv = [__file__, 'delete_migration_file', '1', '1']
+        with self.assertRaises(ValueError):
+            mg.migration_manager(self.DB_POOL, mgpath, [User])
+        sys.argv = [__file__, 'delete_migration_files']
+        with self.assertRaises(ValueError):
+            mg.migration_manager(self.DB_POOL, mgpath, [User])
+        sys.argv = [__file__, 'delete_migration_files', '2', '1']
+        with self.assertRaises(ValueError):
+            mg.migration_manager(self.DB_POOL, mgpath, [User])
 
 
     def _migrate(self, mgo: mg.Migration):

@@ -10,6 +10,8 @@ import collections
 import re
 import asyncio
 from contextlib import asynccontextmanager
+import atexit
+import logging
 
 import asyncpg # type: ignore
 from asyncpg import Record, Connection # type: ignore
@@ -20,6 +22,8 @@ from morm.model import ModelType, Model, ModelBase, FieldNames
 from morm.q import Q
 from morm.types import Void
 
+LOGGER_NAME = 'morm.db-'
+log = logging.getLogger(LOGGER_NAME)
 
 def record_to_model(record: Record, model_class: ModelType) -> Model:
     """Convert a Record object to Model object.
@@ -76,7 +80,8 @@ class Pool(object):
         self.connect_kwargs = connect_kwargs
 
         self._pool = None
-        self.open()
+        self._open()
+        atexit.register(self._close)
 
     @property
     def pool(self) -> asyncpg.pool.Pool:
@@ -101,20 +106,22 @@ class Pool(object):
                                         loop=self.loop,
                                         connection_class=self.connection_class,
                                         **self.connect_kwargs)
-    def open(self):
-        """Open the pool
+    def _open(self):
+        """Open the pool. Called on init so not need to call this
+        method explicitly.
         """
         if not self._pool:
             self._pool = asyncio.get_event_loop().run_until_complete(self.__create_pool())
-            print("Pool opened")
+            log.debug("Pool opened")
 
-    def close(self):
-        """Attempt to close the pool gracefully.
+    def _close(self):
+        """Attempt to close the pool gracefully. registered with atexit.
+        You do not need to call this method explicitly.
         """
         if self._pool:
             asyncio.get_event_loop().run_until_complete(self._pool.close())
             self._pool = None
-            print("Pool closed")
+            log.debug("Pool closed")
 
 
 class DB(object):
@@ -134,15 +141,6 @@ class DB(object):
         self._pool = pool
         self._con = con
         self.DATA_NO_CHANGE = 'DATA_NO_CHANGE_TRIGGERED'
-
-    @property
-    def pool(self) -> Pool:
-        """Return the Pool object
-
-        Returns:
-            Pool: Pool object
-        """
-        return self._pool
 
     def corp(self) -> Union[asyncpg.pool.Pool, Connection]:
         """Return the connection if available, otherwise return a Pool.
@@ -245,11 +243,12 @@ class DB(object):
         pool = self.corp()
         return await pool.execute(query, *args, timeout=timeout)
 
-    def get_insert_query(self, mob: ModelBase) -> Tuple[str, List[Any]]:
+    def get_insert_query(self, mob: ModelBase, reset=False) -> Tuple[str, List[Any]]:
         """Get insert query for the model object (mob) with its current data
 
         Args:
             mob (ModelBase): Model object
+            reset (bool): Reset the value change counter. Defaults to False
 
         Returns:
             (str, list): query, prepared_args
@@ -262,15 +261,16 @@ class DB(object):
         c = 0
         for n,v in new_data_gen:
             c += 1
+            if reset:
+                v._value_change_count = 0
+                mob.Meta._fromdb_ = []
             columns.append(n)
             values.append(v.value)
             markers.append(f'${c}')
-
         column_q = '","'.join(columns)
         if column_q:
             column_q = f'"{column_q}"'
-        marker_q = ', '.join(markers)
-        if column_q:
+            marker_q = ', '.join(markers)
             query = f'INSERT INTO "{mob.__class__._get_db_table_()}" ({column_q}) VALUES ({marker_q}) RETURNING "{mob.__class__._get_pk_()}"'
         else:
             query = ''
@@ -307,12 +307,10 @@ class DB(object):
                 values.append(v.value)
                 if reset:
                     v._value_change_count = countover
-
-        where = f'"{mob.__class__._get_pk_()}"=${c+1}'
-        values.append(pkval)
-
         colval_q = ', '.join(colval)
         if colval_q:
+            where = f'"{mob.__class__._get_pk_()}"=${c+1}'
+            values.append(pkval)
             query = f'UPDATE "{mob.__class__._get_db_table_()}" SET {colval_q} WHERE {where}'
         else:
             query = ''
@@ -328,7 +326,7 @@ class DB(object):
         Returns:
             (Any): Value of primary key of the inserted row
         """
-        query, args = self.get_insert_query(mob)
+        query, args = self.get_insert_query(mob, reset=True)
         pkval = await self.fetchval(query, *args, timeout=timeout)
         if pkval is not None:
             setattr(mob, mob.__class__._get_pk_(), pkval)
@@ -685,6 +683,14 @@ class ModelQuery():
         """
         return self.qq(word).q_(rest, *args, **kwargs)
 
+    def qorder(self):
+        """Add ORDER BY
+
+        Returns:
+            ModelQuery: returns `self` to enable method chaining
+        """
+        return self.q('ORDER BY')
+
     def qo(self, order: str) -> 'ModelQuery':
         """Convert `+/-field_name,` to proper order_by criteria and add to query.
 
@@ -741,7 +747,7 @@ class ModelQuery():
         """
         q = '","'.join(column_names)
         if q:
-            q = f'"{q}"'
+            q = f'RETURNING "{q}"'
         return self.q(q)
 
     def qwhere(self) -> 'ModelQuery':
@@ -776,13 +782,13 @@ class ModelQuery():
         """
         if not self.__filter_initiated:
             down_fields = ','.join([Q(x) for x in self.model._get_fields_(up=False)]) #type: ignore
-            self.q(f'SELECT {down_fields} FROM "{self.model._get_db_table_()}" WHERE') #type: ignore
+            self.reset().q(f'SELECT {down_fields} FROM "{self.model._get_db_table_()}" WHERE') #type: ignore
             self.__filter_initiated = True
             order_by = self.ordering
             if order_by and not no_ordering:
                 self.end_query_str = f'ORDER BY {order_by}'
         else:
-            ValueError(f"Filter is already initiated for this {self.__class__.__name__} query object: {self}")
+            raise ValueError(f"Filter is already initiated for this {self.__class__.__name__} query object: {self}")
         return self
 
     def qupdate(self, data: dict) -> 'ModelQuery':
@@ -802,10 +808,10 @@ class ModelQuery():
             ModelQuery: returns `self` to enable method chaining
         """
         if not self.__update_initiated:
-            self.q(f'UPDATE {self.db_table} SET').qu(data).qwhere()
+            self.reset().q(f'UPDATE {self.db_table} SET').qu(data).qwhere()
             self.__update_initiated = True
         else:
-            ValueError(f"update is already initiated for this {self.__class__.__name__} query: {self}")
+            raise ValueError(f"update is already initiated for this {self.__class__.__name__} query: {self}")
         return self
 
 
@@ -873,7 +879,7 @@ class ModelQuery():
         query, parepared_args = self.getq()
         return await self.db.execute(query, *parepared_args, timeout=timeout)
 
-    async def get(self, *vals, col: str = '', comp: str = '=$1') -> Union[ModelBase, Record]:
+    async def get(self, *vals: Any, col: str = '', comp: str = '=$1') -> Union[ModelBase, Record]:
         """Get the first row found by column and value.
 
         If `col` is not given, it defaults to the primary key (`pk`) of
@@ -891,14 +897,7 @@ class ModelQuery():
         """
         if not col:
             col = self.model.Meta.pk    #type: ignore
-        return await self.qfilter().qc(col, comp, *vals).fetchrow()
-
-
-
-
-
-
-
+        return await self.reset().qfilter().qc(col, comp, *vals).fetchrow()
 
 
 class Transaction():
@@ -915,7 +914,7 @@ class Transaction():
             deferrable (bool, optional): Specifies whether or not this transaction is deferrable. Defaults to False.
         """
         self._pool = pool
-        self.db = DB(None)
+        self.db = DB(None) # type: ignore
         self.tr = None
         self.tr_args = {
             'isolation': isolation,

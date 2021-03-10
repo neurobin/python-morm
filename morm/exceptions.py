@@ -11,3 +11,4 @@ class ItemDoesNotExistError(Exception): pass
 class TransactionError(Exception): pass
 class MigrationError(Exception): pass
 class MigrationModelNotAllowedError(Exception): pass
+class UnsupportedError(Exception): pass

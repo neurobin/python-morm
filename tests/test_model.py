@@ -9,6 +9,7 @@ from morm.db import Pool, DB, Transaction
 import morm.model as mdl
 import morm.meta as mt
 from morm.types import Void
+import morm.fields.field as fdl
 
 
 LOGGER_NAME = 'morm-test-model-'
@@ -364,16 +365,81 @@ class TestMethods(unittest.TestCase):
 
         class User(Model):
             NAMES = ['John Doe', 'Jane Doe']
-            name = Field('varchar(255)', default='')
+            name = Field('varchar(255)', default='John Doe')
             profession = Field('varchar(255)', default='Teacher')
-            age = Field("int")
+            age = Field("int", default=23)
+            hobby = Field('varchar(255)', default='Gardenning')
+            status = Field('varchar(255)', default='NOK')
+            marital_status = Field('varchar(255)', default='Single')
+            address = Field('varchar(255)', default='Gardenning Park')
+            class Meta:
+                fields_up = ('name', 'profession', 'age', 'status', 'marital_status', 'address')
+                exclude_fields_up = ('profession',)
+                exclude_values_up = {
+                    '': ('Single',),
+                    'address': ('Gardenning Park',),
+                }
+                fields_down = ('name', 'profession', 'age', 'hobby', 'status', 'marital_status', 'address')
+                exclude_fields_down = ('age',)
+                exclude_values_down = {
+                    '': ('NOK',),
+                    'address': (None,),
+                }
 
-        user = User({'profession': 'Student'}, name='Jahid')
+        user = User({'name': 'Student'}, name='Jahid')
         with self.assertRaises(TypeError):
-            user = User(['profession', 'Student'], name='Jahid')
+            user = User(['name', 'Student'], name='Jahid')
         with self.assertRaises(AttributeError):
             dct = user.fdsfdss
         del user.__dict__ # for coverage to touch __delattr__
+
+        # value = fdl.FieldValue(Field('varchar(255)', default='something'))
+        # nokvalue = fdl.FieldValue(Field('varchar(255)', default='something'))
+        # nokvalue.value = 'NOK'
+        # singlevalue = fdl.FieldValue(Field('varchar(255)', default='something'))
+        # singlevalue.value = 'Single'
+        # print('\n#'*10)
+        # print(value.value)
+        user = User()
+        data = user.Meta._fields_
+
+        ans = [
+            ('name', data['name']),
+            ('profession', data['profession']),
+            ('hobby', data['hobby']),
+            ('marital_status', data['marital_status']),
+            ('address', data['address']),
+        ]
+        c = 0
+        for k, v in User._get_FieldValue_data_valid_(data, up=False):
+            self.assertIn((k, v), ans)
+            c += 1
+        self.assertEqual(c, len(ans))
+
+        ans = [
+            ('name', data['name']),
+            ('age', data['age']),
+            ('status', data['status']),
+        ]
+        c = 0
+        for k, v in User._get_FieldValue_data_valid_(data, up=True):
+            self.assertIn((k, v), ans)
+            c += 1
+        self.assertEqual(c, len(ans))
+
+        ans = ['name', 'profession', 'hobby', 'status', 'marital_status', 'address']
+        c = 0
+        for k in User._get_fields_():
+            self.assertIn(k, ans)
+            c += 1
+        self.assertEqual(c, len(ans))
+
+        ans = ['name', 'age', 'status', 'marital_status', 'address']
+        c = 0
+        for k in User._get_fields_(up=True):
+            self.assertIn(k, ans)
+            c += 1
+        self.assertEqual(c, len(ans))
 
 
 
@@ -447,5 +513,5 @@ if __name__ == "__main__":
     try:
         unittest.main(verbosity=2)
     except:
-        SNORM_DB_POOL.close()
+        # SNORM_DB_POOL.close()
         raise

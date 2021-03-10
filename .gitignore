@@ -3,5 +3,9 @@
 /dist/
 /*egg-info/
 __pycache__/
-/migration_data
+/migration_data/
+/html/
+/htmlcov/
+.coverage*
+.mypy_cache
 

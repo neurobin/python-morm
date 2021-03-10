@@ -9,6 +9,7 @@ __version__ = '0.0.1'
 import copy
 from typing import Any, Optional, Callable, Tuple, Dict, List, Union
 from morm.types import Void
+import morm.exceptions as ex
 
 
 
@@ -40,9 +41,9 @@ class ColumnConfig():
     def __init__(self, **kwargs):
         """Initialize a sql definition for Field.
         """
-        self.conf: Dict[str, str] = kwargs
+        self.conf: Dict[str, Union[str, Tuple[str, ...]]] = kwargs
 
-    def __eq__(self, other: 'ColumnConfig') -> bool:
+    def __eq__(self, other: 'ColumnConfig') -> bool: # type: ignore
         return self.conf == other.conf
 
     def __repr__(self):
@@ -52,10 +53,10 @@ class ColumnConfig():
         body = ', '.join(reprs)
         return f'{self.__class__.__name__}({body})'
 
-    def to_json(self) -> Dict[str, str]:
+    def to_json(self) -> Dict[str, Union[str, Tuple[str, ...]]]:
         return self.conf
 
-    def get_query_column_create_stub(self) -> Tuple[str, str]:
+    def get_query_column_create_stub(self, table_name: str) -> Tuple[str, str]:
         """Get create query along with alter query for this field
 
         Can be used to make the create table query.
@@ -64,11 +65,11 @@ class ColumnConfig():
             Tuple[str, str]: create_query, alter_query
         """
         create_q = f'"{self.conf["column_name"]}" {self.conf["sql_type"]} {self.conf["sql_onadd"]}'
-        alter_q, msg = self.get_query_column_settings(())
+        alter_q, msg = self.get_query_column_settings((), table_name)
         return create_q, alter_q
 
 
-    def get_query_column_add(self) -> Tuple[str, str]:
+    def get_query_column_add(self, table_name: str) -> Tuple[str, str]:
         """Get a sql query to add the column.
 
         Returns:
@@ -76,10 +77,10 @@ class ColumnConfig():
         """
         queries = []
         msgs = []
-        queries.append(f'ALTER TABLE "{self.conf["table_name"]}" ADD COLUMN "{self.conf["column_name"]}" {self.conf["sql_type"]} {self.conf["sql_onadd"]};')
+        queries.append(f'ALTER TABLE "{table_name}" ADD COLUMN "{self.conf["column_name"]}" {self.conf["sql_type"]} {self.conf["sql_onadd"]};')
         msgs.append(f'\n* > ADD: {self.conf["column_name"]}: {self.conf["sql_type"]}')
 
-        q, m = self.get_query_column_settings(())
+        q, m = self.get_query_column_settings((), table_name)
         if q:
             queries.append(q)
             msgs.append(m)
@@ -87,22 +88,22 @@ class ColumnConfig():
         if self.conf['sql_engine'] == 'postgresql':
             return '\n'.join(queries), ''.join(msgs)
         else:
-            raise ValueError(f"{self.conf['sql_engine']} not supported yet.")
+            raise ex.UnsupportedError(f"{self.conf['sql_engine']} not supported yet.")
 
-    def get_query_column_drop(self) -> Tuple[str, str]:
+    def get_query_column_drop(self, table_name: str) -> Tuple[str, str]:
         """Get a sql query to drop the column.
 
         Returns:
             Tuple[str, str]: sql query, message
         """
-        query = f'ALTER TABLE "{self.conf["table_name"]}" DROP COLUMN "{self.conf["column_name"]}" {self.conf["sql_ondrop"]};'
+        query = f'ALTER TABLE "{table_name}" DROP COLUMN "{self.conf["column_name"]}" {self.conf["sql_ondrop"]};'
         msg = f'\n* > DROP: {self.conf["column_name"]} {self.conf["sql_ondrop"]}'
         if self.conf['sql_engine'] == 'postgresql':
             return query, msg
         else:
-            raise ValueError(f"{self.conf['sql_engine']} not supported yet.")
+            raise ex.UnsupportedError(f"{self.conf['sql_engine']} not supported yet.")
 
-    def get_query_column_rename(self, old_column_name: str) -> Tuple[str, str]:
+    def get_query_column_rename(self, old_column_name: str, table_name: str) -> Tuple[str, str]:
         """Get a sql query to rename the column.
 
         Args:
@@ -111,14 +112,14 @@ class ColumnConfig():
         Returns:
             Tuple[str, str]: sql query, message
         """
-        query = f'ALTER TABLE "{self.conf["table_name"]}" RENAME COLUMN "{old_column_name}" TO "{self.conf["column_name"]}";'
+        query = f'ALTER TABLE "{table_name}" RENAME COLUMN "{old_column_name}" TO "{self.conf["column_name"]}";'
         msg = f"\n* > RENAME: {old_column_name} --> {self.conf['column_name']}"
         if self.conf['sql_engine'] == 'postgresql':
             return query, msg
         else:
-            raise ValueError(f"{self.conf['sql_engine']} not supported yet.")
+            raise ex.UnsupportedError(f"{self.conf['sql_engine']} not supported yet.")
 
-    def get_query_column_modify(self, prev: 'ColumnConfig') -> Tuple[str, str]:
+    def get_query_column_modify(self, prev: 'ColumnConfig', table_name: str) -> Tuple[str, str]:
         """Get a sql query to modify data type of the column.
 
         Args:
@@ -131,12 +132,12 @@ class ColumnConfig():
         queries = []
         msgs = []
         if self.conf['sql_type'] != prev.conf['sql_type']:
-            q = f'ALTER TABLE "{self.conf["table_name"]}" ALTER COLUMN "{self.conf["column_name"]}" SET DATA TYPE {self.conf["sql_type"]};'
+            q = f'ALTER TABLE "{table_name}" ALTER COLUMN "{self.conf["column_name"]}" SET DATA TYPE {self.conf["sql_type"]};'
             queries.append(q)
             msg = f"\n* > MODIFY: {prev.conf['column_name']}: {prev.conf['sql_type']} --> {self.conf['sql_type']}"
             msgs.append(msg)
 
-        settings_query, msg = self.get_query_column_settings(prev.conf['sql_alter'])
+        settings_query, msg = self.get_query_column_settings(prev.conf['sql_alter'], table_name) # type: ignore
         if settings_query:
             queries.append(settings_query)
             msgs.append(msg)
@@ -145,9 +146,9 @@ class ColumnConfig():
         if self.conf['sql_engine'] == 'postgresql':
             return '\n'.join(queries), ''.join(msgs)
         else:
-            raise ValueError(f"{self.conf['sql_engine']} not supported yet.")
+            raise ex.UnsupportedError(f"{self.conf['sql_engine']} not supported yet.")
 
-    def get_query_column_settings(self, prev_sql_alter: Tuple[str]) -> Tuple[str, str]:
+    def get_query_column_settings(self, prev_sql_alter: Tuple[str, ...], table_name: str) -> Tuple[str, str]:
         """Get a sql query to apply the sql_alter settings comparing with
         another config: prev.
 
@@ -160,7 +161,7 @@ class ColumnConfig():
         if not isinstance(prev_sql_alter, (tuple, list,)):
             raise TypeError(f"sql_alter {prev_sql_alter} must be a tuple, {type(prev_sql_alter)} given")
         if not isinstance(self.conf['sql_alter'], (tuple, list,)):
-            raise TypeError(f"sql_alter {prev_sql_alter} must be a tuple, {type(self.conf['sql_alter'])} given")
+            raise TypeError(f"sql_alter {self.conf['sql_alter']} must be a tuple, {type(self.conf['sql_alter'])} given")
         query = ''
         msgs = []
         query_stubs = []
@@ -171,12 +172,12 @@ class ColumnConfig():
                 msgs.append(f"\n* + {qs}")
         query_stub = ', '.join([f'ALTER COLUMN "{self.conf["column_name"]}" {x}' for x in query_stubs])
         if query_stub:
-            query = f'ALTER TABLE "{self.conf["table_name"]}" {query_stub};'
+            query = f'ALTER TABLE "{table_name}" {query_stub};'
 
         if self.conf['sql_engine'] == 'postgresql':
             return query, ''.join(msgs)
         else:
-            raise ValueError(f"{self.conf['sql_engine']} not supported yet.")
+            raise ex.UnsupportedError(f"{self.conf['sql_engine']} not supported yet.")
 
 
 
@@ -192,7 +193,7 @@ class Field(object):
     def __init__(self, sql_type: str,
                 sql_onadd='',
                 sql_ondrop='',
-                sql_alter: Tuple[str] = (),
+                sql_alter: Tuple[str, ...] = (),
                 sql_engine='postgresql',
                 default: Any=Void,
                 validator: Callable=always_valid,
@@ -237,7 +238,7 @@ class Field(object):
         self._name = ''
         self.fallback = fallback
 
-    def __eq__(self, other: 'Field') -> bool:
+    def __eq__(self, other: 'Field') -> bool: # type: ignore
         return self.sql_conf == other.sql_conf
 
     def __repr__(self):
@@ -306,7 +307,7 @@ class Field(object):
             return self.default
 
 
-class FieldValue(object):
+class FieldValue():
     """Field Value Container
 
     `FieldValue().value` is a property that sets and gets the value.
@@ -324,6 +325,9 @@ class FieldValue(object):
         self._field = field
         self._value = Void
         self._value_change_count = 0
+
+    def __eq__(self, other):
+        return self._field == other._field and self._value == other._value
 
     @property
     def value_change_count(self) -> int:

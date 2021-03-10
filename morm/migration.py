@@ -8,15 +8,15 @@ __version__ = '0.0.1'
 
 
 import asyncio
-from typing import Dict, List, Tuple, Any, Union, Iterator
+from typing import Dict, List, Tuple, Any, Union, Iterator, Callable, Optional
 import re
 import os, sys, shutil
 import glob
 import datetime
 import json
 from pathlib import Path
-import importlib
-from morm.db import DB, ModelQuery, Transaction
+import importlib.util
+from morm.db import DB, ModelQuery, Transaction, Pool
 from morm.model import ModelBase, ModelType
 import morm.exceptions as exc
 from morm.fields.field import ColumnConfig
@@ -25,7 +25,7 @@ HOME = str(Path.home())
 MIGRATION_CURSOR_DIR = os.path.join(HOME, '.local', 'share', 'morm')
 os.makedirs(MIGRATION_CURSOR_DIR, exist_ok=True)
 
-def Open(path: str, mode: str, **kwargs) -> type(open):
+def Open(path: str, mode: str, **kwargs):
     """Wrapper for open with utf-8 encoding
 
     Args:
@@ -37,7 +37,7 @@ def Open(path: str, mode: str, **kwargs) -> type(open):
     """
     return open(path, mode, encoding='utf-8', **kwargs)
 
-def import_from_path(name: str, path: str) -> object:
+def import_from_path(name: str, path: str):
     """Import a module from path
 
     Args:
@@ -49,11 +49,13 @@ def import_from_path(name: str, path: str) -> object:
     """
     spec = importlib.util.spec_from_file_location(name, path)
     module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+    spec.loader.exec_module(module) # type: ignore
     return module
 
-def _get_changed_fields(curs: Dict[str, ColumnConfig], pres: Dict[str, ColumnConfig]) -> Dict[str, Dict[str, ColumnConfig]]:
-    ops: Dict[str, Dict[str, ColumnConfig]] = {}
+def _get_changed_fields(curs: Dict[str, ColumnConfig],
+                        pres: Dict[str, ColumnConfig])\
+                        -> Dict[str, Dict[str, Union[None, str, ColumnConfig]]]:
+    ops: Dict[str, Dict[str, Union[None, str, ColumnConfig]]] = {}
     cl = len(curs)
     pl = len(pres)
     bl = cl if cl >= pl else pl
@@ -66,11 +68,11 @@ def _get_changed_fields(curs: Dict[str, ColumnConfig], pres: Dict[str, ColumnCon
     while c < bl:
         c += 1 # loop control
         try:
-            ck = next(curs_k)
+            ck: Optional[str] = next(curs_k)
         except StopIteration:
             ck = None
         try:
-            pk = next(pres_k)
+            pk: Optional[str] = next(pres_k)
         except StopIteration:
             pk = None
         if ck:
@@ -244,7 +246,7 @@ class Migration():
         self.migration_file_pattern = os.path.join(self.migration_dir, f'{self.db_table}_*.json')
         os.makedirs(self.migration_dir, exist_ok=True)
         os.makedirs(self.migration_queue_dir, exist_ok=True)
-        self.flatten_migration_dir = self.migration_dir.replace(os.path.sep, '_')
+        self.flatten_migration_dir = os.path.realpath(self.migration_dir).replace(os.path.sep, '_')
         self.migration_cursor_path = os.path.join(MIGRATION_CURSOR_DIR, f'{self.flatten_migration_dir}.cursor')
 
         self.previous_file_path = self._get_previous_migration_file_path()
@@ -315,7 +317,7 @@ class Migration():
         cq = []
         aq = []
         for k, v in fields.items():
-            q, alq = v.get_query_column_create_stub()
+            q, alq = v.get_query_column_create_stub(self.db_table)
             cq.append(f'    {q}')
             aq.append(alq)
         cqm = ',\n'.join(cq)
@@ -374,6 +376,7 @@ class Migration():
             start (int): start index
             end (int): end index
         """
+        print(f'=> Deleting migration files for model {self.model.__name__}')
         for i in range(start, end+1):
             si = str(i)
             si = '0' * (self.index_length - len(si)) + si
@@ -391,6 +394,7 @@ class Migration():
             with open(tmpf, 'wb') as f:
                 f.write(content)
             os.rename(tmpf, self.migration_cursor_path)
+        print(f'   Migration files for model {self.model.__name__} have been successfully deleted.')
 
     def _update_migration_cursor(self, path: str):
         with open(self.migration_cursor_path, 'ab') as f:
@@ -409,38 +413,32 @@ class Migration():
                     try:
                         file = next(mgr)
                         if cursor != bytes(file, encoding='utf-8'):
-                            raise ValueError(f"Migration file path mismatch, expected {cursor} == {file}")
+                            raise ValueError(f"Migration file path mismatch, expected {str(cursor)} == {file}")
                         prev_files.append(file)
                     except StopIteration:
-                        raise ValueError(f"Migration file/s missing after {cursor}")
+                        raise ValueError(f"Migration file/s missing after {str(cursor)}")
         except FileNotFoundError:
             pass
         return mgrpy_files[len(prev_files):]
 
-    async def run_migrations(self, db: DB):
+    async def migrate(self, db: DB):
         """Run the migrations created by makemigrations beforehand.
 
         Args:
             db (DB): db handle.
         """
+        print(f'=> Applying migrations for model {self.model.__name__}')
         files = self._get_unapplied_migrations()
+        if not files:
+            print('   Nothing to migrate. Did you run makemigrations ?')
+            return None
         for file in files:
             mn = os.path.basename(file).replace('.py','')
             mr = import_from_path(mn, file) # type: ignore
             mro: MigrationRunner = mr.MigrationRunner(db, self.model)
             await mro.run()
             self._update_migration_cursor(file)
-
-    async def migrate(self, db: DB, silent=False):
-        """Make migrations and apply them
-
-        Args:
-            db (DB): db handle.
-            yes (bool, optional): confirm yes to all. Defaults to False.
-            silent (bool, optional): Whether to print message. Defaults to False.
-        """
-        self.make_migrations(yes=True, silent=silent)
-        await self.run_migrations(db)
+        print(f'   Migrations for model {self.model.__name__} completed successfully')
 
     def make_migrations(self, yes=False, silent=False):
         """Prepare migration files.
@@ -449,7 +447,7 @@ class Migration():
             yes (bool, optional): confirm yes to all. Defaults to False.
             silent (bool, optional): Suppress message. Defaults to False.
         """
-        print(f'############ Model: {self.model.__name__} ###############')
+        print(f'=> Making migrations for model {self.model.__name__} ...')
         query = ''
         qs = []
         if self.pfields:
@@ -470,12 +468,14 @@ class Migration():
                 self._take_yn()
         if not query:
             if not silent:
-                print("=== No changes detected ===")
+                print(f"   No changes detected for model {self.model.__name__}")
             return None
         with open(self.current_mgrpy_file_path, 'w') as f:
             f.write(MIGRATION_RUNNER_TEMPLATE.format(migration_query=query))
             with open(self.current_file_path, 'w') as jf:
+                # print(self.current_json)
                 json.dump(self.current_json, jf)
+        print(f'*** Migrations for model {self.model.__name__} have been successfully created.')
 
     def _migration_query_generator(self) -> Iterator[Tuple[str, str]]:
         """Detect changes on model fields and yield query, discriptive message
@@ -487,14 +487,14 @@ class Migration():
         for k, v in changed.items():
             op = v['op']
             if op == 'add':
-                query, msg = v['cur_def'].get_query_column_add()
+                query, msg = v['cur_def'].get_query_column_add(self.db_table) # type: ignore
             elif op == 'delete':
-                query, msg = v['pre_def'].get_query_column_drop()
+                query, msg = v['pre_def'].get_query_column_drop(self.db_table) # type: ignore
             elif op == 'mod':
-                query, msg = v['cur_def'].get_query_column_modify(v['pre_def'])
+                query, msg = v['cur_def'].get_query_column_modify(v['pre_def'], self.db_table) # type: ignore
             elif op == 'rename':
-                rnm_query, rnm_msg = v['cur_def'].get_query_column_rename(v['pre_key'])
-                mod_query, mod_msg = v['cur_def'].get_query_column_modify(v['pre_def'])
+                rnm_query, rnm_msg = v['cur_def'].get_query_column_rename(v['pre_key'], self.db_table) # type: ignore
+                mod_query, mod_msg = v['cur_def'].get_query_column_modify(v['pre_def'], self.db_table) # type: ignore
                 query = f'{rnm_query} {mod_query}'
                 msg = f"{mod_msg}\n{rnm_msg}"
             else:
@@ -521,7 +521,7 @@ class Migration():
             return 1
         m = re.match(f'^{self.db_table}_0*(\\d+)_.*\\.json$', previous_file_name)
         try:
-            return int(m.group(1)) + 1
+            return int(m.group(1)) + 1  # type: ignore
         except AttributeError:
             raise ValueError(f"Invalid migration file name: {previous_file_name}")
 
@@ -531,3 +531,51 @@ class Migration():
         timestamp = str(datetime.datetime.now())
         timestamp = re.sub(r'[.:\s-]', '_', timestamp)
         return f"{self.db_table}_{cindex}_{timestamp}"
+
+
+async def _run_with_transaction(pool: Pool, func: Callable, *args: Any, **kwargs: Any):
+    async with Transaction(pool) as tdb:
+        await func(tdb, *args, **kwargs)
+
+def run_with_transaction(pool: Pool, func: Callable, *args: Any, **kwargs: Any):
+    asyncio.get_event_loop().run_until_complete(_run_with_transaction(pool, func, *args, **kwargs))
+
+
+def migration_manager(pool: Pool, base_path: str, models: List[ModelType]):
+    """Migration manager
+
+    Args:
+        pool (Pool): pool object.
+        base_path (str): migration base path
+        models (List[ModelType]): models to migrate
+    """
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("cmd", type=str,
+                        help="""Command:
+                        makemigrations: Create migration files.
+                        migrate: Apply migrations created by makemigrations command.
+                        delete_migration_files <sart> <end>: Delete migration files from start index to end index.""")
+    parser.add_argument('start_index', nargs='?', type=int, default=0, help='Start index for delete_migration_files command')
+    parser.add_argument('end_index', nargs='?', type=int, default=0, help='End index for delete_migration_files command')
+    parser.add_argument('-y', '--yes', action='store_true', help='Confirm all', default=False)
+    parser.add_argument('-q', '--quiet', action='store_true', help='Suppress message', default=False)
+
+    args = parser.parse_args()
+
+    if args.cmd == 'makemigrations':
+        for model in models:
+            Migration(model, base_path).make_migrations(yes=args.yes, silent=args.quiet)
+    elif args.cmd == 'migrate':
+        for model in models:
+            run_with_transaction(pool, Migration(model, base_path).migrate)
+    elif args.cmd == 'delete_migration_files':
+        if args.start_index == 0:
+            raise ValueError(f'start_index and end_index must be given')
+        if args.start_index > args.end_index:
+            raise ValueError(f'E: Invalid start ({args.start_index}) and end index ({args.end_index})\n')
+        for model in models:
+            Migration(model, base_path).delete_migration_files(args.start_index, args.end_index)
+
+    else:
+        raise ValueError('E: Invalid command: {args.cmd}')
