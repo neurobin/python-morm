@@ -92,12 +92,12 @@ class TestMethods(unittest.TestCase):
     @classmethod
     async def _asetup(cls):
         db = DB(SNORM_DB_POOL)
-        cls.base_path = '/tmp/__morm_migration__x_' + str(random.random())
+        cls.mgr_base_path = '/tmp/__morm_migration__x_' + str(random.random())
         await db.execute(f'DROP TABLE IF EXISTS "{BigUser.Meta.db_table}"; DROP TABLE IF EXISTS "{BigUser2.Meta.db_table}";')
         models = [BigUser, BigUser2]
         async with Transaction(SNORM_DB_POOL) as tdb:
             for model in models:
-                mgo = mg.Migration(model, cls.base_path)
+                mgo = mg.Migration(model, cls.mgr_base_path)
                 mgo.make_migrations(yes=True)
                 await mgo.migrate(tdb)
         users = [
@@ -117,7 +117,7 @@ class TestMethods(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        shutil.rmtree(cls.base_path)
+        shutil.rmtree(cls.mgr_base_path)
 
 
     def test_Model_Instance(self):
