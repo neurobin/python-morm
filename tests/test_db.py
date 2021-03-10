@@ -5,6 +5,7 @@ import random
 from uuid import uuid4
 import inspect
 import asyncpg # type: ignore
+import sys, shutil
 
 from morm.db import Pool, DB, Transaction, ModelQuery
 import morm.model as mdl
@@ -13,6 +14,8 @@ from morm.types import Void
 from morm import Field
 # from morm.model import ModelBase as Model
 from morm.model import Model
+import morm.migration as mg
+import random
 
 
 LOGGER_NAME = 'morm-test-model-'
@@ -51,9 +54,10 @@ class User(Model):
     profession = Field('varchar(255)')
 
 class BigUser(Model):
+    id = Field('SERIAL NOT NULL')
     name = Field('varchar(255)')
     profession = Field('varchar(255)')
-    age = Field("int")
+    age = Field("integer")
     hobby = Field('varchar(255)')
     status = Field('varchar(255)')
     salary = Field('varchar(255)')
@@ -70,7 +74,7 @@ class BigUser2(Model):
     id = Field('SERIAL NOT NULL')
     name = Field('varchar(255)')
     profession = Field('varchar(255)')
-    age = Field("int")
+    age = Field("integer")
     hobby = Field('varchar(255)')
     status = Field('varchar(255)')
     salary = Field('varchar(255)')
@@ -84,6 +88,37 @@ class BigUser2(Model):
 
 
 class TestMethods(unittest.TestCase):
+
+    @classmethod
+    async def _asetup(cls):
+        db = DB(SNORM_DB_POOL)
+        cls.base_path = '/tmp/__morm_migration__x_' + str(random.random())
+        await db.execute(f'DROP TABLE IF EXISTS "{BigUser.Meta.db_table}"; DROP TABLE IF EXISTS "{BigUser2.Meta.db_table}";')
+        models = [BigUser, BigUser2]
+        async with Transaction(SNORM_DB_POOL) as tdb:
+            for model in models:
+                mgo = mg.Migration(model, cls.base_path)
+                mgo.make_migrations(yes=True)
+                await mgo.migrate(tdb)
+        users = [
+            {'name': 'jahid', 'profession': 'developer'},
+            {'name': 'john', 'profession': 'dev'},
+        ]
+        # input('Enter to continue')
+        for user in users:
+            u1 = BigUser(user)
+            u2 = BigUser2(user)
+            await db.save(u1)
+            await db.save(u2)
+
+    @classmethod
+    def setUpClass(cls):
+        asyncio.get_event_loop().run_until_complete(cls._asetup())
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(cls.base_path)
+
 
     def test_Model_Instance(self):
         b = BigUser(name='__dummy__', age=23)

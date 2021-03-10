@@ -304,7 +304,8 @@ class Migration():
             fieldscc[k] = v.sql_conf
         return fieldscc
 
-    def _get_create_table_query(self, fields: Dict[str, ColumnConfig]) -> str:
+    @staticmethod
+    def _get_create_table_query(db_table: str, fields: Dict[str, ColumnConfig]) -> str:
         """Get the complete create table query
 
         Args:
@@ -313,11 +314,11 @@ class Migration():
         Returns:
             str: query string
         """
-        cq0 = f'CREATE TABLE "{self.db_table}" (\n'
+        cq0 = f'CREATE TABLE "{db_table}" (\n'
         cq = []
         aq = []
         for k, v in fields.items():
-            q, alq = v.get_query_column_create_stub(self.db_table)
+            q, alq = v.get_query_column_create_stub(db_table)
             cq.append(f'    {q}')
             aq.append(alq)
         cqm = ',\n'.join(cq)
@@ -333,7 +334,7 @@ class Migration():
         Returns:
             str: query string
         """
-        return self._get_create_table_query(self.cfields)
+        return self._get_create_table_query(self.db_table, self.cfields)
 
     def _get_json_from_file(self, path: str) -> Dict[str, Any]:
         """Get json from file or return a default json if file does not exist.
