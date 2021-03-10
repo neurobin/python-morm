@@ -155,29 +155,29 @@ class MigrationRunner(morm.migration.MigrationRunner):
     """
     migration_query = """{migration_query}"""
 
-    async def run_before(self):
-        """Run before migration
+    # async def run_before(self):
+    #     """Run before migration
 
-        self.tdb is the db handle (transaction)
-        self.model is the model class
-        """
-        dbm = self.tdb(self.model)
-        # # Example
-        # dbm.q('SOME QUERY TO SET "column_1"=$1', 'some_value')
-        # await dbm.execute()
-        # # etc..
+    #     self.tdb is the db handle (transaction)
+    #     self.model is the model class
+    #     """
+    #     dbm = self.tdb(self.model)
+    #     # # Example
+    #     # dbm.q('SOME QUERY TO SET "column_1"=$1', 'some_value')
+    #     # await dbm.execute()
+    #     # # etc..
 
-    async def run_after(self):
-        """Run after migration.
+    # async def run_after(self):
+    #     """Run after migration.
 
-        self.tdb is the db handle (transaction)
-        self.model is the model class
-        """
-        dbm = self.tdb(self.model)
-        # # Example
-        # dbm.q('SOME QUERY TO SET "column_1"=$1', 'some_value')
-        # await dbm.execute()
-        # # etc..
+    #     self.tdb is the db handle (transaction)
+    #     self.model is the model class
+    #     """
+    #     dbm = self.tdb(self.model)
+    #     # # Example
+    #     # dbm.q('SOME QUERY TO SET "column_1"=$1', 'some_value')
+    #     # await dbm.execute()
+    #     # # etc..
 '''
 
 class MigrationRunner():
@@ -197,11 +197,12 @@ class MigrationRunner():
         self.tdb is the db handle (transaction)
         self.model is the model class
         """
-        dbm = self.tdb(self.model)
+        # dbm = self.tdb(self.model)
         # # Example
         # dbm.q('SOME QUERY TO SET "column_1"=$1', 'some_value')
         # await dbm.execute()
         # # etc..
+        pass
 
     async def run_after(self):
         """Run after migration.
@@ -209,11 +210,12 @@ class MigrationRunner():
         self.tdb is the db handle (transaction)
         self.model is the model class
         """
-        dbm = self.tdb(self.model)
+        # dbm = self.tdb(self.model)
         # # Example
         # dbm.q('SOME QUERY TO SET "column_1"=$1', 'some_value')
         # await dbm.execute()
         # # etc..
+        pass
 
     async def _run_migration_query(self):
         dbm = self.tdb(self.model)
@@ -355,7 +357,6 @@ class Migration():
 
     def _take_yn(self):
         yn = input("Is this correct? [Y/n]: ")
-        print('\n\n')
         if yn != 'Y' and yn != 'y': sys.exit()
         return True
 

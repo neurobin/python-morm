@@ -11,12 +11,9 @@ from morm.fields.field import ColumnConfig
 import os, shutil, sys
 from morm.db import DB, Pool, Transaction
 import morm.exceptions as ex
+import random
 
-
-class TestMethods(unittest.TestCase):
-    migration_path = '/home/jahid/Git/Github/neurobin/morm/migration_data'
-    def setUp(self):
-        self.DB_POOL = Pool(
+DB_POOL = Pool(
             dsn='postgres://',
             host='localhost',
             port=5432,
@@ -25,10 +22,29 @@ class TestMethods(unittest.TestCase):
             database='test',
             min_size=10,
             max_size=90,
-        )
+)
+
+class TestMethods(unittest.TestCase):
+
+    @classmethod
+    async def _asetup(cls):
+        cls.DB_POOL = DB_POOL
+        cls.mgpath = '/tmp/_morm_mgr_x_' + str(random.random())
+        db = DB(cls.DB_POOL)
+        await db.execute(f'DROP TABLE IF EXISTS "User";')
+
+    @classmethod
+    def setUpClass(cls):
+        asyncio.get_event_loop().run_until_complete(cls._asetup())
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(cls.mgpath)
+
+    def setUp(self):
+        pass
 
     def tearDown(self):
-        # shutil.rmtree(self.migration_path)
         # self.DB_POOL.close() # atexit calls it
         pass
 
@@ -119,7 +135,7 @@ CREATE TABLE "User" (
 
 ALTER TABLE "User" ALTER COLUMN "profession" SET DEFAULT 'Teacher', ALTER COLUMN "profession" SET NOT NULL;""".replace('@', '').strip())
 
-        mgo = mg.Migration(User, '/home/jahid/Git/Github/neurobin/morm/migration_data')
+        mgo = mg.Migration(User, self.mgpath)
         mgo.make_migrations(yes=True)
 
         class User(Model):
@@ -128,16 +144,15 @@ ALTER TABLE "User" ALTER COLUMN "profession" SET DEFAULT 'Teacher', ALTER COLUMN
             profession_name = Field('varchar(265)', sql_alter=("SET DEFAULT 'Teacher'",'SET NOT NULL'))
             hobby = Field('varchar(45)')
 
-        mgpath = '/home/jahid/Git/Github/neurobin/morm/migration_data'
-        mgo = mg.Migration(User, mgpath)
-        mg.Migration(User, mgpath).make_migrations(yes=True)
-        mg.Migration(User, mgpath).make_migrations(yes=True)
-        mg.Migration(User, mgpath).make_migrations(yes=True)
+        mgo = mg.Migration(User, self.mgpath)
+        mg.Migration(User, self.mgpath).make_migrations(yes=True)
+        mg.Migration(User, self.mgpath).make_migrations(yes=True)
+        mg.Migration(User, self.mgpath).make_migrations(yes=True)
 
-        self._migrate(mg.Migration(User, mgpath))
-        self._migrate(mg.Migration(User, mgpath))
+        self._migrate(mg.Migration(User, self.mgpath))
+        self._migrate(mg.Migration(User, self.mgpath))
 
-        mg.Migration(User, mgpath).delete_migration_files(1, 1)
+        mg.Migration(User, self.mgpath).delete_migration_files(1, 1)
 
         class AbstractUser(User):
             class Meta:
@@ -146,31 +161,32 @@ ALTER TABLE "User" ALTER COLUMN "profession" SET DEFAULT 'Teacher', ALTER COLUMN
             class Meta:
                 proxy = True
         with self.assertRaises(ex.MigrationModelNotAllowedError):
-            mgo = mg.Migration(AbstractUser, mgpath)
+            mgo = mg.Migration(AbstractUser, self.mgpath)
 
         with self.assertRaises(ex.MigrationModelNotAllowedError):
-            mgo = mg.Migration(ProxyUser, mgpath)
+            mgo = mg.Migration(ProxyUser, self.mgpath)
+
+        self.assertEqual(mgo.default_json, mgo._get_json_from_file('___non_existence'))
 
         class User(Model):
             id = Field('SERIAL', sql_onadd='NOT NULL')
             name = Field('varchar(25)')
             profession_name = Field('varchar(265)', sql_alter=("SET DEFAULT 'Teacher'",'SET NOT NULL'))
-            hobby = Field('varchar(45)')
         sys.argv = [__file__, 'makemigrations', '-y']
-        mg.migration_manager(self.DB_POOL, mgpath, [User])
+        mg.migration_manager(self.DB_POOL, self.mgpath, [User])
         sys.argv = [__file__, 'migrate']
-        mg.migration_manager(self.DB_POOL, mgpath, [User])
+        mg.migration_manager(self.DB_POOL, self.mgpath, [User])
         sys.argv = [__file__, 'delete_migration_files', '1', '1']
-        mg.migration_manager(self.DB_POOL, mgpath, [User])
+        mg.migration_manager(self.DB_POOL, self.mgpath, [User])
         sys.argv = [__file__, 'delete_migration_file', '1', '1']
         with self.assertRaises(ValueError):
-            mg.migration_manager(self.DB_POOL, mgpath, [User])
+            mg.migration_manager(self.DB_POOL, self.mgpath, [User])
         sys.argv = [__file__, 'delete_migration_files']
         with self.assertRaises(ValueError):
-            mg.migration_manager(self.DB_POOL, mgpath, [User])
+            mg.migration_manager(self.DB_POOL, self.mgpath, [User])
         sys.argv = [__file__, 'delete_migration_files', '2', '1']
         with self.assertRaises(ValueError):
-            mg.migration_manager(self.DB_POOL, mgpath, [User])
+            mg.migration_manager(self.DB_POOL, self.mgpath, [User])
 
 
     def _migrate(self, mgo: mg.Migration):

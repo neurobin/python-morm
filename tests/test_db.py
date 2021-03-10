@@ -101,8 +101,12 @@ class TestMethods(unittest.TestCase):
                 mgo.make_migrations(yes=True)
                 await mgo.migrate(tdb)
         users = [
-            {'name': 'jahid', 'profession': 'developer'},
-            {'name': 'john', 'profession': 'dev'},
+            {'name': 'Jahid', 'profession': 'developer'},
+            {'name': 'John', 'profession': 'dev'}, # this needs to be in second position
+            {'name': 'John Doe', 'profession': 'Teacher'},
+            {'name': 'Jane Doe', 'profession': 'Teacher'},
+            {'name': 'John Doe', 'profession': 'Teacher'},
+            {'name': 'Jane Doe', 'profession': 'Teacher'},
         ]
         # input('Enter to continue')
         for user in users:
@@ -180,7 +184,7 @@ class TestMethods(unittest.TestCase):
         mq = db(BigUser).qfilter().qc('', '$1', True) # this one has ordering
         mq2 = db(BigUser2).qfilter(no_ordering=True).qc('', '$1', True).qorder().qo('id')
         # print(mq.getq())
-        mqq = ' SELECT "name","profession","hobby","status","salary" FROM "BigUser" WHERE $1 ORDER BY "name" ASC,"profession" DESC,"age" DESC'
+        mqq = ' SELECT "id","name","profession","hobby","status","salary" FROM "BigUser" WHERE $1 ORDER BY "name" ASC,"profession" DESC,"age" DESC'
         mqq2 = ' SELECT "id","name","profession" FROM "BigUser2" WHERE $1 ORDER BY "id" ASC '
         res = await mq.fetch()
         res2 = await mq2.fetch()
@@ -193,6 +197,7 @@ class TestMethods(unittest.TestCase):
         print('\n### Exclude fields and values\n')
 
         print('* fields_down and exclude_fields_down control which fields will be retrieved from db and accessed from model object')
+        # print(mq.getq()[0])
         self.assertEqual(mq.getq()[0], mqq)
         self.assertEqual(mq2.getq()[0], mqq2)
         print('* keys excluded for down with field name can not be accessed')
@@ -304,9 +309,10 @@ class TestMethods(unittest.TestCase):
     def test_filter_func(self):
         db = DB(SNORM_DB_POOL)
         q = db(BigUser).qfilter().qc('', '$1', True).getq()
+        # print(q)
         self.assertEqual(
             q,
-            (' SELECT "name","profession","hobby","status","salary" FROM "BigUser" WHERE $1 ORDER BY "name" ASC,"profession" DESC,"age" DESC', [True])
+            (' SELECT "id","name","profession","hobby","status","salary" FROM "BigUser" WHERE $1 ORDER BY "name" ASC,"profession" DESC,"age" DESC', [True])
         )
         asyncio.get_event_loop().run_until_complete(self._test_db_filter_data())
 
