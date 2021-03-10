@@ -375,7 +375,6 @@ class Migration():
 
     def _get_unapplied_migrations(self) -> List[str]:
         mgrpy_files = sorted(glob.glob(self.mgrpy_file_pattern))
-        print(mgrpy_files)
         mgr = iter(mgrpy_files)
         prev_files = []
         try:
