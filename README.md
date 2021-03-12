@@ -225,6 +225,27 @@ qh = db(User)
 userp = await qh.qfilter().q(f'{qh.f.profession} = ${qh.c} AND {qh.f.age} = ${qh.c+1}', 'Teacher', 30).fetch()
 ```
 
+## Get
+
+The get method has the signature `get(*vals, col='', comp='=$1')`.
+
+It gets the first row found by column and value. If `col` is not given, it defaults to the primary key (`pk`) of the model. If comparison is not given, it defaults to `=$1`
+
+Example:
+
+```python
+from morm.db import DB
+
+db = DB(DB_POOL) # get a db handle.
+
+# get by pk:
+db(User).get(5)
+
+# price between 5 and 2000
+db(User).get(5, 2000, col='price', comp='BETWEEN $1 AND $2')
+```
+
+
 # Transaction
 
 ```python

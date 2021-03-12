@@ -951,6 +951,16 @@ class ModelQuery():
 
         If comparison is not given, it defaults to `=$1`
 
+        Example:
+
+        ```python
+        # get by pk:
+        db(User).get(5)
+
+        # price between 5 and 2000
+        db(User).get(5, 2000, col='price', comp='BETWEEN $1 AND $2')
+        ```
+
         Args:
             *vals (any): Values to compare. Must be referenced with $1, $2 etc.. in `comp`.
             col (str, optional): Column name. Defaults to the primary key.
