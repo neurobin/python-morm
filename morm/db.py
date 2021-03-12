@@ -314,6 +314,32 @@ class DB(object):
             query = ''
         return query, values
 
+    def get_delete_query(self, mob: ModelBase) -> Tuple[str, List[Any]]:
+        """Get the delete query for the model object.
+
+        Args:
+            mob (ModelBase): model object.
+
+        Returns:
+            Tuple[str, List[Any]]: quey, prepared_args
+        """
+        pkval = getattr(mob, mob.__class__._get_pk_())
+        query = f'DELETE FROM "{mob.__class__._get_db_table_()}" WHERE "{mob.__class__._get_pk_()}"=$1'
+        return query, [pkval]
+
+    async def delete(self, mob: ModelBase, timeout: float = None) -> str:
+        """Delete the model object data from database.
+
+        Args:
+            mob (ModelBase): Model object
+            timeout (float): timeout value. Defaults to None.
+
+        Returns:
+            (str): status of last sql command.
+        """
+        query, args = self.get_delete_query(mob)
+        return await self.execute(query, *args, timeout=timeout)
+
     async def insert(self, mob: ModelBase, timeout: float = None) -> Any:
         """Insert the current data state of mob into db.
 

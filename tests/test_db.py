@@ -308,6 +308,13 @@ class TestMethods(unittest.TestCase):
         b.id = 3
         self.assertEqual(db.get_update_query(b), ('', []))
 
+        # delete check
+        user5 = await db(BigUser2).get(5)
+        self.assertEqual(user5.id, 5)
+        await db.delete(user5)
+        user5 = await db(BigUser2).get(5)
+        self.assertEqual(user5, None)
+
 
     def test_filter_func(self):
         db = DB(SNORM_DB_POOL)
