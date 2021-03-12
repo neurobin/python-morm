@@ -448,7 +448,7 @@ class Model(ModelBase):
     class User(Base):
         name = Field('varchar(65)')
         email = Field('varchar(255)')
-        password = Field('varchar(16)')
+        password = Field('varchar(255)')
     ```
 
     An advanced model could look like:
@@ -469,7 +469,7 @@ class Model(ModelBase):
 
         name = Field('varchar(65)')
         email = Field('varchar(255)')
-        password = Field('varchar(16)')
+        password = Field('varchar(255)')
         profession = Field('varchar(255)', default='Unknown')
         random = Field('integer', default=get_rand) # function can be default
     ```
