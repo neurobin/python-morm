@@ -1,6 +1,6 @@
 [![Build status image](https://travis-ci.org/neurobin/python-morm.svg?branch=release)](https://travis-ci.com/github/neurobin/python-morm) [![Coverage Status](https://coveralls.io/repos/github/neurobin/python-morm/badge.svg?branch=release)](https://coveralls.io/github/neurobin/python-morm?branch=release)
 
-Minimal database object relational mapper.
+A minimal asynchronous database object relational mapper that supports transaction, connection pool and migration.
 
 Currently supports *PostgreSQL* with `asyncpg`.
 
