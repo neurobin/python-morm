@@ -41,6 +41,6 @@ setup(name="morm",
         'Programming Language :: Python :: 3',
       ],
       python_requires='>=3.7.0',
-      install_requires=['asyncpg',
-                        ],
+      install_requires=['asyncpg',],
+      scripts=['morm/morm_admin',],
 test_suite="morm.tests.test")
