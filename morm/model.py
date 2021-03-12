@@ -475,8 +475,7 @@ class Model(ModelBase):
         random = Field('integer', default=get_rand) # function can be default
     ```
 
-    Initialize a model instance
-    ---------------------------
+    ## Initialize a model instance
 
     keyword arguments initialize corresponding fields according to
     the keys.
@@ -495,6 +494,22 @@ class Model(ModelBase):
 
     Raises:
         TypeError: If invalid type of argument is provided.
+
+    ## Special Model Meta attribute `f`:
+
+    You can access field names from `ModelClass.Meta.f`.
+
+    This allows a spell-safe way to write the field names. If you
+    misspell the name, you will get AttributeError.
+
+    ```python
+    f = ModelClass.Meta.f
+    my_data = {
+        f.name: 'John Doe',         # safe from spelling mistake
+        f.profession: 'Teacher',    # safe from spelling mistake
+        'hobby': 'Gardenning',      # unsafe from spelling mistake
+    }
+    ```
     """
     class Meta:
         # The following needs to be defined here, not in meta.Meta
