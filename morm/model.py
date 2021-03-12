@@ -485,7 +485,7 @@ class Model(ModelBase):
 
     Example:
 
-    ```
+    ```python
     Model(name='John Doe', profession='Teacher')
     Model({'name': 'John Doe', 'profession': 'Teacher'})
     Model({'name': 'John Doe', 'profession': 'Teacher'}, age=34)
@@ -500,7 +500,7 @@ class Model(ModelBase):
     You can access field names from `ModelClass.Meta.f`.
 
     This allows a spell-safe way to write the field names. If you
-    misspell the name, you will get AttributeError.
+    misspell the name, you will get `AttributeError`.
 
     ```python
     f = ModelClass.Meta.f
