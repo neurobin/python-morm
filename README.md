@@ -6,6 +6,8 @@ Currently supports *PostgreSQL* with `asyncpg`.
 
 # Install
 
+**Requires Python 3.7+**
+
 ```bash
 pip install --user morm
 ```
