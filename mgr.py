@@ -1,11 +1,10 @@
 #!/usr/bin/python
 
 from morm.migration import migration_manager
-from settings import DB_POOL                       # change accordingly
-from morm.fields import Field
-from morm.pg_models import Base
+from .settings import DB_POOL                       # change accordingly
+from morm import ModelPostgresql, Field
 
-class SiteUser(Base):
+class SiteUser(ModelPostgresql):
     name = Field('varchar(254)')
     profession = Field('varchar(258)')
     age = Field('integer')

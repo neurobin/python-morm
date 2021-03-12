@@ -32,7 +32,7 @@ DB_POOL = Pool(
             """,
         'mgr.py': """
 from morm.migration import migration_manager
-from .settings import DB_POOL                       # change accordingly
+from settings import DB_POOL                       # change accordingly
 from app.models import SomeModel, SomeOtherModel,   # change accordingly
 
 MIGRATION_BASE_PATH = '/some_absolute_path'         # change accordingly

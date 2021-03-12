@@ -44,10 +44,24 @@ def record_to_model(record: Record, model_class: ModelType) -> Model:
 class Pool(object):
     """Open database connection pool.
 
-    This creates and opens a pool. The pool is registered to close
-    atexit.
+    ```python
+    from morm.db import Pool
 
-    The parameters are same as `asyncpg.create_pool` function.
+    DB_POOL = Pool(
+        dsn='postgres://',
+        host='localhost',
+        port=5432,
+        user='jahid',       # change accordingly
+        password='jahid',   # change accordingly
+        database='test',    # change accordingly
+        min_size=10,        # change accordingly
+        max_size=90,        # change accordingly
+    )
+    ```
+
+    This will create and open an asyncpg pool which will be automatically closed at exit.
+
+    You should set this in a settings file from where you can import the `DB_POOL`
 
     Args:
         dsn (str, optional): DSN string. Defaults to None.
@@ -438,15 +452,41 @@ class DB(object):
 class ModelQuery():
     """Query builder for model class.
 
+    Calling `db(Model)` gives you a model query handler which have several query methods to help you make queries.
+
+    Use `q(query, *args)` method to make queries with positional arguments. If you want named arguments, use the uderscored version of these methods. For example, `q(query, *args)` has an underscored version `q_(query, *args, **kwargs)` that can take named arguments.
+
+    You can add a long query part by part:
+
+    ```python
+    from morm.db import DB
+
+    db = DB(DB_POOL) # get a db handle.
+    qh = db(User)   # get a query handle.
+
+    query, args = qh.q(f'SELECT * FROM {qh.db_table}')\
+                    .q(f'WHERE {qh.f.profession} = ${qh.c}', 'Teacher')\
+                    .q_(f'AND {qh.f.age} = :age', age=30)\
+                    .getq()
+    print(query, args)
+    # fetch:
+    await qh.fetch()
+    ```
+
     The `q` family of methods (`q, qc, qu etc..`) can be used to
     build a query step by step. These methods can be chained
     together to break down the query building in multiple steps.
 
     Several properties are available to get information of the model
-    such as table name (`self.db_table`), ordering (`self.ordering`),
-    quoted field names (`self.f.<field_name>`) etc..
+    such as:
 
-    `self.c` is a counter that gives an integer representing the
+    1. `qh.db_table`: Quoted table name e.g `"my_user_table"`.
+    2. `qh.pk`: Quoted primary key name e.g `"id"`.
+    3. `qh.ordering`: ordering e.g `"price" ASC, "quantity" DESC`.
+    4. `qh.f.<field_name>`: quoted field names e.g`"profession"`.
+    5. `qh.c`: Current available position for positional argument (Instead of hardcoded `$1`, `$2`, use `f'${qh.c}'`, `f'${qh.c+1}'`).
+
+    `qh.c` is a counter that gives an integer representing the
     last existing argument position plus 1.
 
     `reset()` can be called to reset the query to start a new.
@@ -454,7 +494,7 @@ class ModelQuery():
     To execute a query, you need to run one of the execution methods
     : `fetch, fetchrow, fetchval, execute`.
 
-    Notable convenience methods:
+    **Notable convenience methods:**
 
     * `qupdate(data)`: Initialize a update query for data
     * `qfilter()`: Initialize a filter query upto WHERE clasue.
@@ -926,6 +966,21 @@ class ModelQuery():
 
 class Transaction():
     """Start a transaction.
+
+    Example:
+
+    ```python
+    from morm.db import Transaction
+
+    async with Transaction(DB_POOL) as tdb:
+        # use tdb just like you use db
+        user6 = await tdb(User).get(6)
+        user6.age = 34
+        tdb.save(user6)
+        user5 = await tdb(User).get(5)
+        user5.age = 34
+        tdb.save(user6)
+    ```
 
     Args:
         pool (Pool): Pool instance.

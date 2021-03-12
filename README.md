@@ -4,6 +4,29 @@ Minimal database object relational mapper.
 
 Currently supports *PostgreSQL* with `asyncpg`.
 
+# Init project
+
+**Run `morm_admin init` in your project directory to make some default files such as `settings.py`, `mgr.py`**
+
+Edit *settings.py* to put the correct database credentials:
+
+```python
+from morm.db import Pool
+
+DB_POOL = Pool(
+    dsn='postgres://',
+    host='localhost',
+    port=5432,
+    user='jahid',       # change accordingly
+    password='jahid',   # change accordingly
+    database='test',    # change accordingly
+    min_size=10,        # change accordingly
+    max_size=90,        # change accordingly
+)
+```
+
+This will create and open an asyncpg pool which will be automatically closed at exit.
+
 # Model
 
 It's more than a good practice to define a Base model first:
@@ -69,7 +92,6 @@ Example:
 User(name='John Doe', profession='Teacher')
 User({'name': 'John Doe', 'profession': 'Teacher'})
 User({'name': 'John Doe', 'profession': 'Teacher'}, age=34)
-User({'name': 'John Doe', 'profession': 'Teacher', 'active': True}, age=34)
 ```
 
 ## Special Model Meta attribute `f`:
@@ -103,3 +125,179 @@ my_data = {
 * `exclude_values_up` (*Dict[str, Tuple[Any]]*): Exclude fields with these values when updating. Empty dict and empty tuple means no restriction. Example: `{'': (None,), 'price': (0,)}` when field name is left empty ('') that criteria will be applied to all fields.
 * `exclude_values_down` (*Dict[str, Tuple[Any]]*): Exclude fields with these values when retrieving data. Empty dict and empty tuple means no restriction. Example: `{'': (None,), 'price': (0,)}` when field name is left empty ('') that criteria will be applied to all fields.
 * `f`: Access field names.
+
+# CRUD
+
+All available database operations are exposed through `DB` object.
+
+Example:
+
+```python
+from morm.db import DB
+
+db = DB(DB_POOL) # get a db handle.
+
+# Create
+user = User(name='John Doe', profession='Teacher')
+await db.save(user)
+
+# Read
+user5 = await db(User).get(5)
+
+# Update
+user5.age = 30
+await db.save(user5)
+
+# Delete
+await db.delete(user5)
+```
+
+# Query
+
+Calling `db(Model)` gives you a model query handler which have several query methods to help you make queries.
+
+Use `.q(query, *args)` method to make queries with positional arguments. If you want named arguments, use the uderscored version of these methods. For example, `q(query, *args)` has an underscored version `q_(query, *args, **kwargs)` that can take named arguments.
+
+You can add a long query part by part:
+
+```python
+from morm.db import DB
+
+db = DB(DB_POOL) # get a db handle.
+qh = db(User)   # get a query handle.
+
+query, args = qh.q(f'SELECT * FROM {qh.db_table}')\
+                .q(f'WHERE {qh.f.profession} = ${qh.c}', 'Teacher')\
+                .q_(f'AND {qh.f.age} = :age', age=30)\
+                .getq()
+print(query, args)
+# fetch:
+await qh.fetch()
+```
+
+The `q` family of methods (`q, qc, qu etc..`) can be used to
+build a query step by step. These methods can be chained
+together to break down the query building in multiple steps.
+
+Several properties are available to get information of the model
+such as:
+
+1. `qh.db_table`: Quoted table name e.g `"my_user_table"`.
+2. `qh.pk`: Quoted primary key name e.g `"id"`.
+3. `qh.ordering`: ordering e.g `"price" ASC, "quantity" DESC`.
+4. `qh.f.<field_name>`: quoted field names e.g`"profession"`.
+5. `qh.c`: Current available position for positional argument (Instead of hardcoded `$1`, `$2`, use `f'${qh.c}'`, `f'${qh.c+1}'`).
+
+`qh.c` is a counter that gives an integer representing the
+last existing argument position plus 1.
+
+`reset()` can be called to reset the query to start a new.
+
+To execute a query, you need to run one of the execution methods
+: `fetch, fetchrow, fetchval, execute`.
+
+**Notable convenience methods:**
+
+* `qupdate(data)`: Initialize a update query for data
+* `qfilter()`: Initialize a filter query upto WHERE clasue.
+* `get(pkval)`: Get an item by primary key.
+
+## Filter
+
+```python
+from morm.db import DB
+
+db = DB(DB_POOL) # get a db handle.
+
+f = User.Meta.f
+userp = await db(User).qfilter().q(f'"{f.profession}"=$1', 'Teacher').fetch()
+userp = await db(User).qfilter().qc(f.profession, '=$1', 'Teacher').fetch()
+```
+
+It is safer to use `${qh.c}` instead of `$1`, `${qh.c+1}` instead of `$2`, etc..
+
+```python
+from morm.db import DB
+
+db = DB(DB_POOL) # get a db handle.
+
+qh = db(User)
+userp = await qh.qfilter().q(f'{qh.f.profession} = ${qh.c} AND {qh.f.age} = ${qh.c+1}', 'Teacher', 30).fetch()
+```
+
+# Transaction
+
+```python
+from morm.db import Transaction
+
+async with Transaction(DB_POOL) as tdb:
+    # use tdb just like you use db
+    user6 = await tdb(User).get(6)
+    user6.age = 34
+    tdb.save(user6)
+    user5 = await tdb(User).get(5)
+    user5.age = 34
+    tdb.save(user6)
+```
+
+# Migration
+
+You should have created the *settings.py* and *mgr.py* file with `morm_admin init`.
+
+List all the models that you want migration for in *mgr.py*. You will know how to edit it once you open it.
+
+Then, to make migration files, run:
+
+```bash
+python mgr.py makemigrations
+```
+
+This will ask you for confirmation on each changes, add `-y` flag to bypass this.
+
+run
+
+```bash
+python mgr.py migrate
+```
+
+to apply the migrations.
+
+
+## Adding data into migration
+
+Go into migration directory after making the migration files and look for the `.py` files inside `queue` directory. Identify current migration files, open them for edit. You will find something similar to this:
+
+```python
+import morm
+
+class MigrationRunner(morm.migration.MigrationRunner):
+    """Run migration with pre and after steps.
+    """
+    migration_query = """{migration_query}"""
+
+    # async def run_before(self):
+    #     """Run before migration
+
+    #     self.tdb is the db handle (transaction)
+    #     self.model is the model class
+    #     """
+    #     dbm = self.tdb(self.model)
+    #     # # Example
+    #     # dbm.q('SOME QUERY TO SET "column_1"=$1', 'some_value')
+    #     # await dbm.execute()
+    #     # # etc..
+
+    # async def run_after(self):
+    #     """Run after migration.
+
+    #     self.tdb is the db handle (transaction)
+    #     self.model is the model class
+    #     """
+    #     dbm = self.tdb(self.model)
+    #     # # Example
+    #     # dbm.q('SOME QUERY TO SET "column_1"=$1', 'some_value')
+    #     # await dbm.execute()
+    #     # # etc..
+```
+
+As you can see, there are `run_before` and `run_after` hooks. You can use them to make custom queries before and after the migration query. You can even modify the migration query itself.
