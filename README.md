@@ -10,6 +10,7 @@ It's more than a good practice to define a Base model first:
 
 ```python
 from morm.model import Model
+from morm.datetime import timestampz
 
 class Base(Model):
     class Meta:

@@ -429,6 +429,7 @@ class Model(ModelBase):
 
     ```python
     from morm.model import Model
+    from morm.datetime import timestampz
 
     class Base(Model):
         class Meta:
