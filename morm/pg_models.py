@@ -1,3 +1,10 @@
+"""Common Postgresql Models.
+"""
+
+__author__ = 'Md Jahidul Hamid <jahidulhamid@yahoo.com>'
+__copyright__ = 'Copyright © Md Jahidul Hamid <https://github.com/neurobin/>'
+__license__ = '[BSD](http://www.opensource.org/licenses/bsd-license.php)'
+__version__ = '0.0.1'
 
 
 from morm.model import Model
@@ -6,7 +13,7 @@ from morm.datetime import timestampz
 
 
 class Base(Model):
-    """A model that defines default columns (postgresql): id
+    """A model that defines default column 'id'
     """
     class Meta:
         abstract = True
@@ -14,12 +21,11 @@ class Base(Model):
 
 
 class BaseCommon(Model):
-    """A model that defines default columns (postgresql):
+    """A model that defines default columns:
 
     id: Auto incremented integer
     created_at: timestampz
     update_at: timestampz (used with pythonic default)
-    and updated_at
     """
     class Meta:
         abstract = True

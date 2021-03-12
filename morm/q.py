@@ -15,10 +15,11 @@ from morm.model import ModelType, Model
 
 
 def Q(name: str, quote: str = '"') -> str:
-    """SQL quote name by adding leading and trailing double quote.
+    """Quote name by adding leading and trailing (double) quote.
 
     Args:
         name (str): name of table or column.
+        quote (str): str to quote with.
 
     Returns:
         str: Quoted name

@@ -23,7 +23,7 @@ import morm.meta as mt      # for internal use
 Meta = mt.Meta  # For client use
 
 
-class FieldNames():
+class _FieldNames():
     """Access field names
     """
     def __init__(self, func):
@@ -102,12 +102,7 @@ class ModelType(type):
 
         new_attrs = {}
 
-        # https://www.python.org/dev/peps/pep-0520
-        # PEP 520 says: dir() will not depend on __definition_order__
-        # Even though as of python 3.8.3 we see dir() also preserves order
-        # but let's be safe.
-        # for n in dir(_class_):
-        #     v = getattr(_class_, n)
+        # dict is ordered, officially from python 3.7
         for n, v in _class_.__dict__.items():
             if isinstance(v, Field):
                 if n.startswith('__') and n.endswith('__'):
@@ -127,7 +122,7 @@ class ModelType(type):
                 return n
             else:
                 raise AttributeError(f"No such field '{n}' in model '{class_name}'")
-        meta_attrs['f'] = FieldNames(_get_field_name)
+        meta_attrs['f'] = _FieldNames(_get_field_name)
 
         MetaClass = mt.MetaType('Meta', (mt.Meta,), meta_attrs)
         new_attrs['Meta'] = MetaClass
@@ -325,22 +320,13 @@ class ModelType(type):
             yield o, direction
 
 
-
-
-
-
-
-
 class ModelBase(metaclass=ModelType):
-    """Base Model without any default fields.
+    """Base Model for all models.
 
-    Use Model instead, if you are not an advanced user.
-
-    Meta.pk is set to 'id', you must specify a new primary key and change
-    it accordingly if you use this model as your base model.
+    Do not inherit from this class, use Model instead.
 
     Raises:
-        TypeError: When invalid typeis encountered
+        TypeError: When invalid type is encountered
         AttributeError: When misspelled fields are tried to set.
     """
     class Meta:
@@ -444,14 +430,17 @@ class Model(ModelBase):
     It's more than a good practice to define a Base model first:
 
     ```python
-    import morm.model as mdl
+    from morm.model import Model
 
-    class Base(mdl.Model):
+    class Base(Model):
         class Meta:
             pk = 'id' # setting primary key, it is defaulted to 'id'
             abstract = True
 
-        id = Field('SERIAL NOT NULL PRIMARY KEY') #postgresql example
+        # postgresql example
+        id = Field('SERIAL', sql_onadd='NOT NULL')
+        created_at = Field('TIMESTAMPZ', sql_onadd='NOT NULL', sql_alter=('SET DEFAULT NOW()',))
+        updated_at = Field('TIMESTAMPZ', sql_onadd='NOT NULL', value=timestampz)
     ```
 
     Then a minimal model could look like this:
@@ -460,7 +449,7 @@ class Model(ModelBase):
     class User(Base):
         name = Field('varchar(65)')
         email = Field('varchar(255)')
-        password = Field('varchar(255)')
+        password = Field('varchar(16)')
     ```
 
     An advanced model could look like:
@@ -477,13 +466,35 @@ class Model(ModelBase):
             abstract = False    # default is False
             proxy = False       # default is False
             # ... etc...
+            # see morm.meta.Meta for supported meta attributes.
 
         name = Field('varchar(65)')
         email = Field('varchar(255)')
-        password = Field('varchar(255)')
+        password = Field('varchar(16)')
         profession = Field('varchar(255)', default='Unknown')
-        random = Field('int', default=get_rand) # function can be default
+        random = Field('integer', default=get_rand) # function can be default
     ```
+
+    Initialize a model instance
+    ---------------------------
+
+    keyword arguments initialize corresponding fields according to
+    the keys.
+
+    Positional arguments must be dictionaries of
+    keys and values.
+
+    Example:
+
+    ```
+    Model(name='John Doe', profession='Teacher')
+    Model({'name': 'John Doe', 'profession': 'Teacher'})
+    Model({'name': 'John Doe', 'profession': 'Teacher'}, age=34)
+    Model({'name': 'John Doe', 'profession': 'Teacher', 'active': True}, age=34)
+    ```
+
+    Raises:
+        TypeError: If invalid type of argument is provided.
     """
     class Meta:
         # The following needs to be defined here, not in meta.Meta
@@ -494,24 +505,4 @@ class Model(ModelBase):
         abstract = True
 
     def __init__(self, *args, **kwargs):
-        """# Initialize a model instance.
-
-        keyword arguments initialize corresponding fields according to
-        the keys.
-
-        Positional arguments must be dictionaries of
-        keys and values.
-
-        Example:
-
-        ```
-        Model(name='John Doe', profession='Teacher')
-        Model({'name': 'John Doe', 'profession': 'Teacher'})
-        Model({'name': 'John Doe', 'profession': 'Teacher'}, age=34)
-        Model({'name': 'John Doe', 'profession': 'Teacher', 'active': True}, age=34)
-        ```
-
-        Raises:
-            TypeError: If invalid type of argument is provided.
-        """
         super(Model, self).__init__(*args, **kwargs)

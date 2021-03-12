@@ -1,4 +1,4 @@
-"""time handling.
+"""datetime handling.
 """
 
 __author__ = 'Md Jahidul Hamid <jahidulhamid@yahoo.com>'
@@ -8,6 +8,7 @@ __version__ = '0.0.1'
 
 
 from datetime import datetime, timezone
+
 
 def timestampz():
     """Get UTC timestamp with timezone.

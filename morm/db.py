@@ -9,7 +9,6 @@ __version__ = '0.1.0'
 import collections
 import re
 import asyncio
-from contextlib import asynccontextmanager
 import atexit
 import logging
 
@@ -18,7 +17,7 @@ from asyncpg import Record, Connection # type: ignore
 from typing import Optional, Dict, List, Tuple, TypeVar, Union, Any
 
 from morm import exceptions
-from morm.model import ModelType, Model, ModelBase, FieldNames
+from morm.model import ModelType, Model, ModelBase, _FieldNames
 from morm.q import Q
 from morm.types import Void
 
@@ -43,6 +42,24 @@ def record_to_model(record: Record, model_class: ModelType) -> Model:
 
 
 class Pool(object):
+    """Open database connection pool.
+
+    This creates and opens a pool. The pool is registered to close
+    atexit.
+
+    The parameters are same as `asyncpg.create_pool` function.
+
+    Args:
+        dsn (str, optional): DSN string. Defaults to None.
+        min_size (int, optional): Minimum connection in the pool. Defaults to 10.
+        max_size (int, optional): Maximum connection in the pool. Defaults to 100.
+        max_queries (int, optional): Number of queries after a connection is closed and replaced with a new connection. Defaults to 50000.
+        max_inactive_connection_lifetime (float, optional): Number of seconds after which inactive connections in the pool will be closed.  Pass `0` to disable this mechanism. Defaults to 300.0.
+        setup ([type], optional): A coroutine to prepare a connection right before it is returned  from `Pool.acquire()`. Defaults to None.
+        init ([type], optional): A coroutine to initialize a connection when it is created. Defaults to None.
+        loop ([type], optional): Asyncio even loop instance. Defaults to None.
+        connection_class ([type], optional): The class to use for connections.  Must be a subclass of `asyncpg.connection.Connection`. Defaults to asyncpg.connection.Connection.
+    """
     def __init__(self, dsn: str = None,
                  min_size: int = 10,
                  max_size: int = 100,
@@ -53,21 +70,6 @@ class Pool(object):
                  loop=None,
                  connection_class=Connection,
                  **connect_kwargs):
-        """DB connection pool.
-
-        The parameters are same as `asyncpg.create_pool` function.
-
-        Args:
-            dsn (str, optional): DSN string. Defaults to None.
-            min_size (int, optional): Minimum connection in the pool. Defaults to 10.
-            max_size (int, optional): Maximum connection in the pool. Defaults to 100.
-            max_queries (int, optional): Number of queries after a connection is closed and replaced with a new connection. Defaults to 50000.
-            max_inactive_connection_lifetime (float, optional): Number of seconds after which inactive connections in the pool will be closed.  Pass `0` to disable this mechanism. Defaults to 300.0.
-            setup ([type], optional): A coroutine to prepare a connection right before it is returned  from `Pool.acquire()`. Defaults to None.
-            init ([type], optional): A coroutine to initialize a connection when it is created. Defaults to None.
-            loop ([type], optional): Asyncio even loop instance. Defaults to None.
-            connection_class ([type], optional): The class to use for connections.  Must be a subclass of `asyncpg.connection.Connection`. Defaults to asyncpg.connection.Connection.
-        """
         self.dsn = dsn
         self.min_size = min_size
         self.max_size = max_size
@@ -125,19 +127,19 @@ class Pool(object):
 
 
 class DB(object):
-    """Helper class that can execute query taking a connection from a
-    connection pool defined by a Pool object.
+    """Initialize a DB object setting a pool to get connection from.
+
+    If connection is given, it is used instead.
+
+    The `corp()` method returns an asyncpg.pool.Pool or an
+    asyncpg.Connection
+
+    Args:
+        pool (Pool): A connection pool
+        con (Connection): Connection. Defaults to None.
     """
 
     def __init__(self, pool: Pool, con: Connection=None):
-        """Initialize a DB object setting a pool to get connection from.
-
-        If connection is given, it is used instead.
-
-        Args:
-            pool (Pool): A connection pool
-            con (Connection): Connection. Defaults to `None`.
-        """
         self._pool = pool
         self._con = con
         self.DATA_NO_CHANGE = 'DATA_NO_CHANGE_TRIGGERED'
@@ -148,7 +150,7 @@ class DB(object):
         Note: The name reads 'c or p'
 
         Returns:
-            Connection or asyncpg.pool.Pool object
+            asyncpg.Connection or asyncpg.pool.Pool object
         """
         if self._con:
             return self._con
@@ -408,41 +410,41 @@ class DB(object):
 
 
 class ModelQuery():
+    """Query builder for model class.
+
+    The `q` family of methods (`q, qc, qu etc..`) can be used to
+    build a query step by step. These methods can be chained
+    together to break down the query building in multiple steps.
+
+    Several properties are available to get information of the model
+    such as table name (`self.db_table`), ordering (`self.ordering`),
+    quoted field names (`self.f.<field_name>`) etc..
+
+    `self.c` is a counter that gives an integer representing the
+    last existing argument position plus 1.
+
+    `reset()` can be called to reset the query to start a new.
+
+    To execute a query, you need to run one of the execution methods
+    : `fetch, fetchrow, fetchval, execute`.
+
+    Notable convenience methods:
+
+    * `qupdate(data)`: Initialize a update query for data
+    * `qfilter()`: Initialize a filter query upto WHERE clasue.
+    * `get(pkval)`: Get an item by primary key.
+
+    Args:
+        db (DB): DB object
+        model_class (ModelType): model
+    """
     def __init__(self, db: DB, model_class: ModelType = None):
-        """Query builder for model class.
-
-        The `q` family of methods (`q, qc, qu etc..`) can be used to
-        build a query step by step. These methods can be chained
-        together to break down the query building in multiple steps.
-
-        Several properties are available to get information of the model
-        such as table name (`self.db_table`), ordering (`self.ordering`),
-        field names (`self.f.<field_name>`) etc..
-
-        `self.c` is a counter that gives an integer representing the
-        last existing argument position plus 1.
-
-        `reset()` can be called to reset the query to start a new.
-
-        To execute a query, you need to run one of the execution methods
-        : `fetch, fetchrow, fetchval, execute`.
-
-        Notable convenience methods:
-
-        * `qupdate(data)`: Initialize a update query for data
-        * `qfilter()`: Initialize a filter query upto WHERE clasue.
-        * `get(pkval)`: Get an item by primary key.
-
-        Args:
-            db (DB): DB object
-            model_class (ModelType): model
-        """
         self.reset()
         self.db = db
         self.model = model_class # can be None
         def func(k):
             return Q(model_class._check_field_name_(k))
-        self._f = FieldNames(func) # no reset
+        self._f = _FieldNames(func) # no reset
 
     def __repr__(self):
         return f'ModelQuery({self.db}, {self.model})'
@@ -501,7 +503,7 @@ class ModelQuery():
         return self._ordering
 
     @property
-    def f(self) -> FieldNames:
+    def f(self) -> _FieldNames:
         """Field name container where names are quoted.
 
         It can be used to avoid spelling mistakes in writing query.
@@ -897,18 +899,23 @@ class ModelQuery():
 
 
 class Transaction():
+    """Start a transaction.
+
+    Args:
+        pool (Pool): Pool instance.
+        isolation (str, optional): Transaction isolation mode, can be one of:
+            'serializable',
+            'repeatable_read',
+            'read_committed'.
+            Defaults to 'read_committed'.
+            See https://www.postgresql.org/docs/9.5/transaction-iso.html
+        readonly (bool, optional): Specifies whether this transaction is read-only. Defaults to False.
+        deferrable (bool, optional): Specifies whether this transaction is deferrable. Defaults to False.
+    """
     def __init__(self, pool: Pool, *,
                 isolation: str='read_committed',
                 readonly: bool=False,
                 deferrable: bool=False):
-        """Start a transaction.
-
-        Args:
-            pool (Pool): Pool instance.
-            isolation (str, optional): Transaction isolation mode, can be one of: `'serializable'`, `'repeatable_read'`, `'read_committed'`. Defaults to 'read_committed'. See https://www.postgresql.org/docs/9.5/transaction-iso.html
-            readonly (bool, optional): Specifies whether or not this transaction is read-only. Defaults to False.
-            deferrable (bool, optional): Specifies whether or not this transaction is deferrable. Defaults to False.
-        """
         self._pool = pool
         self.db = DB(None) # type: ignore
         self.tr = None

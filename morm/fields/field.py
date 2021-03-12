@@ -12,7 +12,6 @@ from morm.types import Void
 import morm.exceptions as ex
 
 
-
 def always_valid(value: Any)-> bool:
     """Always return True regradless of the value.
 
@@ -35,12 +34,13 @@ def nomodify(value: Any) -> Any:
     """
     return value
 
+
 class ColumnConfig():
-    """This class is easily derivable from a json config.
+    """Config container for each column/feild.
+
+    This class is easily derivable from a json config.
     """
     def __init__(self, **kwargs):
-        """Initialize a sql definition for Field.
-        """
         self.conf: Dict[str, Union[str, Tuple[str, ...]]] = kwargs
 
     def __eq__(self, other: 'ColumnConfig') -> bool: # type: ignore
@@ -180,9 +180,6 @@ class ColumnConfig():
             raise ex.UnsupportedError(f"{self.conf['sql_engine']} not supported yet.")
 
 
-
-
-
 class Field(object):
     """Initialize the Field object with data type (sql).
 
@@ -211,7 +208,7 @@ class Field(object):
         sql_alter (Tuple[str]): multiple alter column sql; added after 'ALTER [ COLUMN ] column_name'. Example: ('DROP DEFAULT', 'SET NOT NULL') will alter the default and null settings accordingly.
         sql_engine (str): db engine, postgresql, mysql etc.. Defaults to 'postgresql'
         default (Any, optional): Pythonic default value (can be a callable). Defaults to Void. (Do not use mutable values, use function instead)
-        value (Any, optional): Set a value that will be used everytime unless changed manually. Can be a function. Useful to make updated_at like fields.
+        value (Any, optional): Set a value that will prevail unless changed manually. Can be a function. Useful to make updated_at like fields.
         validator (callable, optional): A callable that accepts exactly one argument. Validates the value in `clean` method. Defaults to always_valid.
         modifier (callable, optional): A callable that accepts exactly one argument. Modifies the value if validation fails when the `clean` method is called.. Defaults to nomodify.
         fallback (bool, optional): Whether invalid value should fallback to default value suppressing exception. (May hide bugs in your program)
@@ -318,14 +315,12 @@ class FieldValue():
 
     `FieldValue().value_change_count` gives the count of how many times the value
     has been set or changed.
+
+    Args:
+        field (Field): Field object
     """
 
     def __init__(self, field: Field):
-        """Initialize field Value container.
-
-        Args:
-            field (Field): Field object
-        """
         self._field = field
         self._value = Void
         self._value_change_count = 0

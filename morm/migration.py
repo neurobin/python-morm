@@ -234,6 +234,16 @@ class MigrationRunner():
 
 
 class Migration():
+    """Initiate a migration configuration.
+
+    Args:
+        model (ModelType): model class
+        migration_base_path (str): where to save migration files.
+        index_length (int, optional): index length of migration files. Defaults to 8.
+
+    Raises:
+        exc.MigrationModelNotAllowedError: For invalid model
+    """
     def __init__(self, model: ModelType, migration_base_path: str, index_length=8):
         if model._is_abstract_():
             raise exc.MigrationModelNotAllowedError(f'Abstract model ({model.__name__}) can not be in database')
@@ -544,7 +554,9 @@ def run_with_transaction(pool: Pool, func: Callable, *args: Any, **kwargs: Any):
 
 
 def migration_manager(pool: Pool, base_path: str, models: List[ModelType]):
-    """Migration manager
+    """Migration manager.
+
+    Parses arguments to run migration commands.
 
     Args:
         pool (Pool): pool object.
