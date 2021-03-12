@@ -184,11 +184,37 @@ class ColumnConfig():
 
 
 class Field(object):
-    """# Field class.
+    """Initialize the Field object with data type (sql).
 
-    Field object stores the sql definition of the model field,
-    validator function, modifier function and the default and provides
-    some utilities:
+    Example sql_type: `'varchar(255)'`, `'int'`, etc..
+
+    Example sql_onadd: `'PRIMARY KEY'`, `'NOT NULL'`, `'UNIQUE'`, `'FOREIGHN KEY'` etc..
+
+    Example sql_ondrop: `'CASCADE'` and `'RESTRICT'`
+
+    Example sql_alter settings
+
+    ```sql
+    SET DEFAULT expression
+    DROP DEFAULT
+    { SET | DROP } NOT NULL
+    SET STATISTICS integer
+    SET ( attribute_option = value [, ... ] )
+    RESET ( attribute_option [, ... ] )
+    SET STORAGE { PLAIN | EXTERNAL | EXTENDED | MAIN }
+    ```
+
+    Args:
+        sql_type (str): Data type in SQL.
+        sql_onadd (str): sql to add in ADD clause after 'ADD COLUMN column_name data_type'
+        sql_ondrop (str): Either 'RESTRICT' or 'CASCADE'.
+        sql_alter (Tuple[str]): multiple alter column sql; added after 'ALTER [ COLUMN ] column_name'. Example: ('DROP DEFAULT', 'SET NOT NULL') will alter the default and null settings accordingly.
+        sql_engine (str): db engine, postgresql, mysql etc.. Defaults to 'postgresql'
+        default (Any, optional): Pythonic default value (can be a callable). Defaults to Void. (Do not use mutable values, use function instead)
+        value (Any, optional): Set a value that will be used everytime unless changed manually. Can be a function. Useful to make updated_at like fields.
+        validator (callable, optional): A callable that accepts exactly one argument. Validates the value in `clean` method. Defaults to always_valid.
+        modifier (callable, optional): A callable that accepts exactly one argument. Modifies the value if validation fails when the `clean` method is called.. Defaults to nomodify.
+        fallback (bool, optional): Whether invalid value should fallback to default value suppressing exception. (May hide bugs in your program)
     """
     def __init__(self, sql_type: str,
                 sql_onadd='',
@@ -196,47 +222,25 @@ class Field(object):
                 sql_alter: Tuple[str, ...] = (),
                 sql_engine='postgresql',
                 default: Any=Void,
+                value: Any=Void,
                 validator: Callable=always_valid,
                 modifier: Callable=nomodify,
                 fallback=False,):
-        """Initialize the Field object with data type (sql).
-
-        Example sql_type: `'varchar(255)'`, `'int'`, etc..
-
-        Example sql_onadd: `'PRIMARY KEY'`, `'NOT NULL'`, `'UNIQUE'`, `'FOREIGHN KEY'` etc..
-
-        Example sql_ondrop: `'CASCADE'` and `'RESTRICT'`
-
-        Example sql_alter settings
-
-        ```sql
-        SET DEFAULT expression
-        DROP DEFAULT
-        { SET | DROP } NOT NULL
-        SET STATISTICS integer
-        SET ( attribute_option = value [, ... ] )
-        RESET ( attribute_option [, ... ] )
-        SET STORAGE { PLAIN | EXTERNAL | EXTENDED | MAIN }
-        ```
-
-        Args:
-            sql_type (str): Data type in SQL.
-            sql_onadd (str): sql to add in ADD clause after 'ADD COLUMN column_name data_type'
-            sql_ondrop (str): Either 'RESTRICT' or 'CASCADE'.
-            sql_alter (Tuple[str]): multiple alter column sql; added after 'ALTER [ COLUMN ] column_name'. Example: ('DROP DEFAULT', 'SET NOT NULL') will alter the default and null settings accordingly.
-            sql_engine (str): db engine, postgresql, mysql etc.. Defaults to 'postgresql'
-            default (Any, optional): Pythonic default value (can be a callable). Defaults to Void. (Do not use mutable values, use function instead)
-            validator (callable, optional): A callable that accepts exactly one argument. Validates the value in `clean` method. Defaults to always_valid.
-            modifier (callable, optional): A callable that accepts exactly one argument. Modifies the value if validation fails when the `clean` method is called.. Defaults to nomodify.
-            fallback (bool, optional): Whether invalid value should fallback to default value suppressing exception. (May hide bugs in your program)
-        """
         self.sql_type = sql_type
         self.sql_conf = ColumnConfig(sql_type=sql_type, sql_onadd=sql_onadd, sql_ondrop=sql_ondrop, sql_alter=sql_alter, sql_engine=sql_engine)
-        self.default = default
         self.validator = validator
         self.modifier = modifier
         self._name = ''
         self.fallback = fallback
+        self._is_perpetual_default = False
+        if value is not Void:
+            self.default = value
+            self._is_perpetual_default = True
+            if default is not Void:
+                raise ValueError(f"Parameter 'value' and 'default' both can not be set at the same time.")
+        else:
+            self.default = default
+
 
     def __eq__(self, other: 'Field') -> bool: # type: ignore
         return self.sql_conf == other.sql_conf
@@ -325,6 +329,7 @@ class FieldValue():
         self._field = field
         self._value = Void
         self._value_change_count = 0
+        self._ignore_first_change_count_ = False
 
     def __eq__(self, other):
         return self._field == other._field and self._value == other._value
@@ -345,10 +350,9 @@ class FieldValue():
         Returns:
             Any: value or default
         """
-        if self._value is not Void:
-            return self._value
-        else:
+        if self._value is Void or (self._field._is_perpetual_default and self._value_change_count == 0):
             return self._field.get_default()
+        return self._value
 
     @value.setter
     def value(self, v: Any):
@@ -369,7 +373,9 @@ class FieldValue():
             fallback (bool, optional): Whether to fallback to default value if v is invalid. Defaults to False.
         """
         self._value = self._field.clean(v, fallback=fallback)
-        self._value_change_count = self._value_change_count + 1 # This must be the last line
+        if not self._ignore_first_change_count_: # if from db, then value change count won't change
+            self._value_change_count = self._value_change_count + 1 # This must be the last line
+        self._ignore_first_change_count_ = False
         # when the clean method raises exception, it will not be counted as
         # a successful value assignment.
 

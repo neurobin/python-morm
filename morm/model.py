@@ -365,16 +365,17 @@ class ModelBase(metaclass=ModelType):
         exclude_values_down = {'':()}
 
         #internal
+        _field_defs_: Dict[str, Field]
         _fields_: Dict[str, FieldValue]
         _fromdb_: List[str]
-        _field_defs_: Dict[str, Field]
 
 
     def __init__(self, *args, **kwargs):
-        class Meta: pass
-        super(ModelBase, self).__setattr__('Meta', Meta)
-        self.Meta._fromdb_ = []
-        self.Meta._fields_ = {}
+        class Meta:
+            _fields_: Dict[str, FieldValue] = {}
+            _fromdb_: List[str] = []
+        # super(ModelBase, self).__setattr__('Meta', Meta)
+        self.__dict__['Meta'] = Meta
         for k, v in self.__class__.Meta._field_defs_.items():
             self.Meta._fields_[k] = FieldValue(v)
         for arg in args:
@@ -405,7 +406,8 @@ class ModelBase(metaclass=ModelType):
             super().__delattr__(k)
 
     def __getattr__(self, k):
-        fields = self.Meta._fields_
+        Meta = self.__dict__['Meta']
+        fields = Meta._fields_
         if k in fields:
             v = fields[k].value
             if self.__class__._is_valid_down_(k, v):
@@ -420,6 +422,9 @@ class ModelBase(metaclass=ModelType):
         # v = fields[k].clean(v)
         # super().__setattr__(k, v)
         if self.__class__._is_valid_up_(k, v):
+            if k in self.Meta._fromdb_:
+                fields[k]._ignore_first_change_count_ = True
+                self.Meta._fromdb_.remove(k)
             fields[k].value = v
         else:
             raise AttributeError(f'Can not set field `{k}`. It is excluded using either exclude_fields_up or exclude_values_up in {self.__class__.__name__} Meta class ')
@@ -510,11 +515,3 @@ class Model(ModelBase):
             TypeError: If invalid type of argument is provided.
         """
         super(Model, self).__init__(*args, **kwargs)
-
-
-class ModelPostgresql(Model):
-    """A model that defines default columns (postgresql)
-    """
-    class Meta:
-        abstract = True
-    id = Field('SERIAL', sql_onadd='NOT NULL')

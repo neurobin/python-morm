@@ -36,7 +36,8 @@ SNORM_DB_POOL = Pool(
     max_size=90,
 )
 
-from morm import Model, Field
+from morm.model import Model
+from morm.fields import Field
 
 def mprint(*args, **kwargs):
     print("-"*80)

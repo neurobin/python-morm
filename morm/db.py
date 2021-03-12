@@ -37,8 +37,8 @@ def record_to_model(record: Record, model_class: ModelType) -> Model:
     """
     new_record = model_class()
     for k,v in record.items():
-        setattr(new_record, k, v)
         new_record.Meta._fromdb_.append(k)
+        setattr(new_record, k, v)
     return new_record
 
 
@@ -297,16 +297,12 @@ class DB(object):
         c = 0
         for n,v in new_data_gen:
             if n == mob.__class__._get_pk_(): continue
-            if n in mob.Meta._fromdb_:
-                countover = 1
-            else:
-                countover = 0
-            if v.value_change_count > countover:
+            if v.value_change_count > 0:
                 c += 1
                 colval.append(f'"{n}"=${c}')
                 values.append(v.value)
                 if reset:
-                    v._value_change_count = countover
+                    v._value_change_count = 0
         colval_q = ', '.join(colval)
         if colval_q:
             where = f'"{mob.__class__._get_pk_()}"=${c+1}'

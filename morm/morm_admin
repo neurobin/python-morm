@@ -2,4 +2,5 @@
 
 from morm import admin
 
-admin.main()
+if __name__ == '__main__':
+    admin.main()

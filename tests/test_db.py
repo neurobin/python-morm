@@ -11,9 +11,10 @@ from morm.db import Pool, DB, Transaction, ModelQuery
 import morm.model as mdl
 import morm.meta as mt
 from morm.types import Void
-from morm import Field
+from morm.fields import Field
 # from morm.model import ModelBase as Model
 from morm.model import Model
+from morm.pg_models import BaseCommon
 import morm.migration as mg
 import random
 
@@ -300,7 +301,7 @@ class TestMethods(unittest.TestCase):
         # db.q(BigUser2).q_()
         class BigUser3(Model):pass
         self.assertEqual(db.get_insert_query(BigUser3()), ('', []))
-        class BigUser3(mdl.ModelPostgresql):pass
+        class BigUser3(BaseCommon):pass
         b = BigUser3()
         b.id = 3
         self.assertEqual(db.get_update_query(b), ('', []))
