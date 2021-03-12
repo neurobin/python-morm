@@ -4,6 +4,12 @@ Minimal database object relational mapper.
 
 Currently supports *PostgreSQL* with `asyncpg`.
 
+# Install
+
+```bash
+pip install --user morm
+```
+
 # Init project
 
 **Run `morm_admin init` in your project directory to make some default files such as `settings.py`, `mgr.py`**
