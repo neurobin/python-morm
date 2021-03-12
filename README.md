@@ -247,10 +247,10 @@ from morm.db import DB
 db = DB(DB_POOL) # get a db handle.
 
 # get by pk:
-db(User).get(5)
+user5 = await db(User).get(5)
 
 # price between 5 and 2000
-db(User).get(5, 2000, col='price', comp='BETWEEN $1 AND $2')
+user = await db(User).get(5, 2000, col='price', comp='BETWEEN $1 AND $2')
 ```
 
 
@@ -263,10 +263,10 @@ async with Transaction(DB_POOL) as tdb:
     # use tdb just like you use db
     user6 = await tdb(User).get(6)
     user6.age = 34
-    tdb.save(user6)
+    await tdb.save(user6)
     user5 = await tdb(User).get(5)
     user5.age = 34
-    tdb.save(user6)
+    await tdb.save(user6)
 ```
 
 # Migration
