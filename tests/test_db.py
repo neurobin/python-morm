@@ -235,14 +235,16 @@ class TestMethods(unittest.TestCase):
         # print(await db(user5).insert())
         user6 = await db(BigUser2).get(6)
         user6.hobby = 'something4'
-        # user6.hobby = 'something2'
-        # print(db(user6).get_update_query())
-        # print(db(user6).get_update_query())
+        print(f' - [x] Check only updated fields are included in update.')
+        self.assertEqual(db.get_update_query(user6), ('UPDATE "BigUser2" SET "hobby"=$1 WHERE "id"=$2', ['something4', 6]))
         print(f' - [x] Check save() calls update() and they are ok')
         self.assertEqual(
             await db.save(user6),
             'UPDATE 1'
         )
+        print(f' - [x] Check: once update is done, change counters are reset.')
+        self.assertEqual(db.get_update_query(user6), ('', []))
+        db.get_update_query(user6)
         usern = BigUser2(name='dummy john', profession='Student', age=23, hobby='collection', salary='0')
         print(f' - [x] Check save()')
         self.assertTrue(await db.save(usern) > 0)
