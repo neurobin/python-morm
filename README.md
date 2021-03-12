@@ -2,6 +2,8 @@
 
 Minimal database object relational mapper.
 
+Currently supports *PostgreSQL* with `asyncpg`.
+
 # Model
 
 It's more than a good practice to define a Base model first:
@@ -63,13 +65,11 @@ keys and values.
 Example:
 
 ```python
-Model(name='John Doe', profession='Teacher')
-Model({'name': 'John Doe', 'profession': 'Teacher'})
-Model({'name': 'John Doe', 'profession': 'Teacher'}, age=34)
-Model({'name': 'John Doe', 'profession': 'Teacher', 'active': True}, age=34)
+User(name='John Doe', profession='Teacher')
+User({'name': 'John Doe', 'profession': 'Teacher'})
+User({'name': 'John Doe', 'profession': 'Teacher'}, age=34)
+User({'name': 'John Doe', 'profession': 'Teacher', 'active': True}, age=34)
 ```
-
-Raises `TypeError` If invalid type of argument is provided.
 
 ## Special Model Meta attribute `f`:
 
@@ -79,7 +79,7 @@ This allows a spell-safe way to write the field names. If you
 misspell the name, you will get `AttributeError`.
 
 ```python
-f = ModelClass.Meta.f
+f = User.Meta.f
 my_data = {
     f.name: 'John Doe',         # safe from spelling mistake
     f.profession: 'Teacher',    # safe from spelling mistake

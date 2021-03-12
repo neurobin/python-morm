@@ -98,8 +98,6 @@ class ModelType(type):
             else:
                 _set_meta_attr('db_table', class_name, inherit=False)
 
-        # db_table must be finalized by now, look below where
-
         new_attrs = {}
 
         # dict is ordered, officially from python 3.7
@@ -486,10 +484,10 @@ class Model(ModelBase):
     Example:
 
     ```python
-    Model(name='John Doe', profession='Teacher')
-    Model({'name': 'John Doe', 'profession': 'Teacher'})
-    Model({'name': 'John Doe', 'profession': 'Teacher'}, age=34)
-    Model({'name': 'John Doe', 'profession': 'Teacher', 'active': True}, age=34)
+    User(name='John Doe', profession='Teacher')
+    User({'name': 'John Doe', 'profession': 'Teacher'})
+    User({'name': 'John Doe', 'profession': 'Teacher'}, age=34)
+    User({'name': 'John Doe', 'profession': 'Teacher', 'active': True}, age=34)
     ```
 
     Raises:
@@ -503,7 +501,7 @@ class Model(ModelBase):
     misspell the name, you will get `AttributeError`.
 
     ```python
-    f = ModelClass.Meta.f
+    f = User.Meta.f
     my_data = {
         f.name: 'John Doe',         # safe from spelling mistake
         f.profession: 'Teacher',    # safe from spelling mistake

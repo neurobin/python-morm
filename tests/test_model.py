@@ -269,7 +269,8 @@ class TestMethods(unittest.TestCase):
                 proxy = True
 
         # class User3(User): pass
-
+        print(' - [x] db_table must be the same for proxy models')
+        self.assertEqual(User2.Meta.db_table, User.Meta.db_table)
 
         for k, v in meta_attr_inh.items():
             print(f"> Proxy:True: Meta attribute value for '{k}' must match with inherited value: {v}")
