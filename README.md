@@ -52,6 +52,10 @@ class Base(Model):
     id = Field('SERIAL', sql_onadd='NOT NULL')
     created_at = Field('TIMESTAMPZ', sql_onadd='NOT NULL', sql_alter=('SET DEFAULT NOW()',))
     updated_at = Field('TIMESTAMPZ', sql_onadd='NOT NULL', value=timestampz)
+
+# Or you can inherit Base (with id field)
+# or BaseCommon (with id, created_at, and updated_at fields)
+# from morm.pg_models.
 ```
 
 Then a minimal model could look like this:
@@ -180,7 +184,7 @@ query, args = qh.q(f'SELECT * FROM {qh.db_table}')\
                 .getq()
 print(query, args)
 # fetch:
-await qh.fetch()
+user_list = await qh.fetch()
 ```
 
 The `q` family of methods (`q, qc, qu etc..`) can be used to
@@ -266,7 +270,7 @@ async with Transaction(DB_POOL) as tdb:
     await tdb.save(user6)
     user5 = await tdb(User).get(5)
     user5.age = 34
-    await tdb.save(user6)
+    await tdb.save(user5)
 ```
 
 # Migration
@@ -330,3 +334,18 @@ class MigrationRunner(morm.migration.MigrationRunner):
 ```
 
 As you can see, there are `run_before` and `run_after` hooks. You can use them to make custom queries before and after the migration query. You can even modify the migration query itself.
+
+Example:
+
+```python
+...
+    async def run_before(self):
+        """Run before migration
+
+        self.tdb is the db handle (transaction)
+        self.model is the model class
+        """
+        user0 = self.model(name='John Doe', profession='Engineer', age=45)
+        await self.tdb.save(user0)
+...
+```

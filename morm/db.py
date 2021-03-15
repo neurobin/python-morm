@@ -1037,8 +1037,6 @@ class Transaction():
         self.db._con = await self._pool.pool.acquire() # type: ignore
         self.tr = self.db._con.transaction(**self.tr_args) # type: ignore
         await self.tr.start() # type: ignore
-        # return self.db
-        # test with returning con directly
         return self.db
 
     async def rollback(self):
