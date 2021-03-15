@@ -267,7 +267,7 @@ class DB(object):
             reset (bool): Reset the value change counter. Defaults to False
 
         Returns:
-            (str, list): query, prepared_args
+            (str, list): query, args
         """
         data = mob.Meta._fields_
         new_data_gen = mob.__class__._get_FieldValue_data_valid_(data, up=True)
@@ -303,7 +303,7 @@ class DB(object):
             AttributeError: If primary key does not exists i.e if not updatable
 
         Returns:
-            str, args: tuple of query, prepared_args
+            str, args: tuple of query, args
         """
         pkval = getattr(mob, mob.__class__._get_pk_()) #save method depends on it's AttributeError
         data = mob.Meta._fields_
@@ -335,7 +335,7 @@ class DB(object):
             mob (ModelBase): model object.
 
         Returns:
-            Tuple[str, List[Any]]: quey, prepared_args
+            Tuple[str, List[Any]]: quey, args
         """
         pkval = getattr(mob, mob.__class__._get_pk_())
         query = f'DELETE FROM "{mob.__class__._get_db_table_()}" WHERE "{mob.__class__._get_pk_()}"=$1'
@@ -524,7 +524,7 @@ class ModelQuery():
         self._query_str_queue: List[str] = []
         self.end_query_str = ''
         self.start_query_str = ''
-        self._prepared_args: List[Any] = []
+        self._args: List[Any] = []
         self._arg_count = 0
         self._named_args: Dict[str, Any] = {}
         self._named_args_mapper: Dict[str, int] = {}
@@ -593,7 +593,7 @@ class ModelQuery():
 
     def _process_positional_args(self, *args):
         if args:
-            self._prepared_args.extend(args)
+            self._args.extend(args)
             self._arg_count += len(args)
 
 
@@ -608,7 +608,7 @@ class ModelQuery():
             else:
                 q, mc = re.subn(f':{k}\\b', f'${self._arg_count+1}', q)
                 if mc > 0:
-                    self._prepared_args.append(v)
+                    self._args.append(v)
                     self._arg_count += 1
                     self._named_args_mapper[k] = self._arg_count
         return q
@@ -616,10 +616,10 @@ class ModelQuery():
     def q(self, q: str, *args: Any) -> 'ModelQuery':
         """Add raw query stub without parsing to check for keyword arguments
 
-        Use `$1`, `$2` etc. for prepared arguments.
+        Use `$1`, `$2` etc. for arguments.
 
         Use `self.c` (instance property, use fstring) to get the current
-        available prepared argument position.
+        available argument position.
 
         This is an efficient way to add query that do not have any
         keyword arguments to handle, compared to `q_()` which checks for
@@ -647,7 +647,7 @@ class ModelQuery():
 
         Args:
             q (str): raw query string
-            *args (Any): prepared positional arguments
+            *args (Any): positional arguments
 
         Returns:
             ModelQuery: self, enables method chaining.
@@ -722,7 +722,7 @@ class ModelQuery():
         Args:
             word (str): left part of query that needs to be quoted
             rest (str): right part of query that does not need to be quoted
-            *args (any): prepared args
+            *args (any): args
 
         Returns:
             ModelQuery: returns `self` to enable method chaining
@@ -739,8 +739,8 @@ class ModelQuery():
         Args:
             word (str): left part of query that needs to be quoted
             rest (str): right part of query that does not need to be quoted
-            *args (any): prepared args
-            *kwargs: prepared keyword args
+            *args (any): args
+            *kwargs: keyword args
 
         Returns:
             ModelQuery: returns `self` to enable method chaining
@@ -784,7 +784,7 @@ class ModelQuery():
         return self.qq(order).q(direction)
 
     def qu(self, data: dict) -> 'ModelQuery':
-        """Convert data to `"column"=$n` query with prepared args as the
+        """Convert data to `"column"=$n` query with args as the
             values and add to the main query.
 
         The counter of positional arguments increases by the number of
@@ -880,7 +880,7 @@ class ModelQuery():
 
 
     def getq(self) -> Tuple[str, List[Any]]:
-        """Return query string and prepared arg list
+        """Return query string and arg list
 
         Returns:
             tuple: (str, list) : (query, parepared_args)
@@ -888,7 +888,7 @@ class ModelQuery():
         query = ' '.join(self._query_str_queue)
         self._query_str_queue = [query]
         query = f'{self.start_query_str} {query} {self.end_query_str}'
-        return query, self._prepared_args
+        return query, self._args
 
     async def fetch(self, timeout: float = None) -> Union[List[ModelBase], List[Record]]:
         """Run query method `fetch` that returns the results in model class objects

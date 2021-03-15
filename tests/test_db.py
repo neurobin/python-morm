@@ -362,7 +362,7 @@ class TestMethods(unittest.TestCase):
     #     dbpool = await db.pool()
     #     await dbpool.execute('CREATE TABLE IF NOT EXISTS "BigUser" (id SERIAL not null PRIMARY KEY, name varchar(255), profession varchar(255), age int)')
     #     # await db.execute('INSERT into test_table')
-    #     mos = await test_table._get_(where='name like $1 order by id asc', prepared_args=['%dumm%'])
+    #     mos = await test_table._get_(where='name like $1 order by id asc', args=['%dumm%'])
     #     print(mos.__dict__)
     #     # print(mos[0].__dict__)
     #     print(BigUser()._fields_)
