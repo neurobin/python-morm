@@ -234,7 +234,9 @@ from morm.db import DB
 db = DB(DB_POOL) # get a db handle.
 
 qh = db(User)
-user_list = await qh.qfilter().q(f'{qh.f.profession} = ${qh.c} AND {qh.f.age} = ${qh.c+1}', 'Teacher', 30).fetch()
+user_list = await qh.qfilter()\
+                    .q(f'{qh.f.profession} = ${qh.c} AND {qh.f.age} = ${qh.c+1}', 'Teacher', 30)\
+                    .fetch()
 ```
 
 ## Get
