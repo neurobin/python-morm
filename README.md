@@ -222,8 +222,8 @@ from morm.db import DB
 db = DB(DB_POOL) # get a db handle.
 
 f = User.Meta.f
-userp = await db(User).qfilter().q(f'"{f.profession}"=$1', 'Teacher').fetch()
-userp = await db(User).qfilter().qc(f.profession, '=$1', 'Teacher').fetch()
+user_list = await db(User).qfilter().q(f'"{f.profession}"=$1', 'Teacher').fetch()
+user_list = await db(User).qfilter().qc(f.profession, '=$1', 'Teacher').fetch()
 ```
 
 It is safer to use `${qh.c}` instead of `$1`, `${qh.c+1}` instead of `$2`, etc..
@@ -234,7 +234,7 @@ from morm.db import DB
 db = DB(DB_POOL) # get a db handle.
 
 qh = db(User)
-userp = await qh.qfilter().q(f'{qh.f.profession} = ${qh.c} AND {qh.f.age} = ${qh.c+1}', 'Teacher', 30).fetch()
+user_list = await qh.qfilter().q(f'{qh.f.profession} = ${qh.c} AND {qh.f.age} = ${qh.c+1}', 'Teacher', 30).fetch()
 ```
 
 ## Get
