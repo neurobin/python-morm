@@ -40,27 +40,19 @@ This will create and open an asyncpg pool which will be automatically closed at 
 It's more than a good practice to define a Base model first:
 
 ```python
-from morm.model import Model
+from morm.pg_models import BaseCommon as Model
 from morm.datetime import timestampz
 
 class Base(Model):
     class Meta:
-        pk = 'id' # setting primary key, it is defaulted to 'id'
         abstract = True
-
-    # postgresql example
-    id = Field('SERIAL', sql_onadd='NOT NULL')
-    created_at = Field('TIMESTAMPZ', sql_onadd='NOT NULL', sql_alter=('SET DEFAULT NOW()',))
-    updated_at = Field('TIMESTAMPZ', sql_onadd='NOT NULL', value=timestampz)
-
-# Or you can inherit Base (with id field)
-# or BaseCommon (with id, created_at, and updated_at fields)
-# from morm.pg_models.
 ```
 
 Then a minimal model could look like this:
 
 ```python
+from morm.fields import Field
+
 class User(Base):
     name = Field('varchar(65)')
     email = Field('varchar(255)')

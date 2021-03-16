@@ -883,7 +883,7 @@ class ModelQuery():
         """Return query string and arg list
 
         Returns:
-            tuple: (str, list) : (query, parepared_args)
+            tuple: (str, list) : (query, args)
         """
         query = ' '.join(self._query_str_queue)
         self._query_str_queue = [query]
@@ -901,8 +901,8 @@ class ModelQuery():
         Returns:
             List[Model]: List of model instances.
         """
-        query, parepared_args = self.getq()
-        return await self.db.fetch(query, *parepared_args, timeout=timeout, model_class=self.model)
+        query, args = self.getq()
+        return await self.db.fetch(query, *args, timeout=timeout, model_class=self.model)
 
     async def fetchrow(self, timeout: float = None) -> Union[ModelBase, Record]:
         """Make a query and get the first row.
@@ -915,8 +915,8 @@ class ModelQuery():
         Returns:
             model_clas object or None if no rows were selected.
         """
-        query, parepared_args = self.getq()
-        return await self.db.fetchrow(query, *parepared_args, timeout=timeout, model_class=self.model)
+        query, args = self.getq()
+        return await self.db.fetchrow(query, *args, timeout=timeout, model_class=self.model)
 
     async def fetchval(self, column: int = 0, timeout: float = None) -> Any:
         """Run the query and return a column value in the first row.
@@ -928,8 +928,8 @@ class ModelQuery():
         Returns:
             Any: Coulmn (indentified by index) value of first row.
         """
-        query, parepared_args = self.getq()
-        return await self.db.fetchval(query, *parepared_args, column=column, timeout=timeout)
+        query, args = self.getq()
+        return await self.db.fetchval(query, *args, column=column, timeout=timeout)
 
     async def execute(self, timeout: float = None) -> str:
         """Execute the query.
@@ -940,8 +940,8 @@ class ModelQuery():
         Returns:
             str: Status of the last SQL command
         """
-        query, parepared_args = self.getq()
-        return await self.db.execute(query, *parepared_args, timeout=timeout)
+        query, args = self.getq()
+        return await self.db.execute(query, *args, timeout=timeout)
 
     async def get(self, *vals: Any, col: str = '', comp: str = '=$1') -> Union[ModelBase, Record]:
         """Get the first row found by column and value.

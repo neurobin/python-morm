@@ -8,6 +8,7 @@ __version__ = '0.0.1'
 
 
 import asyncio
+import asyncpg # type: ignore
 from typing import Dict, List, Tuple, Any, Union, Iterator, Callable, Optional
 import re
 import os, sys, shutil
@@ -218,9 +219,12 @@ class MigrationRunner():
         pass
 
     async def _run_migration_query(self):
-        dbm = self.tdb(self.model)
-        dbm.q(self.migration_query)
-        await dbm.execute()
+        try:
+            dbm = self.tdb(self.model)
+            dbm.q(self.migration_query)
+            await dbm.execute()
+        except asyncpg.exceptions.PostgresSyntaxError:
+            sys.stderr.write(f'************ Migration Query ************\n{dbm.getq()[0]}\n\n')
 
     async def run(self):
         """Runs run_before, _run_migration_query and run_after sequentially.
@@ -228,6 +232,7 @@ class MigrationRunner():
         await self.run_before()
         await self._run_migration_query()
         await self.run_after()
+
 
 
 

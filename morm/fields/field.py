@@ -44,7 +44,9 @@ class ColumnConfig():
         self.conf: Dict[str, Union[str, Tuple[str, ...]]] = kwargs
 
     def __eq__(self, other: 'ColumnConfig') -> bool: # type: ignore
-        return self.conf == other.conf
+        return self.conf['sql_alter'] == other.conf['sql_alter']\
+                and self.conf['sql_type'] == other.conf['sql_type']\
+                and self.conf['sql_ondrop'] == other.conf['sql_ondrop']
 
     def __repr__(self):
         reprs = []
@@ -65,7 +67,7 @@ class ColumnConfig():
             Tuple[str, str]: create_query, alter_query
         """
         create_q = f'"{self.conf["column_name"]}" {self.conf["sql_type"]} {self.conf["sql_onadd"]}'
-        alter_q, msg = self.get_query_column_settings((), table_name)
+        alter_q, msg = self.get_query_column_alter((), table_name)
         return create_q, alter_q
 
 
@@ -80,7 +82,7 @@ class ColumnConfig():
         queries.append(f'ALTER TABLE "{table_name}" ADD COLUMN "{self.conf["column_name"]}" {self.conf["sql_type"]} {self.conf["sql_onadd"]};')
         msgs.append(f'\n* > ADD: {self.conf["column_name"]}: {self.conf["sql_type"]}')
 
-        q, m = self.get_query_column_settings((), table_name)
+        q, m = self.get_query_column_alter((), table_name)
         if q:
             queries.append(q)
             msgs.append(m)
@@ -137,7 +139,7 @@ class ColumnConfig():
             msg = f"\n* > MODIFY: {prev.conf['column_name']}: {prev.conf['sql_type']} --> {self.conf['sql_type']}"
             msgs.append(msg)
 
-        settings_query, msg = self.get_query_column_settings(prev.conf['sql_alter'], table_name) # type: ignore
+        settings_query, msg = self.get_query_column_alter(prev.conf['sql_alter'], table_name) # type: ignore
         if settings_query:
             queries.append(settings_query)
             msgs.append(msg)
@@ -148,7 +150,7 @@ class ColumnConfig():
         else:
             raise ex.UnsupportedError(f"{self.conf['sql_engine']} not supported yet.")
 
-    def get_query_column_settings(self, prev_sql_alter: Tuple[str, ...], table_name: str) -> Tuple[str, str]:
+    def get_query_column_alter(self, prev_sql_alter: Tuple[str, ...], table_name: str) -> Tuple[str, str]:
         """Get a sql query to apply the sql_alter settings comparing with
         another config: prev.
 
@@ -162,17 +164,21 @@ class ColumnConfig():
             raise TypeError(f"sql_alter {prev_sql_alter} must be a tuple, {type(prev_sql_alter)} given")
         if not isinstance(self.conf['sql_alter'], (tuple, list,)):
             raise TypeError(f"sql_alter {self.conf['sql_alter']} must be a tuple, {type(self.conf['sql_alter'])} given")
+        constraint = f'"__{table_name}_{self.conf["column_name"]}__"'
         query = ''
         msgs = []
         query_stubs = []
+        table = f'"{table_name}"'
+        column = f'"{self.conf["column_name"]}"'
         for qs in self.conf['sql_alter']:
             if qs not in prev_sql_alter:
                 # new settings
+                qs = qs.format(table=table, column=column, constraint=constraint)
                 query_stubs.append(qs)
                 msgs.append(f"\n* + {qs}")
-        query_stub = ', '.join([f'ALTER COLUMN "{self.conf["column_name"]}" {x}' for x in query_stubs])
-        if query_stub:
-            query = f'ALTER TABLE "{table_name}" {query_stub};'
+
+        if query_stubs:
+            query = '; '.join(query_stubs) + ';'
 
         if self.conf['sql_engine'] == 'postgresql':
             return query, ''.join(msgs)
@@ -183,29 +189,35 @@ class ColumnConfig():
 class Field(object):
     """Initialize the Field object with data type (sql).
 
-    Example sql_type: `'varchar(255)'`, `'int'`, etc..
+    Example sql_type: `'varchar(255)'`, `'integer'`, etc..
 
-    Example sql_onadd: `'PRIMARY KEY'`, `'NOT NULL'`, `'UNIQUE'`, `'FOREIGHN KEY'` etc..
+    Example sql_onadd: `'PRIMARY KEY'`, `'NOT NULL'`, `'UNIQUE'` etc..
 
     Example sql_ondrop: `'CASCADE'` and `'RESTRICT'`
 
-    Example sql_alter settings
+    Example sql_alter queries
 
     ```sql
-    SET DEFAULT expression
-    DROP DEFAULT
-    { SET | DROP } NOT NULL
-    SET STATISTICS integer
-    SET ( attribute_option = value [, ... ] )
-    RESET ( attribute_option [, ... ] )
-    SET STORAGE { PLAIN | EXTERNAL | EXTENDED | MAIN }
+    ALTER TABLE {table} ALTER COLUMN {column} SET DEFAULT expression
+    ALTER TABLE {table} ALTER COLUMN {column} DROP DEFAULT
+    ALTER TABLE {table} ALTER COLUMN {column} SET NOT NULL
+    ALTER TABLE {table} ALTER COLUMN {column} SET STATISTICS integer
+    ALTER TABLE {table} ALTER COLUMN {column} SET ( attribute_option = value [, ... ] )
+    ALTER TABLE {table} ALTER COLUMN {column} RESET ( attribute_option [, ... ] )
+    ALTER TABLE {table} ALTER COLUMN {column} SET STORAGE { PLAIN | EXTERNAL | EXTENDED | MAIN }
     ```
+
+    {table} and {column} will be replaced with table name and column name
+    respectively.
+
+    `sql_onadd` is only for adding the column, thus a change to this
+     parameter will not trigger any change for the field.
 
     Args:
         sql_type (str): Data type in SQL.
         sql_onadd (str): sql to add in ADD clause after 'ADD COLUMN column_name data_type'
         sql_ondrop (str): Either 'RESTRICT' or 'CASCADE'.
-        sql_alter (Tuple[str]): multiple alter column sql; added after 'ALTER [ COLUMN ] column_name'. Example: ('DROP DEFAULT', 'SET NOT NULL') will alter the default and null settings accordingly.
+        sql_alter (Tuple[str]): Alter column queries; Example: ('ALTER TABLE {table} ALTER COLUMN {column} DROP DEFAULT',).
         sql_engine (str): db engine, postgresql, mysql etc.. Defaults to 'postgresql'
         default (Any, optional): Pythonic default value (can be a callable). Defaults to Void. (Do not use mutable values, use function instead)
         value (Any, optional): Set a value that will prevail unless changed manually. Can be a function. Useful to make updated_at like fields.

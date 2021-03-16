@@ -78,14 +78,14 @@ class TestMethods(unittest.TestCase):
         class User(Model):
             id = Field('SERIAL', sql_onadd='NOT NULL')
             name = Field('varchar(255)')
-            profession = Field('varchar(65)', sql_alter=("SET DEFAULT 'Teacher'",'SET NOT NULL'))
+            profession = Field('varchar(65)', sql_alter=("ALTER TABLE {table} ALTER COLUMN {column} SET DEFAULT 'Teacher'",'ALTER TABLE {table} ALTER COLUMN {column} SET NOT NULL'))
 
         mgo = mg.Migration(User, '/tmp/..Non-Existent')
         print(' - [x] Field init checks: 1. repr implementation 2. default values')
         self.assertTrue( "Field('varchar(255)', sql_onadd='', sql_ondrop='', sql_alter=(), sql_engine='postgresql'," in repr(User.Meta._field_defs_['name']))
 
         print(' - [x] Checking pfields and cfields')
-        cfields = {'id': ColumnConfig(sql_type='SERIAL', sql_onadd='NOT NULL', sql_ondrop='', sql_alter=(), sql_engine='postgresql', column_name='id'), 'name': ColumnConfig(sql_type='varchar(255)', sql_onadd='', sql_ondrop='', sql_alter=(), sql_engine='postgresql', column_name='name'), 'profession': ColumnConfig(sql_type='varchar(65)', sql_onadd='', sql_ondrop='', sql_alter=("SET DEFAULT 'Teacher'", 'SET NOT NULL'), sql_engine='postgresql', column_name='profession')}
+        cfields = {'id': ColumnConfig(sql_type='SERIAL', sql_onadd='NOT NULL', sql_ondrop='', sql_alter=(), sql_engine='postgresql', column_name='id'), 'name': ColumnConfig(sql_type='varchar(255)', sql_onadd='', sql_ondrop='', sql_alter=(), sql_engine='postgresql', column_name='name'), 'profession': ColumnConfig(sql_type='varchar(65)', sql_onadd='', sql_ondrop='', sql_alter=("ALTER TABLE {table} ALTER COLUMN {column} SET DEFAULT 'Teacher'", 'ALTER TABLE {table} ALTER COLUMN {column} SET NOT NULL'), sql_engine='postgresql', column_name='profession')}
         self.assertTrue(mgo.cfields == cfields)
         self.assertTrue({} == mgo.pfields)
 
@@ -113,18 +113,18 @@ ALTER TABLE "User" ADD COLUMN "name" varchar(255) ;
 
         print(' - [x] Checking add column sql for profession')
         query, msg = next(mgq)
-        # print(msg)
-        self.assertTrue('''
+        print(msg)
+        self.assertEqual('''
 *******************************************************************************
 * > ADD: profession: varchar(65)
-* + SET DEFAULT 'Teacher'
-* + SET NOT NULL
+* + ALTER TABLE "User" ALTER COLUMN "profession" SET DEFAULT 'Teacher'
+* + ALTER TABLE "User" ALTER COLUMN "profession" SET NOT NULL
 
 ALTER TABLE "User" ADD COLUMN "profession" varchar(65) ;
-ALTER TABLE "User" ALTER COLUMN "profession" SET DEFAULT 'Teacher', ALTER COLUMN "profession" SET NOT NULL;
-*******************************************************************************''' == msg)
-        self.assertTrue(query == """ALTER TABLE "User" ADD COLUMN "profession" varchar(65) ;
-ALTER TABLE "User" ALTER COLUMN "profession" SET DEFAULT 'Teacher', ALTER COLUMN "profession" SET NOT NULL;""")
+ALTER TABLE "User" ALTER COLUMN "profession" SET DEFAULT 'Teacher'; ALTER TABLE "User" ALTER COLUMN "profession" SET NOT NULL;
+*******************************************************************************''', msg)
+        self.assertEqual(query, """ALTER TABLE "User" ADD COLUMN "profession" varchar(65) ;
+ALTER TABLE "User" ALTER COLUMN "profession" SET DEFAULT 'Teacher'; ALTER TABLE "User" ALTER COLUMN "profession" SET NOT NULL;""")
 
         self.assertEqual(mgo.get_create_table_query(), """
 CREATE TABLE "User" (
@@ -133,7 +133,7 @@ CREATE TABLE "User" (
     "profession" varchar(65) @
 );
 
-ALTER TABLE "User" ALTER COLUMN "profession" SET DEFAULT 'Teacher', ALTER COLUMN "profession" SET NOT NULL;""".replace('@', '').strip())
+ALTER TABLE "User" ALTER COLUMN "profession" SET DEFAULT 'Teacher'; ALTER TABLE "User" ALTER COLUMN "profession" SET NOT NULL;""".replace('@', '').strip())
 
         mgo = mg.Migration(User, self.mgpath)
         mgo.make_migrations(yes=True)
@@ -141,7 +141,7 @@ ALTER TABLE "User" ALTER COLUMN "profession" SET DEFAULT 'Teacher', ALTER COLUMN
         class User(Model):
             id = Field('SERIAL', sql_onadd='NOT NULL')
             name = Field('varchar(256)')
-            profession_name = Field('varchar(265)', sql_alter=("SET DEFAULT 'Teacher'",'SET NOT NULL'))
+            profession_name = Field('varchar(265)', sql_alter=("ALTER TABLE {table} ALTER COLUMN {column} SET DEFAULT 'Teacher'",'ALTER TABLE {table} ALTER COLUMN {column} SET NOT NULL'))
             hobby = Field('varchar(45)')
 
         mgo = mg.Migration(User, self.mgpath)

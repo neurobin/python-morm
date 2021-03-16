@@ -1,6 +1,8 @@
 import logging
 import unittest
 import os, sys
+import tempfile
+import shutil
 from morm.admin import main
 
 
@@ -11,8 +13,7 @@ log = logging.getLogger(LOGGER_NAME)
 
 class TestMethods(unittest.TestCase):
     def test_main(self):
-        tmpdir = '/tmp/morm_test_main'
-        os.makedirs(tmpdir, exist_ok=True)
+        tmpdir = tempfile.mkdtemp()
         os.chdir(tmpdir)
         sys.argv = [__file__, 'init']
         files = main()
@@ -27,6 +28,8 @@ class TestMethods(unittest.TestCase):
         sys.argv = [__file__, 'int']
         with self.assertRaises(ValueError):
             main()
+
+        shutil.rmtree(tmpdir)
 
 
 

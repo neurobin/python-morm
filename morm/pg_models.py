@@ -17,18 +17,17 @@ class Base(Model):
     """
     class Meta:
         abstract = True
-    id = Field('SERIAL', sql_onadd='NOT NULL')
+    id = Field('SERIAL', sql_onadd='PRIMARY KEY NOT NULL')
 
 
-class BaseCommon(Model):
+class BaseCommon(Base):
     """A model that defines default columns:
 
     id: Auto incremented integer
-    created_at: timestampz
-    update_at: timestampz (used with pythonic default)
+    created_at: timestamp
+    update_at: timestamp (used with pythonic default)
     """
     class Meta:
         abstract = True
-    id = Field('SERIAL', sql_onadd='NOT NULL')
-    created_at = Field('TIMESTAMPZ', sql_onadd='NOT NULL', sql_alter=('SET DEFAULT NOW()',))
-    updated_at = Field('TIMESTAMPZ', sql_onadd='NOT NULL', value=timestampz)
+    created_at = Field('TIMESTAMP', sql_onadd='NOT NULL', sql_alter=('ALTER TABLE {table} ALTER COLUMN {column} SET DEFAULT NOW()',))
+    updated_at = Field('TIMESTAMP', sql_onadd='NOT NULL', value=timestampz)
