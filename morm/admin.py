@@ -10,9 +10,13 @@ __version__ = '0.0.2'
 import sys
 import argparse
 from typing import Union, List, Dict, Any
+import logging
+
 from morm.db import DB
 from morm.migration import Migration
 
+log = logging.getLogger('morm:admin')
+log.setLevel(logging.INFO)
 
 def init_project():
     files = {
@@ -49,8 +53,11 @@ if __name__ == '__main__':
     }
 
     for name, content in files.items():
-        with open(name, 'w', encoding='utf-8') as f:
-            f.write(content)
+        try:
+            with open(name, 'x', encoding='utf-8') as f:
+                f.write(content)
+        except FileExistsError:
+            log.exception(f'Skipping creating file: {name}')
     return files
 
 def main():
