@@ -4,7 +4,7 @@
 __author__ = 'Md Jahidul Hamid <jahidulhamid@yahoo.com>'
 __copyright__ = 'Copyright © Md Jahidul Hamid <https://github.com/neurobin/>'
 __license__ = '[BSD](http://www.opensource.org/licenses/bsd-license.php)'
-__version__ = '0.0.1'
+__version__ = '0.0.2'
 
 
 import sys
@@ -16,7 +16,7 @@ from morm.migration import Migration
 
 def init_project():
     files = {
-        'settings.py': """
+        '_morm_config_.py': """
 from morm.db import Pool
 
 DB_POOL = Pool(
@@ -32,7 +32,7 @@ DB_POOL = Pool(
             """,
         'mgr.py': """
 from morm.migration import migration_manager
-from settings import DB_POOL                       # change accordingly
+from _morm_config_ import DB_POOL                       # change accordingly
 from app.models import SomeModel, SomeOtherModel,   # change accordingly
 
 MIGRATION_BASE_PATH = '/some_absolute_path'         # change accordingly

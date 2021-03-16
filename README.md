@@ -14,9 +14,9 @@ pip install --user morm
 
 # Init project
 
-**Run `morm_admin init` in your project directory to make some default files such as `settings.py`, `mgr.py`**
+**Run `morm_admin init` in your project directory to make some default files such as `_morm_config_.py`, `mgr.py`**
 
-Edit *settings.py* to put the correct database credentials:
+Edit *_morm_config_.py* to put the correct database credentials:
 
 ```python
 from morm.db import Pool
@@ -277,7 +277,7 @@ async with Transaction(DB_POOL) as tdb:
 
 # Migration
 
-You should have created the *settings.py* and *mgr.py* file with `morm_admin init`.
+You should have created the *_morm_config_.py* and *mgr.py* file with `morm_admin init`.
 
 List all the models that you want migration for in *mgr.py*. You will know how to edit it once you open it.
 

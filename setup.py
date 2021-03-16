@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 import os
 import sys
 from codecs import open
-from setuptools import setup
+from setuptools import setup, find_packages
 
 sys.path[0:0] = ['morm']
 
@@ -26,7 +26,7 @@ setup(name="morm",
       license="BSD",
       keywords="async, orm, postgresql",
       url="https://github.com/neurobin/python-morm",
-      packages=["morm"],
+      packages=find_packages(include=('morm*',)),
       long_description=get_readme("README.md"),
       long_description_content_type="text/markdown",
       classifiers=[
