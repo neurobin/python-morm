@@ -27,28 +27,30 @@ DB_POOL = Pool(
     dsn='postgres://',
     host='localhost',
     port=5432,
-    user='jahid',
-    password='jahid',
-    database='test',
+    user='user',
+    password='pass',
+    database='db_name',
     min_size=10,
     max_size=90,
 )
             """,
         'mgr.py': """
+import os
 from morm.migration import migration_manager
-from _morm_config_ import DB_POOL                       # change accordingly
-from app.models import SomeModel, SomeOtherModel,   # change accordingly
+from _morm_config_ import DB_POOL
 
-MIGRATION_BASE_PATH = '/some_absolute_path'         # change accordingly
+from app.models import SomeModel, SomeOtherModel        # change accordingly
+
+MIGRATION_BASE_PATH = os.path.realpath('_migrations_')
 
 migration_models = [
-    SomeModel,                                      # change accordingly
-    SomeOtherModel,                                 # change accordingly
+    SomeModel,                                          # change accordingly
+    SomeOtherModel,                                     # change accordingly
 ]
 
 if __name__ == '__main__':
     migration_manager(DB_POOL, MIGRATION_BASE_PATH, migration_models)
-        """
+"""
 
     }
 
