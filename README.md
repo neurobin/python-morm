@@ -25,11 +25,11 @@ DB_POOL = Pool(
     dsn='postgres://',
     host='localhost',
     port=5432,
-    user='jahid',       # change accordingly
-    password='jahid',   # change accordingly
-    database='test',    # change accordingly
-    min_size=10,        # change accordingly
-    max_size=90,        # change accordingly
+    user='user',
+    password='pass',
+    database='db_name',
+    min_size=10,
+    max_size=90,
 )
 ```
 
@@ -42,6 +42,8 @@ It's more than a good practice to define a Base model first:
 ```python
 from morm.pg_models import BaseCommon as Model
 from morm.datetime import timestampz
+
+# BaseCommon defines id, created_at and updated_at fields.
 
 class Base(Model):
     class Meta:
