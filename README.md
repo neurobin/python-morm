@@ -345,3 +345,8 @@ Example:
         await self.tdb.save(user0)
 ...
 ```
+
+# Do not do these
+
+1. Do not delete migration files.
+2. Do not modify mutable values in-place e.g `user.addresses.append('Some address')`, instead set the value: `user.addresses = [*user.addresses, 'Some address']` so that the `__setattr__` is called, on which `morm` depends for checking changed fields for the `db.save()` and related methods.

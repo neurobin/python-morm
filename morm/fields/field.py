@@ -346,7 +346,7 @@ class FieldValue():
     def __init__(self, field: Field):
         self._field = field
         self._value = Void
-        self._value_change_count = 0
+        self.value_change_count = 0
         self._ignore_first_change_count_ = False
 
     def __eq__(self, other):
@@ -359,7 +359,19 @@ class FieldValue():
         Returns:
             Any: value
         """
-        return self._value_change_count
+        return self.__value_change_count
+
+    @value_change_count.setter
+    def value_change_count(self, v: Any):
+        """Set value change counter
+
+        Args:
+            v (Any): value
+        """
+        if not self._field._is_perpetual_default:
+            self.__value_change_count = v
+        else:
+            self.__value_change_count = 1 # always change
 
     @property
     def value(self) -> Any:
@@ -368,7 +380,7 @@ class FieldValue():
         Returns:
             Any: value or default
         """
-        if self._value is Void or (self._field._is_perpetual_default and self._value_change_count == 0):
+        if self._value is Void or (self._field._is_perpetual_default and self.value_change_count == 0):
             return self._field.get_default()
         return self._value
 
@@ -392,7 +404,7 @@ class FieldValue():
         """
         self._value = self._field.clean(v, fallback=fallback)
         if not self._ignore_first_change_count_: # if from db, then value change count won't change
-            self._value_change_count = self._value_change_count + 1 # This must be the last line
+            self.value_change_count += 1 # This must be the last line
         self._ignore_first_change_count_ = False
         # when the clean method raises exception, it will not be counted as
         # a successful value assignment.
@@ -401,7 +413,7 @@ class FieldValue():
         """Return the value to its initial state.
         """
         self._value = Void
-        # must not change/decrease _value_change_count
+        # must not change/decrease value_change_count
         # when this value is set again, the counter should increase
         # according to its previous value.
         # delete itself is a change but it does not change the value

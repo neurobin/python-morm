@@ -278,7 +278,7 @@ class DB(object):
         for n,v in new_data_gen:
             c += 1
             if reset:
-                v._value_change_count = 0
+                v.value_change_count = 0
                 mob.Meta._fromdb_ = []
             columns.append(n)
             values.append(v.value)
@@ -318,7 +318,7 @@ class DB(object):
                 colval.append(f'"{n}"=${c}')
                 values.append(v.value)
                 if reset:
-                    v._value_change_count = 0
+                    v.value_change_count = 0
         colval_q = ', '.join(colval)
         if colval_q:
             where = f'"{mob.__class__._get_pk_()}"=${c+1}'
