@@ -65,9 +65,9 @@ class TestMethods(unittest.TestCase):
         self.assertTrue(f2.value_change_count == 2)
 
     def test_ColumnConfig(self):
-        cc = fdl.ColumnConfig(sql_engine='mysql', sql_type='int', sql_onadd='', sql_alter=('ALTER TABLE {table} ALTER COLUMN {column} SET DEFAULT 1',), sql_ondrop='', column_name='name')
-        cc2 = fdl.ColumnConfig(sql_engine='mysql', sql_type='varchar', sql_onadd='NOT NULL', sql_alter=('ALTER TABLE {table} ALTER COLUMN {column} SET DEFAULT 0',), sql_ondrop='CASCADE', column_name='old_name')
-        self.assertEqual(repr(cc), '''ColumnConfig(sql_engine='mysql', sql_type='int', sql_onadd='', sql_alter=('ALTER TABLE {table} ALTER COLUMN {column} SET DEFAULT 1',), sql_ondrop='', column_name='name')''')
+        cc = fdl.ColumnConfig(sql_engine='mysql', sql_type='int', sql_onadd='', sql_alter=('ALTER TABLE "{table}" ALTER COLUMN "{column}" SET DEFAULT 1',), sql_ondrop='', column_name='name')
+        cc2 = fdl.ColumnConfig(sql_engine='mysql', sql_type='varchar', sql_onadd='NOT NULL', sql_alter=('ALTER TABLE "{table}" ALTER COLUMN "{column}" SET DEFAULT 0',), sql_ondrop='CASCADE', column_name='old_name')
+        self.assertEqual(repr(cc), '''ColumnConfig(sql_engine='mysql', sql_type='int', sql_onadd='', sql_alter=('ALTER TABLE "{table}" ALTER COLUMN "{column}" SET DEFAULT 1',), sql_ondrop='', column_name='name')''')
         with self.assertRaises(ex.UnsupportedError):
             cc.get_query_column_add('dummy_table')
         with self.assertRaises(ex.UnsupportedError):

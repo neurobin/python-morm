@@ -164,16 +164,14 @@ class ColumnConfig():
             raise TypeError(f"sql_alter {prev_sql_alter} must be a tuple, {type(prev_sql_alter)} given")
         if not isinstance(self.conf['sql_alter'], (tuple, list,)):
             raise TypeError(f"sql_alter {self.conf['sql_alter']} must be a tuple, {type(self.conf['sql_alter'])} given")
-        constraint = f'"__{table_name}_{self.conf["column_name"]}__"'
         query = ''
         msgs = []
         query_stubs = []
-        table = f'"{table_name}"'
-        column = f'"{self.conf["column_name"]}"'
+        column_name = self.conf["column_name"]
         for qs in self.conf['sql_alter']:
             if qs not in prev_sql_alter:
                 # new settings
-                qs = qs.format(table=table, column=column, constraint=constraint)
+                qs = qs.format(table=table_name, column=column_name)
                 query_stubs.append(qs)
                 msgs.append(f"\n* + {qs}")
 
@@ -192,32 +190,32 @@ class Field(object):
     Example sql_type: `'varchar(255)'`, `'integer'`, etc..
 
     Example sql_onadd: `'PRIMARY KEY'`, `'NOT NULL'`, `'UNIQUE'` etc..
+    `sql_onadd` is only for adding the column, thus a change to this
+    parameter will not trigger any change for the field.
 
     Example sql_ondrop: `'CASCADE'` and `'RESTRICT'`
 
     Example sql_alter queries
 
     ```sql
-    ALTER TABLE {table} ALTER COLUMN {column} SET DEFAULT expression
-    ALTER TABLE {table} ALTER COLUMN {column} DROP DEFAULT
-    ALTER TABLE {table} ALTER COLUMN {column} SET NOT NULL
-    ALTER TABLE {table} ALTER COLUMN {column} SET STATISTICS integer
-    ALTER TABLE {table} ALTER COLUMN {column} SET ( attribute_option = value [, ... ] )
-    ALTER TABLE {table} ALTER COLUMN {column} RESET ( attribute_option [, ... ] )
-    ALTER TABLE {table} ALTER COLUMN {column} SET STORAGE { PLAIN | EXTERNAL | EXTENDED | MAIN }
+    ALTER TABLE "{table}" ALTER COLUMN "{column}" SET DEFAULT expression
+    ALTER TABLE "{table}" ALTER COLUMN "{column}" DROP DEFAULT
+    ALTER TABLE "{table}" ALTER COLUMN "{column}" SET NOT NULL
+    ALTER TABLE "{table}" ALTER COLUMN "{column}" SET STATISTICS integer
+    ALTER TABLE "{table}" ALTER COLUMN "{column}" SET ( attribute_option = value [, ... ] )
+    ALTER TABLE "{table}" ALTER COLUMN "{column}" RESET ( attribute_option [, ... ] )
+    ALTER TABLE "{table}" ALTER COLUMN "{column}" SET STORAGE { PLAIN | EXTERNAL | EXTENDED | MAIN }
     ```
 
-    {table} and {column} will be replaced with table name and column name
-    respectively.
+    {table} and {column} will be replaced with table name,
+    and column name respectively.
 
-    `sql_onadd` is only for adding the column, thus a change to this
-     parameter will not trigger any change for the field.
 
     Args:
         sql_type (str): Data type in SQL.
         sql_onadd (str): sql to add in ADD clause after 'ADD COLUMN column_name data_type'
         sql_ondrop (str): Either 'RESTRICT' or 'CASCADE'.
-        sql_alter (Tuple[str]): Alter column queries; Example: ('ALTER TABLE {table} ALTER COLUMN {column} DROP DEFAULT',).
+        sql_alter (Tuple[str]): Alter column queries; Example: ('ALTER TABLE "{table}" ALTER COLUMN "{column}" DROP DEFAULT',).
         sql_engine (str): db engine, postgresql, mysql etc.. Defaults to 'postgresql'
         default (Any, optional): Pythonic default value (can be a callable). Defaults to Void. (Do not use mutable values, use function instead)
         value (Any, optional): Set a value that will prevail unless changed manually. Can be a function. Useful to make updated_at like fields.

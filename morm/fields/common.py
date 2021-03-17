@@ -17,17 +17,20 @@ class ForeignKey(Field):
 
     Args:
         model (ModelType): model class.
-        on_delete (str, optional): Either SET DEFAULT, SET NULL, RESTRICT, CASCADE or NO ACTION. Defaults to 'CASCADE'.
+        on_delete (str, optional): query to add with ON DELETE. Either SET DEFAULT, SET NULL, RESTRICT, CASCADE or NO ACTION.
+        on_update (str, optional): query to add With ON UPDATE.
         kwargs : See morm.fields.Field for details.
     """
-    def __init__(self, model: ModelType, on_delete='CASCADE', **kwargs):
+    def __init__(self, model: ModelType, on_delete='', on_update='', **kwargs):
         fk_pk = model.Meta.pk
         fk_type = model.Meta._field_defs_[fk_pk].sql_type
         fk_table = model.Meta.db_table
-        alter_q = 'ALTER TABLE {table} DROP CONSTRAINT IF EXISTS {constraint};ALTER TABLE {table} ADD CONSTRAINT {constraint} FOREIGN KEY ({column}) REFERENCES ' + f'"{fk_table}"("{fk_pk}")'
+        alter_q = 'ALTER TABLE "{table}" DROP CONSTRAINT IF EXISTS "__FK_{table}_{column}__";ALTER TABLE "{table}" ADD CONSTRAINT "__FK_{table}_{column}__" FOREIGN KEY ("{column}") REFERENCES "%s"("%s")' % (fk_table, fk_pk)
         if on_delete:
             alter_q += f' ON DELETE {on_delete}'
-        alter_q += ';'
+        if on_update:
+            alter_q += f' ON UPDATE {on_update}'
+        alter_q += ' DEFERRABLE INITIALLY DEFERRED;'
         super(ForeignKey, self).__init__(fk_type, **kwargs)
         pt = self.sql_conf.conf['sql_alter']
         self.sql_conf.conf['sql_alter'] = (alter_q, *pt)
