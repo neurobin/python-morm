@@ -1035,17 +1035,17 @@ class Transaction():
             'deferrable': deferrable,
         }
 
-    async def __aenter__(self) -> Connection:
+    async def __aenter__(self) -> DB:
         return await self.start()
 
-    async def start(self) -> Connection:
+    async def start(self) -> DB:
         """Start transaction.
 
         Raises:
             exceptions.TransactionError: When same object is used simultaneously for transaction
 
         Returns:
-            Connection: Connection object.
+            DB: DB object.
         """
         if self.db._con:
             raise exceptions.TransactionError('Another transaction is running (or not ended properly) with this Transaction object')

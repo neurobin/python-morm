@@ -396,7 +396,7 @@ class ModelBase(metaclass=ModelType):
             v = fields[k].value
             if self.__class__._is_valid_down_(k, v):
                 return v
-            raise AttributeError(f'Invalid attempt to access field `{k}`. It is excluded using either exclude_fields_down or exclude_values_down in {self.__class__.__name__} Meta class')
+            raise AttributeError(f'Invalid attempt to access field `{k}`. It is excluded using either exclude_fields_down or exclude_values_down in {self.__class__.__name__} Meta class. Or it does not have any valid value.')
         raise AttributeError
 
     def __setattr__(self, k, v):
@@ -411,7 +411,7 @@ class ModelBase(metaclass=ModelType):
                 self.Meta._fromdb_.remove(k)
             fields[k].value = v
         else:
-            raise AttributeError(f'Can not set field `{k}`. It is excluded using either exclude_fields_up or exclude_values_up in {self.__class__.__name__} Meta class ')
+            raise AttributeError(f'Can not set field `{k}`. It is excluded using either exclude_fields_up or exclude_values_up in {self.__class__.__name__} Meta class. Or you are trying to set an invalid value: {v}')
 
     def __repr__(self):
         reprs = []
