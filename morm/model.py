@@ -410,6 +410,8 @@ class ModelBase(metaclass=ModelType):
                 fields[k]._ignore_first_change_count_ = True
                 self.Meta._fromdb_.remove(k)
             fields[k].value = v
+        elif k in self.Meta._fromdb_:
+            self.Meta._fromdb_.remove(k)
         else:
             raise AttributeError(f'Can not set field `{k}`. It is excluded using either exclude_fields_up or exclude_values_up in {self.__class__.__name__} Meta class. Or you are trying to set an invalid value: {v}')
 
