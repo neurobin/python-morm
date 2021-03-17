@@ -230,6 +230,7 @@ class Field(object):
                 sql_engine='postgresql',
                 default: Any=Void,
                 value: Any=Void,
+                choices: Tuple[Tuple[str, Any], ...] = (),
                 validator: Callable=always_valid,
                 modifier: Callable=nomodify,
                 fallback=False,):
@@ -247,6 +248,7 @@ class Field(object):
                 raise ValueError(f"Parameter 'value' and 'default' both can not be set at the same time.")
         else:
             self.default = default
+        self.choices = choices
 
 
     def __eq__(self, other: 'Field') -> bool: # type: ignore

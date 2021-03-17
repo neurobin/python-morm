@@ -352,7 +352,10 @@ class DB(object):
             (str): status of last sql command.
         """
         query, args = self.get_delete_query(mob)
-        return await self.execute(query, *args, timeout=timeout)
+        await mob._pre_delete_(self)
+        res = await self.execute(query, *args, timeout=timeout)
+        await mob._post_delete_(self)
+        return res
 
     async def insert(self, mob: ModelBase, timeout: float = None) -> Any:
         """Insert the current data state of mob into db.
@@ -365,9 +368,11 @@ class DB(object):
             (Any): Value of primary key of the inserted row
         """
         query, args = self.get_insert_query(mob, reset=True)
+        await mob._pre_insert_(self)
         pkval = await self.fetchval(query, *args, timeout=timeout)
         if pkval is not None:
             setattr(mob, mob.__class__._get_pk_(), pkval)
+        await mob._post_insert_(self)
         return pkval
 
     async def update(self, mob: ModelBase, timeout: float = None) -> str:
@@ -387,8 +392,12 @@ class DB(object):
         """
         query, args = self.get_update_query(mob, reset=True)
         if query:
-            return await self.execute(query, *args, timeout=timeout)
-        return self.DATA_NO_CHANGE
+            await mob._pre_update_(self)
+            res = await self.execute(query, *args, timeout=timeout)
+            await mob._post_update_(self)
+        else:
+            res = self.DATA_NO_CHANGE
+        return res
 
 
     async def save(self, mob: ModelBase, timeout: float = None) -> Union[str, Any]:
@@ -405,10 +414,13 @@ class DB(object):
             int or str: The value of the primary key for insert or
                             status for update.
         """
+        await mob._pre_save_(self)
         try:
-            return await self.update(mob, timeout=timeout)
+            res = await self.update(mob, timeout=timeout)
         except AttributeError:
-            return await self.insert(mob, timeout=timeout)
+            res = await self.insert(mob, timeout=timeout)
+        await mob._post_save_(self)
+        return res
 
     def q(self, model: ModelType = None) -> 'ModelQuery':
         """Return a ModelQuery for model

@@ -103,9 +103,9 @@ class ModelType(type):
         # dict is ordered, officially from python 3.7
         for n, v in _class_.__dict__.items():
             if isinstance(v, Field):
-                if n.startswith('__') and n.endswith('__'):
+                if n.startswith('_') and n.endswith('_'):
                     raise AttributeError(f"Invalid field name '{n}' in model '{class_name}'. \
-                        Field name must not start and end with double underscore.")
+                        Field name must not start and end with underscore.")
                 if meta_attrs['proxy'] and n in attrs:
                     raise ValueError(f"Proxy model '{class_name}' can not define new field: {n}")
                 v.name = n
@@ -419,6 +419,91 @@ class ModelBase(metaclass=ModelType):
             reprs.append(f'{k}={repr(v)}')
         body = ', '.join(reprs)
         return f'{self.__class__.__name__}({body})'
+
+
+    async def _pre_save_(self, db):
+        """Pre-save hook.
+
+        Override to run pre save cleanup.
+
+        Args:
+            db (DB): db handle.
+        """
+        pass
+
+    async def _pre_delete_(self, db):
+        """Pre-delete hook.
+
+        Override to run pre delete cleanup.
+
+        Args:
+            db (DB): db handle.
+        """
+        pass
+
+
+    async def _post_save_(self, db):
+        """Pre-save hook.
+
+        Override to run post save cleanup.
+
+        Args:
+            db (DB): db handle.
+        """
+        pass
+
+    async def _post_delete_(self, db):
+        """Pre-delete hook.
+
+        Override to run post delete cleanup.
+
+        Args:
+            db (DB): db handle.
+        """
+        pass
+
+
+
+    async def _pre_insert_(self, db):
+        """Pre-insert hook.
+
+        Override to run pre insert cleanup.
+
+        Args:
+            db (DB): db handle.
+        """
+        pass
+
+    async def _pre_update_(self, db):
+        """Pre-update hook.
+
+        Override to run pre update cleanup.
+
+        Args:
+            db (DB): db handle.
+        """
+        pass
+
+
+    async def _post_insert_(self, db):
+        """Pre-insert hook.
+
+        Override to run post insert cleanup.
+
+        Args:
+            db (DB): db handle.
+        """
+        pass
+
+    async def _post_update_(self, db):
+        """Pre-update hook.
+
+        Override to run post update cleanup.
+
+        Args:
+            db (DB): db handle.
+        """
+        pass
 
 
 
