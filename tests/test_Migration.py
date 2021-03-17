@@ -82,10 +82,12 @@ class TestMethods(unittest.TestCase):
 
         mgo = mg.Migration(User, '/tmp/..Non-Existent')
         print(' - [x] Field init checks: 1. repr implementation 2. default values')
-        self.assertTrue( "Field('varchar(255)', sql_onadd='', sql_ondrop='', sql_alter=(), sql_engine='postgresql'," in repr(User.Meta._field_defs_['name']))
+        # print(repr(User.Meta._field_defs_['name']))
+        self.assertTrue( "Field('varchar(255)', sql_onadd='', sql_ondrop='', sql_alter=('ALTER TABLE \"{table}\" DROP CONSTRAINT IF EXISTS \"__UNQ_{table}_{column}__\";',), sql_engine='postgresql'," in repr(User.Meta._field_defs_['name']))
 
         print(' - [x] Checking pfields and cfields')
-        cfields = {'id': ColumnConfig(sql_type='SERIAL', sql_onadd='NOT NULL', sql_ondrop='', sql_alter=(), sql_engine='postgresql', column_name='id'), 'name': ColumnConfig(sql_type='varchar(255)', sql_onadd='', sql_ondrop='', sql_alter=(), sql_engine='postgresql', column_name='name'), 'profession': ColumnConfig(sql_type='varchar(65)', sql_onadd='', sql_ondrop='', sql_alter=("ALTER TABLE \"{table}\" ALTER COLUMN \"{column}\" SET DEFAULT 'Teacher'", 'ALTER TABLE "{table}" ALTER COLUMN "{column}" SET NOT NULL'), sql_engine='postgresql', column_name='profession')}
+        # print(mgo.cfields)
+        cfields = {'id': ColumnConfig(sql_type='SERIAL', sql_onadd='NOT NULL', sql_ondrop='', sql_alter=('ALTER TABLE "{table}" DROP CONSTRAINT IF EXISTS "__UNQ_{table}_{column}__";',), sql_engine='postgresql', column_name='id'), 'name': ColumnConfig(sql_type='varchar(255)', sql_onadd='', sql_ondrop='', sql_alter=('ALTER TABLE "{table}" DROP CONSTRAINT IF EXISTS "__UNQ_{table}_{column}__";',), sql_engine='postgresql', column_name='name'), 'profession': ColumnConfig(sql_type='varchar(65)', sql_onadd='', sql_ondrop='', sql_alter=('ALTER TABLE "{table}" DROP CONSTRAINT IF EXISTS "__UNQ_{table}_{column}__";', 'ALTER TABLE "{table}" ALTER COLUMN "{column}" SET DEFAULT \'Teacher\'', 'ALTER TABLE "{table}" ALTER COLUMN "{column}" SET NOT NULL'), sql_engine='postgresql', column_name='profession')}
         self.assertTrue(mgo.cfields == cfields)
         self.assertTrue({} == mgo.pfields)
 
@@ -96,44 +98,51 @@ class TestMethods(unittest.TestCase):
         self.assertTrue('''
 *******************************************************************************
 * > ADD: id: SERIAL
+* + ALTER TABLE "User" DROP CONSTRAINT IF EXISTS "__UNQ_User_id__";
 
 ALTER TABLE "User" ADD COLUMN "id" SERIAL NOT NULL;
+ALTER TABLE "User" DROP CONSTRAINT IF EXISTS "__UNQ_User_id__";;
 *******************************************************************************''' == msg)
-        self.assertTrue(query == 'ALTER TABLE "User" ADD COLUMN "id" SERIAL NOT NULL;')
+        self.assertTrue(query == 'ALTER TABLE "User" ADD COLUMN "id" SERIAL NOT NULL;\nALTER TABLE "User" DROP CONSTRAINT IF EXISTS "__UNQ_User_id__";;')
 
         print(' - [x] Checking add column sql for name')
         query, msg = next(mgq)
+        # print(msg)
         self.assertTrue('''
 *******************************************************************************
 * > ADD: name: varchar(255)
+* + ALTER TABLE "User" DROP CONSTRAINT IF EXISTS "__UNQ_User_name__";
 
 ALTER TABLE "User" ADD COLUMN "name" varchar(255) ;
+ALTER TABLE "User" DROP CONSTRAINT IF EXISTS "__UNQ_User_name__";;
 *******************************************************************************''' == msg)
-        self.assertTrue(query == 'ALTER TABLE "User" ADD COLUMN "name" varchar(255) ;')
+        self.assertTrue(query == 'ALTER TABLE "User" ADD COLUMN "name" varchar(255) ;\nALTER TABLE "User" DROP CONSTRAINT IF EXISTS "__UNQ_User_name__";;')
 
         print(' - [x] Checking add column sql for profession')
         query, msg = next(mgq)
-        print(msg)
+        # print(msg)
         self.assertEqual('''
 *******************************************************************************
 * > ADD: profession: varchar(65)
+* + ALTER TABLE "User" DROP CONSTRAINT IF EXISTS "__UNQ_User_profession__";
 * + ALTER TABLE "User" ALTER COLUMN "profession" SET DEFAULT 'Teacher'
 * + ALTER TABLE "User" ALTER COLUMN "profession" SET NOT NULL
 
 ALTER TABLE "User" ADD COLUMN "profession" varchar(65) ;
-ALTER TABLE "User" ALTER COLUMN "profession" SET DEFAULT 'Teacher'; ALTER TABLE "User" ALTER COLUMN "profession" SET NOT NULL;
+ALTER TABLE "User" DROP CONSTRAINT IF EXISTS "__UNQ_User_profession__";; ALTER TABLE "User" ALTER COLUMN "profession" SET DEFAULT 'Teacher'; ALTER TABLE "User" ALTER COLUMN "profession" SET NOT NULL;
 *******************************************************************************''', msg)
         self.assertEqual(query, """ALTER TABLE "User" ADD COLUMN "profession" varchar(65) ;
-ALTER TABLE "User" ALTER COLUMN "profession" SET DEFAULT 'Teacher'; ALTER TABLE "User" ALTER COLUMN "profession" SET NOT NULL;""")
+ALTER TABLE "User" DROP CONSTRAINT IF EXISTS "__UNQ_User_profession__";; ALTER TABLE "User" ALTER COLUMN "profession" SET DEFAULT 'Teacher'; ALTER TABLE "User" ALTER COLUMN "profession" SET NOT NULL;""")
 
+        print(mgo.get_create_table_query())
         self.assertEqual(mgo.get_create_table_query(), """
 CREATE TABLE "User" (
     "id" SERIAL NOT NULL,
     "name" varchar(255) ,
     "profession" varchar(65) @
-);
-
-ALTER TABLE "User" ALTER COLUMN "profession" SET DEFAULT 'Teacher'; ALTER TABLE "User" ALTER COLUMN "profession" SET NOT NULL;""".replace('@', '').strip())
+);ALTER TABLE "User" DROP CONSTRAINT IF EXISTS "__UNQ_User_id__";;
+ALTER TABLE "User" DROP CONSTRAINT IF EXISTS "__UNQ_User_name__";;
+ALTER TABLE "User" DROP CONSTRAINT IF EXISTS "__UNQ_User_profession__";; ALTER TABLE "User" ALTER COLUMN "profession" SET DEFAULT 'Teacher'; ALTER TABLE "User" ALTER COLUMN "profession" SET NOT NULL;""".replace('@', '').strip())
 
         mgo = mg.Migration(User, self.mgpath)
         mgo.make_migrations(yes=True)

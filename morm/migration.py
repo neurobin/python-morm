@@ -221,8 +221,8 @@ class MigrationRunner():
     async def _run_migration_query(self):
         try:
             dbm = self.tdb(self.model)
-            dbm.q(self.migration_query)
-            await dbm.execute()
+            if self.migration_query:
+                await dbm.q(self.migration_query).execute()
         except asyncpg.exceptions.PostgresSyntaxError:
             sys.stderr.write(f'************ Migration Query ************\n{dbm.getq()[0]}\n\n')
 

@@ -10,12 +10,20 @@ __version__ = '0.0.1'
 from datetime import datetime, timezone
 
 
-def timestampz():
-    """Get UTC timestamp with timezone.
+def timestamp() -> datetime:
+    """Get current timestamp.
+
+    Returns:
+        datetime.datetime
+    """
+    return datetime.now()
+
+def timestampu() -> datetime:
+    """Get current UTC timestamp.
 
     Example: '2021-03-12 05:29:22.497195+00:00'
 
     Returns:
-        str
+        datetime.datetime
     """
-    return datetime.now(timezone.utc).isoformat(sep=' ')
+    return datetime.now(timezone.utc)

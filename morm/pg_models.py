@@ -9,7 +9,7 @@ __version__ = '0.0.1'
 
 from morm.model import Model
 from morm.fields import Field
-from morm.datetime import timestampz
+from morm.datetime import timestamp
 
 
 class Base(Model):
@@ -29,5 +29,5 @@ class BaseCommon(Base):
     """
     class Meta:
         abstract = True
-    created_at = Field('TIMESTAMP', sql_onadd='NOT NULL', sql_alter=('ALTER TABLE {table} ALTER COLUMN {column} SET DEFAULT NOW()',))
-    updated_at = Field('TIMESTAMP', sql_onadd='NOT NULL', value=timestampz)
+    created_at = Field('TIMESTAMP WITH TIME ZONE', sql_onadd='NOT NULL', sql_alter=('ALTER TABLE "{table}" ALTER COLUMN "{column}" SET DEFAULT NOW()',))
+    updated_at = Field('TIMESTAMP WITH TIME ZONE', sql_onadd='NOT NULL', value=timestamp)

@@ -232,12 +232,19 @@ class Field(object):
                 sql_engine='postgresql',
                 default: Any=Void,
                 value: Any=Void,
+                unique=False,
                 choices: Tuple[Tuple[str, Any], ...] = (),
                 help_text: str = '',
                 validator: Callable=always_valid,
                 modifier: Callable=nomodify,
                 fallback=False,):
         self.sql_type = sql_type
+        unq_constraint = '__UNQ_{table}_{column}__'
+        if unique:
+            ualq = 'ALTER TABLE "{table}" ADD CONSTRAINT "%s" UNIQUE ("{column}");' % (unq_constraint,)
+        else:
+            ualq = 'ALTER TABLE "{table}" DROP CONSTRAINT IF EXISTS "%s";' % (unq_constraint,)
+        sql_alter = (ualq, *sql_alter)
         self.sql_conf = ColumnConfig(sql_type=sql_type, sql_onadd=sql_onadd, sql_ondrop=sql_ondrop, sql_alter=sql_alter, sql_engine=sql_engine)
         self.validator = validator
         self.modifier = modifier
