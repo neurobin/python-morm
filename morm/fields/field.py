@@ -219,6 +219,8 @@ class Field(object):
         sql_engine (str): db engine, postgresql, mysql etc.. Defaults to 'postgresql'
         default (Any, optional): Pythonic default value (can be a callable). Defaults to Void. (Do not use mutable values, use function instead)
         value (Any, optional): Set a value that will prevail unless changed manually. Can be a function. Useful to make updated_at like fields.
+        choices (Tuple[Tuple[str, Any], ...], optional): choices tuple: (('Name of choice', 'value'), ...)
+        help_text (str, optional):  help text to describe this field.
         validator (callable, optional): A callable that accepts exactly one argument. Validates the value in `clean` method. Defaults to always_valid.
         modifier (callable, optional): A callable that accepts exactly one argument. Modifies the value if validation fails when the `clean` method is called.. Defaults to nomodify.
         fallback (bool, optional): Whether invalid value should fallback to default value suppressing exception. (May hide bugs in your program)
@@ -231,6 +233,7 @@ class Field(object):
                 default: Any=Void,
                 value: Any=Void,
                 choices: Tuple[Tuple[str, Any], ...] = (),
+                help_text: str = '',
                 validator: Callable=always_valid,
                 modifier: Callable=nomodify,
                 fallback=False,):
@@ -249,6 +252,7 @@ class Field(object):
         else:
             self.default = default
         self.choices = choices
+        self.help_text = help_text
 
 
     def __eq__(self, other: 'Field') -> bool: # type: ignore

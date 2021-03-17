@@ -989,6 +989,9 @@ class ModelQuery():
             col = self.model.Meta.pk    #type: ignore
         return await self.reset().qfilter().qc(col, comp, *vals).fetchrow()
 
+SERIALIZABLE = 'serializable'
+REPEATABLE_READ = 'repeatable_read'
+READ_COMMITTED = 'read_committed'
 
 class Transaction():
     """Start a transaction.
@@ -1020,7 +1023,7 @@ class Transaction():
         deferrable (bool, optional): Specifies whether this transaction is deferrable. Defaults to False.
     """
     def __init__(self, pool: Pool, *,
-                isolation: str='read_committed',
+                isolation: str=READ_COMMITTED,
                 readonly: bool=False,
                 deferrable: bool=False):
         self._pool = pool
