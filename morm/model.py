@@ -399,7 +399,10 @@ class ModelBase(metaclass=ModelType):
             raise AttributeError(f'Invalid attempt to access field `{k}`. It is excluded using either exclude_fields_down or exclude_values_down in {self.__class__.__name__} Meta class. Or it does not have any valid value.')
         raise AttributeError
 
-    def __setattr__(self, k, v):
+    def __setattr__(self, k: str, v):
+        if k.startswith('_') and k.endswith('_'):
+            self.__dict__[k] = v
+            return
         fields = self.Meta._fields_
         if k not in fields:
             raise AttributeError(f"No such field ('{k}') in model '{self.__class__.__name__}''")
