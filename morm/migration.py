@@ -16,42 +16,16 @@ import glob
 import datetime
 import json
 from pathlib import Path
-import importlib.util
 from morm.db import DB, ModelQuery, Transaction, Pool
 from morm.model import ModelBase, ModelType
 import morm.exceptions as exc
 from morm.fields.field import ColumnConfig
+from morm.utils import Open, import_from_path
 
 HOME = str(Path.home())
 MIGRATION_CURSOR_DIR = os.path.join(HOME, '.local', 'share', 'morm')
 os.makedirs(MIGRATION_CURSOR_DIR, exist_ok=True)
 
-def Open(path: str, mode: str, **kwargs):
-    """Wrapper for open with utf-8 encoding
-
-    Args:
-        path (str): path to file
-        mode (str): file open mode
-
-    Returns:
-        open: open context manager handle
-    """
-    return open(path, mode, encoding='utf-8', **kwargs)
-
-def import_from_path(name: str, path: str):
-    """Import a module from path
-
-    Args:
-        name (str): module name
-        path (str): path
-
-    Returns:
-        object: module object
-    """
-    spec = importlib.util.spec_from_file_location(name, path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module) # type: ignore
-    return module
 
 def _get_changed_fields(curs: Dict[str, ColumnConfig],
                         pres: Dict[str, ColumnConfig])\
