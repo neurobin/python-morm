@@ -103,9 +103,9 @@ class ModelType(type):
         # dict is ordered, officially from python 3.7
         for n, v in _class_.__dict__.items():
             if isinstance(v, Field):
-                if n.startswith('_') and n.endswith('_'):
+                if n.startswith('_'):
                     raise AttributeError(f"Invalid field name '{n}' in model '{class_name}'. \
-                        Field name must not start and end with underscore.")
+                        Field name must not start with underscore.")
                 if meta_attrs['proxy'] and n in attrs:
                     raise ValueError(f"Proxy model '{class_name}' can not define new field: {n}")
                 v.name = n
@@ -400,7 +400,9 @@ class ModelBase(metaclass=ModelType):
         raise AttributeError
 
     def __setattr__(self, k: str, v):
-        if k.startswith('_') and k.endswith('_'):
+        if k.startswith('_'):
+            if k.endswith('_'):
+                raise AttributeError('_<name>_ such names are reserved for predefined methods.')
             self.__dict__[k] = v
             return
         fields = self.Meta._fields_
