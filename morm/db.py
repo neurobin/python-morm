@@ -9,6 +9,7 @@ __version__ = '0.1.0'
 import collections
 import re
 import asyncio
+import nest_asyncio
 import atexit
 import logging
 
@@ -23,6 +24,9 @@ from morm.types import Void
 
 LOGGER_NAME = 'morm.db-'
 log = logging.getLogger(LOGGER_NAME)
+
+
+nest_asyncio.apply()
 
 def record_to_model(record: Record, model_class: ModelType) -> Model:
     """Convert a Record object to Model object.
