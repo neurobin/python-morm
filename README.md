@@ -357,3 +357,41 @@ Example:
 
 1. Do not delete migration files.
 2. Do not modify mutable values in-place e.g `user.addresses.append('Some address')`, instead set the value: `user.addresses = [*user.addresses, 'Some address']` so that the `__setattr__` is called, on which `morm` depends for checking changed fields for the `db.save()` and related methods.
+
+# Initialize a FastAPI project
+
+Run `init_fap` in your project root. It will create a directory structure like this:
+
+```
+├── app
+│   ├── core
+│   │   ├── __init__.py
+│   │   ├── models
+│   │   │   ├── __init__.py
+│   │   ├── schemas
+│   │   │   └── __init__.py
+│   │   └── settings.py
+│   ├── __init__.py
+│   ├── main.py
+│   ├── tests
+│   │   ├── __init__.py
+│   │   └── v1
+│   │       ├── __init__.py
+│   │       └── test_sample.py
+│   └── v1
+│       ├── dependencies
+│       │   └── __init__.py
+│       ├── __init__.py
+│       ├── internal
+│       │   ├── __init__.py
+│       └── routers
+│           ├── __init__.py
+├── mgr.py
+├── _morm_config_.py
+```
+
+You can run the app with
+
+```bash
+uvicorn app.main:app --reload --loop asyncio
+```
