@@ -400,6 +400,8 @@ class ModelBase(metaclass=ModelType):
         raise AttributeError
 
     def __setattr__(self, k: str, v):
+        if k == 'Meta':
+            raise AttributeError(f"Name '{k} is reserved. You should not try to change it.")
         if k.startswith('_'):
             if k.endswith('_'):
                 raise AttributeError('_<name>_ such names are reserved for predefined methods.')

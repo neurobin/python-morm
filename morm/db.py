@@ -9,7 +9,7 @@ __version__ = '0.1.0'
 import collections
 import re
 import asyncio
-import nest_asyncio
+import nest_asyncio  # type: ignore
 import atexit
 import logging
 

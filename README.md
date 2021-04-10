@@ -84,6 +84,13 @@ class User(Base):
     random = Field('integer', default=get_rand) # function can be default
 ```
 
+**Rules for field names**
+
+1. Must not start with an underscore (`_`). You can set arbitrary variables to the model instance with names starting with underscores; normally you can not set any variable to a model instance. Names not starting with an underscore are all expected to be field names, variables or methods that are defined during class definition.
+2. `_<name>_` such constructions are reserved for pre-defined overridable methods such as `_pre_save_`, `_post_save_`, etc..
+3. Name `Meta` is reserved to be a class that contains configuration of the model for both model and model instance.
+
+
 ## Initialize a model instance
 
 keyword arguments initialize corresponding fields according to
