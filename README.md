@@ -278,6 +278,8 @@ async with Transaction(DB_POOL) as tdb:
 
 # Migration
 
+**Migration is still under development. Not recommended for normal use. But if you want to help develop, please go ahead.**
+
 You should have created the *_morm_config_.py* and *mgr.py* file with `morm_admin init`.
 
 List all the models that you want migration for in *mgr.py*. You will know how to edit it once you open it.
