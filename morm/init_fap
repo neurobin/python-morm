@@ -39,6 +39,13 @@ app.include_router(
     DEBUG = True
 "
     ["$root/v1/routers/__init__.py"]="
+'''Make a single APIRouter that contains all the routers.
+
+We will automatically include all routers in this directory
+sequentially. You should give sequential names to your router modules
+such as route_0001_admin.py, route_0002_user.py, etc...
+'''
+
 from fastapi import APIRouter
 import glob, os
 from morm.utils import import_from_path
