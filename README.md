@@ -43,7 +43,7 @@ It's more than a good practice to define a Base model first:
 from morm.pg_models import BaseCommon as Model
 
 # BaseCommon defines id, created_at and updated_at fields.
-# While Base defines only id.
+# While pg_models.Base defines only id.
 
 class Base(Model):
     class Meta:
