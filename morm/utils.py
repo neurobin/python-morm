@@ -33,6 +33,6 @@ def import_from_path(name: str, path: str):
         object: module object
     """
     spec = importlib.util.spec_from_file_location(name, path)
-    module = importlib.util.module_from_spec(spec)
+    module = importlib.util.module_from_spec(spec) # type: ignore
     spec.loader.exec_module(module) # type: ignore
     return module
