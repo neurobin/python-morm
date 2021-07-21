@@ -276,6 +276,9 @@ class Field(object):
         body = ', '.join(reprs)
         return f'{self.__class__.__name__}({body})'
 
+    def __invert__(self):
+        return self.name
+
     @property
     def name(self) -> str:
         """Get the name of the field"""
