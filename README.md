@@ -9,7 +9,7 @@ Currently supports *PostgreSQL* with `asyncpg`.
 **Requires Python 3.7+**
 
 ```bash
-pip install --user morm
+pip install morm
 ```
 
 # Init project
