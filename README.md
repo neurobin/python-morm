@@ -278,7 +278,7 @@ async with Transaction(DB_POOL) as tdb:
 
 # Migration
 
-**Migration is still under development. Not recommended for normal use. But if you want to help develop, please go ahead.**
+**Migration is a new feature and only forward migrations are supported as of now.**
 
 You should have created the *_morm_config_.py* and *mgr.py* file with `morm_admin init`.
 
@@ -350,14 +350,14 @@ Example:
         self.tdb is the db handle (transaction)
         self.model is the model class
         """
-        user0 = self.model(name='John Doe', profession='Engineer', age=45)
+        user0 = self.model(name='John Doe', profession='Software Engineer', age=45)
         await self.tdb.save(user0)
 ...
 ```
 
 # Do not do these
 
-1. Do not delete migration files.
+1. Do not delete migration files manually, use `python mgr.py delete_migration_files <start_index> <end_index>` command instead.
 2. Do not modify mutable values in-place e.g `user.addresses.append('Some address')`, instead set the value: `user.addresses = [*user.addresses, 'Some address']` so that the `__setattr__` is called, on which `morm` depends for checking changed fields for the `db.save()` and related methods.
 
 # Initialize a FastAPI project
