@@ -41,9 +41,9 @@ It's more than a good practice to define a Base model first:
 
 ```python
 from morm.pg_models import BaseCommon as Model
-from morm.datetime import timestampz
 
 # BaseCommon defines id, created_at and updated_at fields.
+# While Base defines only id.
 
 class Base(Model):
     class Meta:
@@ -61,7 +61,7 @@ class User(Base):
     password = Field('varchar(255)')
 ```
 
-An advanced model could look like:
+An advanced model could look like this:
 
 ```python
 import random
@@ -165,9 +165,54 @@ await db.save(user5)
 await db.delete(user5)
 ```
 
+## Get
+
+The get method has the signature `get(*vals, col='', comp='=$1')`.
+
+It gets the first row found by column and value. If `col` is not given, it defaults to the primary key (`pk`) of the model. If comparison is not given, it defaults to `=$1`
+
+Example:
+
+```python
+from morm.db import DB
+
+db = DB(DB_POOL) # get a db handle.
+
+# get by pk:
+user5 = await db(User).get(5)
+
+# price between 5 and 2000
+user = await db(User).get(5, 2000, col='price', comp='BETWEEN $1 AND $2')
+```
+
+## Filter
+
+```python
+from morm.db import DB
+
+db = DB(DB_POOL) # get a db handle.
+
+f = User.Meta.f
+user_list = await db(User).qfilter().q(f'"{f.profession}"=$1', 'Teacher').fetch()
+user_list = await db(User).qfilter().qc(f.profession, '=$1', 'Teacher').fetch()
+```
+
+It is safer to use `${qh.c}` instead of `$1`, `${qh.c+1}` instead of `$2`, etc.. :
+
+```python
+from morm.db import DB
+
+db = DB(DB_POOL) # get a db handle.
+
+qh = db(User)
+user_list = await qh.qfilter()\
+                    .q(f'{qh.f.profession} = ${qh.c} AND {qh.f.age} = ${qh.c+1}', 'Teacher', 30)\
+                    .fetch()
+```
+
 # Query
 
-Calling `db(Model)` gives you a model query handler which have several query methods to help you make queries.
+Calling `db(Model)` gives you a model query handler which has several query methods to help you make queries.
 
 Use `.q(query, *args)` method to make queries with positional arguments. If you want named arguments, use the uderscored version of these methods. For example, `q(query, *args)` has an underscored version `q_(query, *args, **kwargs)` that can take named arguments.
 
@@ -214,51 +259,6 @@ To execute a query, you need to run one of the execution methods
 * `qupdate(data)`: Initialize a update query for data
 * `qfilter()`: Initialize a filter query upto WHERE clasue.
 * `get(pkval)`: Get an item by primary key.
-
-## Filter
-
-```python
-from morm.db import DB
-
-db = DB(DB_POOL) # get a db handle.
-
-f = User.Meta.f
-user_list = await db(User).qfilter().q(f'"{f.profession}"=$1', 'Teacher').fetch()
-user_list = await db(User).qfilter().qc(f.profession, '=$1', 'Teacher').fetch()
-```
-
-It is safer to use `${qh.c}` instead of `$1`, `${qh.c+1}` instead of `$2`, etc..
-
-```python
-from morm.db import DB
-
-db = DB(DB_POOL) # get a db handle.
-
-qh = db(User)
-user_list = await qh.qfilter()\
-                    .q(f'{qh.f.profession} = ${qh.c} AND {qh.f.age} = ${qh.c+1}', 'Teacher', 30)\
-                    .fetch()
-```
-
-## Get
-
-The get method has the signature `get(*vals, col='', comp='=$1')`.
-
-It gets the first row found by column and value. If `col` is not given, it defaults to the primary key (`pk`) of the model. If comparison is not given, it defaults to `=$1`
-
-Example:
-
-```python
-from morm.db import DB
-
-db = DB(DB_POOL) # get a db handle.
-
-# get by pk:
-user5 = await db(User).get(5)
-
-# price between 5 and 2000
-user = await db(User).get(5, 2000, col='price', comp='BETWEEN $1 AND $2')
-```
 
 
 # Transaction

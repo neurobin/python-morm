@@ -523,7 +523,7 @@ class Model(ModelBase):
 
     ```python
     from morm.model import Model
-    from morm.datetime import timestampz
+    from morm.datetime import timestamp
 
     class Base(Model):
         class Meta:
@@ -531,9 +531,9 @@ class Model(ModelBase):
             abstract = True
 
         # postgresql example
-        id = Field('SERIAL', sql_onadd='NOT NULL')
-        created_at = Field('TIMESTAMPZ', sql_onadd='NOT NULL', sql_alter=('SET DEFAULT NOW()',))
-        updated_at = Field('TIMESTAMPZ', sql_onadd='NOT NULL', value=timestampz)
+        id = Field('SERIAL', sql_onadd='PRIMARY KEY NOT NULL')
+        created_at = Field('TIMESTAMP WITH TIME ZONE', sql_onadd='NOT NULL', sql_alter=('ALTER TABLE "{table}" ALTER COLUMN "{column}" SET DEFAULT NOW()',))
+        updated_at = Field('TIMESTAMP WITH TIME ZONE', sql_onadd='NOT NULL', value=timestamp)
     ```
 
     Then a minimal model could look like this:
