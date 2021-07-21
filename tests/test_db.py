@@ -96,11 +96,10 @@ class TestMethods(unittest.TestCase):
         cls.mgr_base_path = '/tmp/__morm_migration__x_' + str(random.random())
         await db.execute(f'DROP TABLE IF EXISTS "{BigUser.Meta.db_table}"; DROP TABLE IF EXISTS "{BigUser2.Meta.db_table}";')
         models = [BigUser, BigUser2]
-        async with Transaction(SNORM_DB_POOL) as tdb:
-            for model in models:
-                mgo = mg.Migration(model, cls.mgr_base_path)
-                mgo.make_migrations(yes=True)
-                await mgo.migrate(tdb)
+        for model in models:
+            mgo = mg.Migration(model, cls.mgr_base_path)
+            mgo.make_migrations(yes=True)
+            await mgo.migrate(SNORM_DB_POOL)
         users = [
             {'name': 'Jahid', 'profession': 'developer'},
             {'name': 'John', 'profession': 'dev'}, # this needs to be in second position

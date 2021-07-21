@@ -200,8 +200,7 @@ ALTER TABLE "User" DROP CONSTRAINT IF EXISTS "__UNQ_User_profession__";; ALTER T
 
     def _migrate(self, mgo: mg.Migration):
         async def _my_migrate():
-            async with Transaction(self.DB_POOL) as tdb:
-                await mgo.migrate(tdb)
+            await mgo.migrate(self.DB_POOL)
         asyncio.get_event_loop().run_until_complete(_my_migrate())
 
 

@@ -412,11 +412,11 @@ class Migration():
             pass
         return mgrpy_files[len(prev_files):]
 
-    async def migrate(self, db: DB):
+    async def migrate(self, pool: Pool):
         """Run the migrations created by makemigrations beforehand.
 
         Args:
-            db (DB): db handle.
+            pool (Pool): pool object.
         """
         print(f'=> Applying migrations for model {self.model.__name__}')
         files = self._get_unapplied_migrations()
@@ -426,10 +426,11 @@ class Migration():
         for file in files:
             mn = os.path.basename(file).replace('.py','')
             mr = import_from_path(mn, file) # type: ignore
-            mro: MigrationRunner = mr.MigrationRunner(db, self.model)
-            await mro.run()
-            self._update_migration_cursor(file)
-        print(f'   Migrations for model {self.model.__name__} completed successfully')
+            async with Transaction(pool) as tdb:
+                mro: MigrationRunner = mr.MigrationRunner(tdb, self.model)
+                await mro.run()
+                self._update_migration_cursor(file)
+                print(f'   Migration applied: {mn}')
 
     def make_migrations(self, yes=False, silent=False):
         """Prepare migration files.
@@ -525,8 +526,7 @@ class Migration():
 
 
 async def _run_with_transaction(pool: Pool, func: Callable, *args: Any, **kwargs: Any):
-    async with Transaction(pool) as tdb:
-        await func(tdb, *args, **kwargs)
+    await func(pool, *args, **kwargs)
 
 def run_with_transaction(pool: Pool, func: Callable, *args: Any, **kwargs: Any):
     asyncio.get_event_loop().run_until_complete(_run_with_transaction(pool, func, *args, **kwargs))
