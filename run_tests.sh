@@ -10,6 +10,7 @@ tests=(
     'tests.test_package'
     'tests.test_q'
     'tests.test_types'
+    'tests.test_datetime'
 )
 
 print_chars(){

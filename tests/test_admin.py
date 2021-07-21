@@ -17,6 +17,7 @@ class TestMethods(unittest.TestCase):
         os.chdir(tmpdir)
         sys.argv = [__file__, 'init']
         files = main()
+        main() # touch FileExistsError
         for file in files:
             path = os.path.join(tmpdir, file)
             print(f' - [x] Check if {path} content matches default {file} content')
