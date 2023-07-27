@@ -295,7 +295,7 @@ server {
     location = /favicon.ico { access_log off; log_not_found off; }
     location /static/ {
         access_log off; log_not_found off;
-        root $HOME/$app_py_path/static;
+        root $HOME/$app_py_path/raw;
         expires 1d;
     }
 
