@@ -75,6 +75,40 @@ def test_sample():
     assert response.status_code == 200
     assert response.json() == {'msg': 'Hello World'}
 "
+    ["requirements.txt"]="morm
+fastapi
+uvicorn
+"
+    [".gitignore"]="*.pyc
+/build/
+/dist/
+/*egg-info/
+__pycache__/
+*.html
+*.old
+*.log
+.vscode/
+.idea/
+/.venv/
+/venv/
+/.env
+.pytest_cache
+/htmlcov
+/site/
+.coverage
+coverage.xml
+Pipfile.lock
+.ipynb_checkpoints
+.mypy_cache
+
+# vim temporary files
+*~
+.*.sw?
+.cache
+"
+    ["run"]="#!/bin/bash
+uvicorn app.main:app --reload --loop asyncio
+"
 
 )
 
@@ -93,3 +127,5 @@ for key in "${!files[@]}"; do
 done
 
 morm_admin init
+chmod +x ./run
+pip install -r requirements.txt
