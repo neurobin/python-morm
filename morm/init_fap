@@ -4,8 +4,10 @@ root=${1:-app}
 app_py_path="${root//\//.}"
 app_py_path="${app_py_path#.}"
 app_py_path="${app_py_path%.}"
+mydir=$(pwd)
 
 dirs=(
+    "nginx"
     "$root"
     "$root/core"
     "$root/core/models"
@@ -26,17 +28,61 @@ files=(
     ["$root/main.py"]="
 from fastapi import FastAPI
 from $app_py_path.v1 import routers
+from $app_py_path.v1.routers import root
 
 app = FastAPI()
+
+app.include_router(
+    root.endpoint_list,
+    prefix='',
+)
 
 app.include_router(
     routers.router,
     prefix='/v1',
     tags=['v1'],
 )
+
+"
+    ["$root/workers.py"]="
+from uvicorn.workers import UvicornWorker
+
+class MyUvicornWorker(UvicornWorker):
+    # CONFIG_KWARGS = {'loop': 'asyncio', 'http': 'h11', 'lifespan': 'off'}
+    CONFIG_KWARGS = {'loop': 'asyncio', 'lifespan': 'off'}
+
+"
+    ["$root/core/models/base.py"]="
+from morm.pg_models import BaseCommon as Model
+
+# BaseCommon defines id, created_at and updated_at fields,
+# while pg_models.Base defines only id,
+# and pg_models.Model defines nothing.
+
+class Base(Model):
+    class Meta:
+        abstract = True
+"
+    ["$root/core/models/user.py"]="
+from morm.fields import Field
+from morm.fields.common import ForeignKey, EmailField
+from morm.db import DB, Transaction, SERIALIZABLE, READ_COMMITTED, REPEATABLE_READ
+from _morm_config_ import DB_POOL
+from $app_py_path.core.models.base import Base
+
+class User(Base):
+    class Meta:
+        db_table = 'users'
+
+    name = Field('varchar(65)')
+    email = EmailField(max_length=255, unique=True)
+    password = Field('varchar(255)')
+    profession = Field('varchar(255)', default='Unknown')
 "
     ["$root/core/settings.py"]="
-DEBUG = True
+import os
+
+DEBUG = True if os.environ.get('DEBUG', 'true').lower() == 'true' else False
 "
     ["$root/v1/routers/__init__.py"]="
 '''Make a single APIRouter that contains all the routers.
@@ -64,9 +110,71 @@ for file in __all_router_paths:
 del __all_router_paths
 
 "
+    ["$root/v1/routers/root.py"]="
+from typing import List
+from fastapi import APIRouter, Request
+from pydantic import BaseModel
+from $app_py_path.core.settings import DEBUG
+
+
+router = APIRouter()
+
+class RequestData(BaseModel):
+    method: str
+    url: str
+    base_url: str
+    headers: dict
+    cookies: dict
+    query_params: dict
+    form: list
+    body: str
+
+async def return_request(request: Request):
+    body = await request.body()
+    form = await request.form()
+    data = RequestData(
+        method=request.method,
+        url=str(request.url),
+        base_url=str(request.base_url),
+        headers=dict(request.headers),
+        cookies=request.cookies,
+        query_params=dict(request.query_params),
+        form=list(form),
+        body=body.decode('utf-8'),
+    )
+    return data
+
+
+@router.get('/')
+async def handle_get(request: Request):
+    '''
+    All available request data:
+
+    'app', 'auth', 'base_url', 'body', 'client', 'close', 'cookies', 'form', 'get', 'headers', 'is_disconnected', 'items', 'json', 'keys', 'method', 'path_params', 'query_params', 'receive', 'scope', 'send_push_promise', 'session', 'state', 'stream', 'url', 'url_for', 'user', 'values'
+    '''
+    return await return_request(request)
+
+
+
+class Endpoint(BaseModel):
+    title: str
+    url: str
+    version: str
+
+class EndpointList(BaseModel):
+    title: str
+    endpoints: List[Endpoint]
+
+endpoint_list = APIRouter()
+@endpoint_list.get('/')
+async def endpoint_list_get(request: Request):
+    return EndpointList(title='Welcome to our API base. We have a few versions available for you.', endpoints=[Endpoint(title='v1 endpoint of the API', url='/v1', version='v1')])
+
+"
+
     ["$root/tests/v1/test_sample.py"]="
 from fastapi.testclient import TestClient
-from app.main import app
+from $app_py_path.main import app
 
 client = TestClient(app)
 
@@ -78,6 +186,8 @@ def test_sample():
     ["requirements.txt"]="morm
 fastapi
 uvicorn
+gunicorn
+python-multipart
 "
     [".gitignore"]="*.pyc
 /build/
@@ -106,8 +216,153 @@ Pipfile.lock
 .*.sw?
 .cache
 "
+    ["nginx/default"]="server {
+    listen 80 default_server;
+
+    server_name _;
+
+    location /.well-known/acme-challenge/ {
+        alias $HOME/.acme-challenge/;
+        try_files \$uri =404;
+    }
+
+    location / {
+        return 302 https://\$host\$request_uri;
+    }
+}
+
+"
+    ["nginx/$app_py_path"]="
+server {
+    listen 443 ssl;
+    server_name $app_py_path.com www.$app_py_path.com;
+
+    ssl_certificate $HOME/neurocert/fullchain.crt;
+    ssl_certificate_key $HOME/neurocert/dom.key;
+    ssl_session_timeout 5m;
+    ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
+    ssl_ciphers ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-SHA384:ECDHE-RSA-AES128-SHA256:ECDHE-RSA-AES256-SHA:ECDHE-RSA-AES128-SHA:DHE-RSA-AES256-SHA:DHE-RSA-AES128-SHA;
+    ssl_session_cache shared:SSL:50m;
+    #ssl_dhparam /path/to/server.dhparam;
+    ssl_prefer_server_ciphers on;
+
+    gzip on;
+    gzip_comp_level    5;
+    gzip_min_length    256;
+    gzip_proxied       any;
+    gzip_vary          on;
+
+    gzip_types
+    application/atom+xml
+    application/javascript
+    application/json
+    application/ld+json
+    application/manifest+json
+    application/rss+xml
+    application/vnd.geo+json
+    application/vnd.ms-fontobject
+    application/x-font-ttf
+    application/x-web-app-manifest+json
+    application/xhtml+xml
+    application/xml
+    font/opentype
+    image/bmp
+    image/svg+xml
+    image/x-icon
+    text/cache-manifest
+    text/css
+    text/plain
+    text/vcard
+    text/vnd.rim.location.xloc
+    text/vtt
+    text/x-component
+    text/x-cross-domain-policy;
+    # text/html is always compressed by gzip module
+
+    access_log  /var/log/nginx/$app_py_path.access.log;
+    error_log  /var/log/nginx/$app_py_path.error.log;
+
+
+    location ~ ^.*\.txt\$ {
+        access_log off; log_not_found off;
+        root $HOME/$app_py_path/raw;
+    }
+    location /img/ {
+        access_log off; log_not_found off;
+        root $HOME/$app_py_path/raw;
+    }
+
+    location = /favicon.ico { access_log off; log_not_found off; }
+    location /static/ {
+        access_log off; log_not_found off;
+        root $HOME/$app_py_path/static;
+        expires 1d;
+    }
+
+    ##index.php should be converted to dir links, make it look like we run on PHP!
+    location ~ ^/(.*/)index[.](php)([^/]*)\$ {
+        return 301 /\$1\$3;
+    }
+    ##for domain/index.php, make it look like we run on PHP!
+    location ~ ^/index[.]php([^/]*)\$ {
+        return 301 /\$1;
+    }
+
+    location / {
+        include proxy_params;
+        proxy_pass http://unix:/tmp/.$app_py_path.sock;
+    }
+
+}
+
+"
     ["run"]="#!/bin/bash
-uvicorn app.main:app --reload --loop asyncio
+uvicorn $app_py_path.main:app --reload --loop asyncio
+"
+    ["vact"]="
+. .env
+. .venv/bin/activate
+"
+    ["mgr"]="#!/bin/bash
+
+. vact
+python mgr.py \${1+\"\$@\"}
+"
+    ["$app_py_path.service"]="[Unit]
+Description=$app_py_path daemon
+After=network.target
+
+[Service]
+User=$USER
+Group=$USER
+WorkingDirectory=$mydir
+ExecStart=$mydir/gunicorn.sh
+
+[Install]
+WantedBy=multi-user.target
+
+"
+    ["gunicorn.sh"]="#!/bin/bash
+. ~/.bashrc
+export LC_MEASUREMENT=en_US.UTF-8
+export LC_PAPER=en_US.UTF-8
+export LC_MONETARY=en_US.UTF-8
+export LANG=en_US.UTF-8
+export LC_NAME=en_US.UTF-8
+export LC_ADDRESS=en_US.UTF-8
+export LC_NUMERIC=en_US.UTF-8
+export LC_TELEPHONE=en_US.UTF-8
+export LC_IDENTIFICATION=en_US.UTF-8
+export LC_TIME=en_US.UTF-8
+
+################################################################################
+############################ Cleanups and resets ###############################
+################################################################################
+
+################################################################################
+. vact
+gunicorn --timeout 300 --access-logfile - --workers 3 -k $app_py_path.workers.MyUvicornWorker  --worker-connections=1000 $app_py_path.main:app --bind unix:/tmp/.$app_py_path.sock
+
 "
 
 )
@@ -115,7 +370,9 @@ uvicorn app.main:app --reload --loop asyncio
 for dir in "${dirs[@]}"; do
     mkdir -p "$dir"
     file="$dir/__init__.py"
-    echo "${files[$file]}" > "$file"
+    if [[ "$dir" != 'nginx' ]]; then
+        echo "${files[$file]}" > "$file"
+    fi
 done
 
 for key in "${!files[@]}"; do
@@ -126,6 +383,6 @@ for key in "${!files[@]}"; do
     echo "${files[$key]}" > "$key"
 done
 
-morm_admin init
-chmod +x ./run
+morm_admin init -p $app_py_path
+chmod +x ./run ./mgr ./gunicorn.sh
 pip install -r requirements.txt

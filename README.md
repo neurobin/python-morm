@@ -14,7 +14,7 @@ pip install morm
 
 # Init project
 
-**Run `morm_admin init` in your project directory to make some default files such as `_morm_config_.py`, `mgr.py`**
+**Run `morm_admin init -p app` in your project directory to make some default files such as `_morm_config_.py`, `mgr.py`**
 
 Edit *_morm_config_.py* to put the correct database credentials:
 
@@ -362,14 +362,16 @@ Example:
 
 # Initialize a FastAPI project
 
-Run `init_fap` in your project root. It will create a directory structure like this:
+Run `init_fap app` in your project root. It will create a directory structure like this:
 
 ```
 ├── app
 │   ├── core
 │   │   ├── __init__.py
 │   │   ├── models
+│   │   │   ├── base.py
 │   │   │   ├── __init__.py
+│   │   │   └── user.py
 │   │   ├── schemas
 │   │   │   └── __init__.py
 │   │   └── settings.py
@@ -380,23 +382,34 @@ Run `init_fap` in your project root. It will create a directory structure like t
 │   │   └── v1
 │   │       ├── __init__.py
 │   │       └── test_sample.py
-│   └── v1
-│       ├── dependencies
-│       │   └── __init__.py
-│       ├── __init__.py
-│       ├── internal
-│       │   ├── __init__.py
-│       └── routers
-│           ├── __init__.py
+│   ├── v1
+│   │   ├── dependencies
+│   │   │   └── __init__.py
+│   │   ├── __init__.py
+│   │   ├── internal
+│   │   │   └── __init__.py
+│   │   └── routers
+│   │       ├── __init__.py
+│   │       └── root.py
+│   └── workers.py
+├── app.service
+├── .gitignore
+├── gunicorn.sh
+├── mgr
 ├── mgr.py
 ├── _morm_config_.py
+├── nginx
+│   ├── app
+│   └── default
 ├── requirements.txt
-├── .gitignore
 ├── run
+└── vact
 ```
 
-You can run the app with `./run` or
+You can run the app with `./run` or `./gunicorn.sh` or
 
 ```bash
 uvicorn app.main:app --reload --loop asyncio
 ```
+
+To run as a service with `systemctl start app`, copy the app.service to `/etc/systemd/system`

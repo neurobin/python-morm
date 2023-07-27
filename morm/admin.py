@@ -18,9 +18,9 @@ from morm.migration import Migration
 log = logging.getLogger('morm:admin')
 log.setLevel(logging.INFO)
 
-def init_project():
+def init_project(py_path):
     files = {
-        '_morm_config_.py': """
+        '_morm_config_.py': f"""
 from morm.db import Pool
 
 DB_POOL = Pool(
@@ -33,25 +33,23 @@ DB_POOL = Pool(
     min_size=10,
     max_size=90,
 )
-            """,
-        'mgr.py': """
+""",
+        'mgr.py': f"""
 import os
 from morm.migration import migration_manager
 from _morm_config_ import DB_POOL
 
-from app.models import SomeModel, SomeOtherModel        # change accordingly
+from {py_path}.core.models.user import User
 
 MIGRATION_BASE_PATH = os.path.realpath('_migrations_')
 
-migration_models = [
-    SomeModel,                                          # change accordingly
-    SomeOtherModel,                                     # change accordingly
+migration_models = [ # Add models here to enable migration
+    User,
 ]
 
 if __name__ == '__main__':
     migration_manager(DB_POOL, MIGRATION_BASE_PATH, migration_models)
-"""
-
+""",
     }
 
     for name, content in files.items():
@@ -67,10 +65,13 @@ def main():
     parser.add_argument("cmd", type=str,
                         help="""Command:
                         init: Initialize a project""")
+    parser.add_argument("-p","--py-path", type=str, default='app',
+                        help="""Command:
+                        init -n app: Initialize a project named app""")
 
     args = parser.parse_args()
 
     if args.cmd == 'init':
-        return init_project()
+        return init_project(args.py_path)
     else:
         raise ValueError(f"E: Invalid command: {args.cmd}")
