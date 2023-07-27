@@ -36,7 +36,7 @@ app.include_router(
 )
 "
     ["$root/core/settings.py"]="
-    DEBUG = True
+DEBUG = True
 "
     ["$root/v1/routers/__init__.py"]="
 '''Make a single APIRouter that contains all the routers.
