@@ -390,9 +390,12 @@ Run `init_fap` in your project root. It will create a directory structure like t
 │           ├── __init__.py
 ├── mgr.py
 ├── _morm_config_.py
+├── requirements.txt
+├── .gitignore
+├── run
 ```
 
-You can run the app with
+You can run the app with `./run` or
 
 ```bash
 uvicorn app.main:app --reload --loop asyncio
