@@ -53,24 +53,35 @@ class MyUvicornWorker(UvicornWorker):
 
 "
     ["$root/core/models/base.py"]="
-from morm.pg_models import BaseCommon as Model
+from morm.pg_models import BaseCommon, Base, Model
 
 # BaseCommon defines id, created_at and updated_at fields,
 # while pg_models.Base defines only id,
 # and pg_models.Model defines nothing.
 
-class Base(Model):
+class MyBase(BaseCommon):
     class Meta:
         abstract = True
+
 "
     ["$root/core/models/user.py"]="
 from morm.fields import Field
 from morm.fields.common import ForeignKey, EmailField
 from morm.db import DB, Transaction, SERIALIZABLE, READ_COMMITTED, REPEATABLE_READ
 from _morm_config_ import DB_POOL
-from $app_py_path.core.models.base import Base
+from madmin.core.models.base import MyBase
 
-class User(Base):
+
+class Org(MyBase):
+    class Meta:
+        db_table = 'orgs'
+    name = Field('varchar(255)')
+    url = Field('varchar(255)')
+    description = Field('text')
+    isLive = Field('boolean')
+
+
+class User(MyBase):
     class Meta:
         db_table = 'users'
 
@@ -81,10 +92,10 @@ class User(Base):
     password = Field('varchar(255)')
     bio = Field('text')
     profession = Field('varchar(255)', default='Unknown')
-    org = Field('int(11)')
-    lastLogin = Field('datetime')
+    org = ForeignKey(Org, on_delete='SET NULL')
+    lastLogin = Field('timestamp')
     isSuperUser = Field('boolean')
-    isActive = Field('boolean')
+    isLive = Field('boolean')
 "
     ["$root/core/settings.py"]="
 import os
@@ -324,11 +335,11 @@ server {
 
 "
     ["run"]="#!/bin/bash
-. vact
+. ./vact
 uvicorn $app_py_path.main:app --reload --loop asyncio
 "
     ["mgr"]="#!/bin/bash
-. vact
+. ./vact
 python mgr.py \${1+\"\$@\"}
 "
     ["$app_py_path.service"]="[Unit]
@@ -366,7 +377,7 @@ export ${app_py_path^^}_ENV=live # use live env (from vact)
 ################################################################################
 
 ################################################################################
-. vact
+. ./vact
 gunicorn --timeout 300 --access-logfile - --workers 3 -k $app_py_path.workers.MyUvicornWorker  --worker-connections=1000 $app_py_path.main:app --bind unix:/tmp/.$app_py_path.sock
 
 "

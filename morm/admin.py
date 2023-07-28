@@ -41,6 +41,7 @@ DB_POOL = Pool(
 
 """,
         f'{HOME}/.env_{APP_NAME}': f"""#!/bin/sh
+set -a
 # copy this file to a secure place and update the path in the vact file.
 if [ "${APP_NAME}_ENV" = live ]; then
     {APP_NAME}_DB_DSN='postgres://'
@@ -71,11 +72,12 @@ import os
 from morm.migration import migration_manager
 from _morm_config_ import DB_POOL
 
-from {py_path}.core.models.user import User
+from {py_path}.core.models.user import Org, User
 
 MIGRATION_BASE_PATH = os.path.realpath('_migrations_')
 
 migration_models = [ # Add models here to enable migration
+    Org,
     User,
 ]
 
@@ -99,7 +101,7 @@ def main():
                         init: Initialize a project""")
     parser.add_argument("-p","--py-path", type=str, default='app',
                         help="""application name or python dotted path""")
-    parser.add_argument("-v","--venv", type=str, default='.venv',
+    parser.add_argument("-v","--venv", type=str, default='./.venv',
                         help="""Venv path""")
 
     args = parser.parse_args()
