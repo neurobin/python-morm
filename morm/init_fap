@@ -74,10 +74,17 @@ class User(Base):
     class Meta:
         db_table = 'users'
 
-    name = Field('varchar(65)')
+    username = Field('varchar(65)')
+    fullname = Field('varchar(65)')
+    nickname = Field('varchar(20)')
     email = EmailField(max_length=255, unique=True)
     password = Field('varchar(255)')
+    bio = Field('text')
     profession = Field('varchar(255)', default='Unknown')
+    org = Field('int(11)')
+    lastLogin = Field('datetime')
+    isSuperUser = Field('boolean')
+    isActive = Field('boolean')
 "
     ["$root/core/settings.py"]="
 import os
