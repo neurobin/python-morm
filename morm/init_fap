@@ -82,7 +82,7 @@ class User(Base):
     ["$root/core/settings.py"]="
 import os
 
-DEBUG = True if os.environ.get('DEBUG', 'true').lower() == 'true' else False
+DEBUG = True if os.getenv('DEBUG', 'true').lower() == 'true' else False
 "
     ["$root/v1/routers/__init__.py"]="
 '''Make a single APIRouter that contains all the routers.
@@ -201,7 +201,7 @@ __pycache__/
 .idea/
 /.venv/
 /venv/
-/.env
+/.env*
 .pytest_cache
 /htmlcov
 /site/
@@ -317,14 +317,10 @@ server {
 
 "
     ["run"]="#!/bin/bash
+. vact
 uvicorn $app_py_path.main:app --reload --loop asyncio
 "
-    ["vact"]="
-. .env
-. .venv/bin/activate
-"
     ["mgr"]="#!/bin/bash
-
 . vact
 python mgr.py \${1+\"\$@\"}
 "

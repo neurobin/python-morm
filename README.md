@@ -409,7 +409,13 @@ Run `init_fap app` in your project root. It will create a directory structure li
 You can run the app with `./run` or `./gunicorn.sh` or
 
 ```bash
+. vact # activate venv with environment
 uvicorn app.main:app --reload --loop asyncio
 ```
 
-To run as a service with `systemctl start app`, copy the app.service to `/etc/systemd/system`
+To run as a service with `systemctl start app`, copy the **app.service** to `/etc/systemd/system`
+
+**Notes:**
+
+* You can setup your venv path in the `vact` file. To activate the venv with all the environment vars, just run `. vact`.
+* An environment file `.env_APP` is created in your home directory.
