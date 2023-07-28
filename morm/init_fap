@@ -87,7 +87,7 @@ DEBUG = True if os.getenv('DEBUG', 'true').lower() == 'true' else False
     ["$root/v1/routers/__init__.py"]="
 '''Make a single APIRouter that contains all the routers.
 
-We will automatically include all routers in this directory
+We will automatically include all routers (module.router) in this directory
 sequentially. You should give sequential names to your router modules
 such as route_0001_admin.py, route_0002_user.py, etc...
 '''
