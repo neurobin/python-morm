@@ -192,6 +192,17 @@ class ModelType(type):
         """
         return self.Meta._field_defs_
 
+    def _get_all_fields_json_(self) -> Dict[str, Field]:
+        """Get all fields on model without applying any restriction in JSON like dict
+
+        Returns:
+            Dict[str, Dict]: Dictionary of all fields in JSON like dict
+        """
+        res = {}
+        for k,v in self.Meta._field_defs_.items():
+            res[k] = v.to_json()
+        return res
+
     def _check_field_name_(self, n: str) -> str:
         """Return the field name if exists else raise AttributeError
 

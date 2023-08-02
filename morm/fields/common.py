@@ -42,11 +42,10 @@ class EmailField(Field):
     Args:
         max_length (int, optional): Defaults to 255.
     """
-    EMAIL_VALIDATION_REGEX = re.compile(r'[^@\s]+@[^@\s]+\.[^@\s]+')
 
     def __init__(self, max_length=255, **kwargs):
         sql_type = f'varchar({max_length})'
-        super(EmailField, self).__init__(sql_type, validator=self.validate_email, **kwargs)
-
-    def validate_email(self, email):
-        return bool(self.EMAIL_VALIDATION_REGEX.fullmatch(email))
+        def validate_email(email):
+            EMAIL_VALIDATION_REGEX = re.compile(r'[^@\s]+@[^@\s]+\.[^@\s]+')
+            return bool(EMAIL_VALIDATION_REGEX.fullmatch(email))
+        super(EmailField, self).__init__(sql_type, validator=validate_email, **kwargs)

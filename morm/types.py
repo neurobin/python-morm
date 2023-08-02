@@ -64,6 +64,9 @@ class VoidType(object, metaclass=SingletonMeta):
     def __repr__(self):
         return 'Void'
 
+    def __str__(self):
+        return 'Void'
+
 # this one needs to be defined here.
 Void = object.__new__(VoidType)
 '''Used internally to represent non-existent value, thus `None` retains its usual meaning.'''

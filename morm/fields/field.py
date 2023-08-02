@@ -6,7 +6,7 @@ __copyright__ = 'Copyright © Md Jahidul Hamid <https://github.com/neurobin/>'
 __license__ = '[BSD](http://www.opensource.org/licenses/bsd-license.php)'
 __version__ = '0.0.1'
 
-import copy
+import copy, inspect
 from typing import Any, Optional, Callable, Tuple, Dict, List, Union
 from morm.types import Void
 import morm.exceptions as ex
@@ -237,7 +237,7 @@ class Field(object):
                 help_text: str = '',
                 validator: Callable=always_valid,
                 modifier: Callable=nomodify,
-                fallback=False,):
+                fallback=False,): # if you add new param here, update __repr__ method
         self.sql_type = sql_type
         unq_constraint = '__UNQ_{table}_{column}__'
         if unique:
@@ -270,11 +270,29 @@ class Field(object):
         cc = ['sql_onadd','sql_ondrop','sql_alter','sql_engine',]
         for k in cc:
             reprs.append(f'{k}={repr(self.sql_conf.conf[k])}')
-        s = ['default','validator','modifier','fallback',]
+        s = ['default','validator','modifier','fallback','choices', 'help_text',]
         for k in s:
-            reprs.append(f'{k}={repr(self.__dict__[k])}')
+            if callable(self.__dict__[k]):
+                reprs.append(f'{k}={inspect.getsource(self.__dict__[k])}')
+            else:
+                reprs.append(f'{k}={repr(self.__dict__[k])}')
         body = ', '.join(reprs)
         return f'{self.__class__.__name__}({body})'
+
+    def to_json(self):
+        reprs = { 'sql_type': self.sql_type }
+        cc = ['sql_onadd','sql_ondrop','sql_alter','sql_engine',]
+        for k in cc:
+            reprs[k] = 'Void' if self.sql_conf.conf[k] == Void else self.sql_conf.conf[k]
+        s = ['default','validator','modifier','fallback','choices', 'help_text',]
+        for k in s:
+            if callable(self.__dict__[k]):
+                reprs[k] = inspect.getsource(self.__dict__[k])
+            else:
+                reprs[k] = 'Void' if self.__dict__[k] == Void else self.__dict__[k]
+        reprs['name'] = self.name
+        reprs['repr_py'] = repr(self)
+        return reprs
 
     def __invert__(self):
         return self.name
