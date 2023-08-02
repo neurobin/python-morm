@@ -129,6 +129,9 @@ class ModelType(type):
             new_attrs['__classcell__'] = classcell
         return super().__new__(mcs, class_name, bases, new_attrs)
 
+    def __repr__(cls):
+        return inspect.getsource(cls)
+
     def __setattr__(self, k, v):
         raise NotImplementedError("You can not set model attributes outside model definition.")
 

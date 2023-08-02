@@ -238,13 +238,15 @@ class Field(object):
                 validator: Callable=always_valid,
                 modifier: Callable=nomodify,
                 fallback=False,): # if you add new param here, update __repr__ method
+        init_args = list(locals().keys())[1:]
+
         self.sql_type = sql_type
-        unq_constraint = '__UNQ_{table}_{column}__'
+        unique_constraint = '__UNQ_{table}_{column}__'
         if unique:
-            ualq = 'ALTER TABLE "{table}" ADD CONSTRAINT "%s" UNIQUE ("{column}");' % (unq_constraint,)
+            sql_unique = 'ALTER TABLE "{table}" ADD CONSTRAINT "%s" UNIQUE ("{column}");' % (unique_constraint,)
         else:
-            ualq = 'ALTER TABLE "{table}" DROP CONSTRAINT IF EXISTS "%s";' % (unq_constraint,)
-        sql_alter = (ualq, *sql_alter)
+            sql_unique = 'ALTER TABLE "{table}" DROP CONSTRAINT IF EXISTS "%s";' % (unique_constraint,)
+        sql_alter = (sql_unique, *sql_alter)
         self.sql_conf = ColumnConfig(sql_type=sql_type, sql_onadd=sql_onadd, sql_ondrop=sql_ondrop, sql_alter=sql_alter, sql_engine=sql_engine)
         self.validator = validator
         self.modifier = modifier
@@ -261,38 +263,44 @@ class Field(object):
         self.choices = choices
         self.help_text = help_text
 
+        # make a json
+        self._json_ = {
+            'name': self._name,
+            'init_args': init_args,
+        }
+        args = locals()
+        for k,v in args.items():
+            if k == 'self': continue
+            if callable(v):
+                self._json_[k] = inspect.getsource(v)
+            else:
+                self._json_[k] = 'Void' if v == Void else v
+
 
     def __eq__(self, other: 'Field') -> bool: # type: ignore
-        return self.sql_conf == other.sql_conf
+        return other and self.sql_conf == other.sql_conf
 
     def __repr__(self):
-        reprs = [repr(self.sql_type)]
-        cc = ['sql_onadd','sql_ondrop','sql_alter','sql_engine',]
-        for k in cc:
-            reprs.append(f'{k}={repr(self.sql_conf.conf[k])}')
-        s = ['default','validator','modifier','fallback','choices', 'help_text',]
-        for k in s:
-            if callable(self.__dict__[k]):
-                reprs.append(f'{k}={inspect.getsource(self.__dict__[k])}')
+        reprs = []
+        for k in self._json_.keys():
+            if k in ['self','name', '_pythonic_']: continue
+            if k == 'sql_type': reprs.append(repr(self.sql_type))
+            elif k in ['sql_onadd','sql_ondrop','sql_alter','sql_engine',]:
+                reprs.append(f'{k}={repr(self.sql_conf.conf[k])}')
             else:
-                reprs.append(f'{k}={repr(self.__dict__[k])}')
+                try:
+                    if callable(self.__dict__[k]):
+                        reprs.append(f'{k}={inspect.getsource(self.__dict__[k])}')
+                    else:
+                        reprs.append(f'{k}={repr(self.__dict__[k])}')
+                except KeyError: pass
         body = ', '.join(reprs)
         return f'{self.__class__.__name__}({body})'
 
     def to_json(self):
-        reprs = { 'sql_type': self.sql_type }
-        cc = ['sql_onadd','sql_ondrop','sql_alter','sql_engine',]
-        for k in cc:
-            reprs[k] = 'Void' if self.sql_conf.conf[k] == Void else self.sql_conf.conf[k]
-        s = ['default','validator','modifier','fallback','choices', 'help_text',]
-        for k in s:
-            if callable(self.__dict__[k]):
-                reprs[k] = inspect.getsource(self.__dict__[k])
-            else:
-                reprs[k] = 'Void' if self.__dict__[k] == Void else self.__dict__[k]
-        reprs['name'] = self.name
-        reprs['repr_py'] = repr(self)
-        return reprs
+        res = self._json_.copy()
+        res['_pythonic_repr_'] = self.__repr__()
+        return res
 
     def __invert__(self):
         return self.name
