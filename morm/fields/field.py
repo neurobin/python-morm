@@ -238,15 +238,18 @@ class Field(object):
                 validator: Callable=always_valid,
                 modifier: Callable=nomodify,
                 fallback=False,): # if you add new param here, update __repr__ method
-        init_args = list(locals().keys())[1:]
+        # Rules for using a variable name here as local variables go into the self._json_:
+        # 1. Must precede with underscore if not in the parameter list
+        # 2. Make sure to exclude unnecessary variables in the self._json_ like 'self' etc..
+        _init_args = list(locals().keys())[1:] # this must be the first line here in __init__
 
         self.sql_type = sql_type
-        unique_constraint = '__UNQ_{table}_{column}__'
+        _unique_constraint = '__UNQ_{table}_{column}__'
         if unique:
-            sql_unique = 'ALTER TABLE "{table}" ADD CONSTRAINT "%s" UNIQUE ("{column}");' % (unique_constraint,)
+            _sql_unique = 'ALTER TABLE "{table}" ADD CONSTRAINT "%s" UNIQUE ("{column}");' % (_unique_constraint,)
         else:
-            sql_unique = 'ALTER TABLE "{table}" DROP CONSTRAINT IF EXISTS "%s";' % (unique_constraint,)
-        sql_alter = (sql_unique, *sql_alter)
+            _sql_unique = 'ALTER TABLE "{table}" DROP CONSTRAINT IF EXISTS "%s";' % (_unique_constraint,)
+        sql_alter = (_sql_unique, *sql_alter)
         self.sql_conf = ColumnConfig(sql_type=sql_type, sql_onadd=sql_onadd, sql_ondrop=sql_ondrop, sql_alter=sql_alter, sql_engine=sql_engine)
         self.validator = validator
         self.modifier = modifier
@@ -265,12 +268,12 @@ class Field(object):
 
         # make a json
         self._json_ = {
-            'name': self._name,
-            'init_args': init_args,
+            '_name': self.name,
+            '_init_args': _init_args,
         }
         args = locals()
         for k,v in args.items():
-            if k == 'self': continue
+            if k in ['self', '_init_args']: continue
             if callable(v):
                 self._json_[k] = inspect.getsource(v)
             else:
@@ -282,8 +285,7 @@ class Field(object):
 
     def __repr__(self):
         reprs = []
-        for k in self._json_.keys():
-            if k in ['self','name', '_pythonic_']: continue
+        for k in self._json_['_init_args']:
             if k == 'sql_type': reprs.append(repr(self.sql_type))
             elif k in ['sql_onadd','sql_ondrop','sql_alter','sql_engine',]:
                 reprs.append(f'{k}={repr(self.sql_conf.conf[k])}')
@@ -299,7 +301,9 @@ class Field(object):
 
     def to_json(self):
         res = self._json_.copy()
-        res['_pythonic_repr_'] = self.__repr__()
+        res['_name'] = self.name
+        res['_repr'] = self.__repr__()
+        del res['_init_args']
         return res
 
     def __invert__(self):

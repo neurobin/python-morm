@@ -17,7 +17,7 @@ class Base(Model):
     """
     class Meta:
         abstract = True
-    id = Field('SERIAL', sql_onadd='PRIMARY KEY NOT NULL')
+    id = Field('SERIAL', sql_onadd='PRIMARY KEY NOT NULL', help_text='Auto incremented integer')
 
 
 class BaseCommon(Base):
@@ -29,5 +29,5 @@ class BaseCommon(Base):
     """
     class Meta:
         abstract = True
-    created_at = Field('TIMESTAMP WITH TIME ZONE', sql_onadd='NOT NULL', sql_alter=('ALTER TABLE "{table}" ALTER COLUMN "{column}" SET DEFAULT NOW()',))
-    updated_at = Field('TIMESTAMP WITH TIME ZONE', sql_onadd='NOT NULL', value=timestamp)
+    created_at = Field('TIMESTAMP WITH TIME ZONE', sql_onadd='NOT NULL', sql_alter=('ALTER TABLE "{table}" ALTER COLUMN "{column}" SET DEFAULT NOW()',), help_text='Timestamp of creation, defaults to NOW()')
+    updated_at = Field('TIMESTAMP WITH TIME ZONE', sql_onadd='NOT NULL', value=timestamp, help_text='Timestamp of last update, auto updated to NOW()')
