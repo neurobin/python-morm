@@ -46,6 +46,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+########## ROUTERS ##########
+
 app.include_router(
     root.endpoint_list,
     prefix='',
