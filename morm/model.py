@@ -195,14 +195,15 @@ class ModelType(type):
         """
         return self.Meta._field_defs_
 
-    def _get_all_fields_json_(self) -> Dict[str, Field]:
+    def _get_all_fields_json_(self) -> Dict[str, Dict]:
         """Get all fields on model without applying any restriction in JSON like dict
 
         Returns:
             Dict[str, Dict]: Dictionary of all fields in JSON like dict
         """
         res = {}
-        for k,v in self.Meta._field_defs_.items():
+        all_fields = self._get_all_fields_()
+        for k,v in all_fields.items():
             res[k] = v.to_json()
         return res
 
@@ -243,6 +244,22 @@ class ModelType(type):
             if not self._is_valid_key_(k, fields, exclude_keys):
                 continue
             yield k
+
+    def _get_fields_json_(self, up=False) -> Dict[str, Dict]:
+        """Get fields in JSON like dict that pass include/exclude criteria
+
+        Args:
+            up (bool, optional): up criteria or down criteria. Defaults to False (down).
+
+        Returns:
+            Dict[str, Dict]: Dictionary of fields in JSON like dict
+        """
+        res = {}
+        fields = self._get_fields_(up)
+        all_fields = self._get_all_fields_()
+        for k in fields:
+            res[k] = all_fields[k].to_json()
+        return res
 
     def _get_FieldValue_data_valid_(self, data: dict, up=False) -> Iterator[Tuple[str, Any]]:
         """Yields valid key,value pairs from data.
@@ -426,15 +443,19 @@ class ModelBase(metaclass=ModelType):
             raise AttributeError(f"No such field ('{k}') in model '{self.__class__.__name__}''")
         # v = fields[k].clean(v)
         # super().__setattr__(k, v)
-        if self.__class__._is_valid_up_(k, v):
-            if k in self.Meta._fromdb_:
-                fields[k]._ignore_first_change_count_ = True
-                self.Meta._fromdb_.remove(k)
-            fields[k].value = v
-        elif k in self.Meta._fromdb_:
+        if k in self.Meta._fromdb_:
             self.Meta._fromdb_.remove(k)
+            if self.__class__._is_valid_down_(k, v):
+                fields[k].value = v
+            elif self.__class__._is_valid_up_(k, v):
+                fields[k]._ignore_first_change_count_ = True
+                fields[k].value = v
+            else:
+                raise AttributeError(f'Can not set field `{k}`. It is excluded using either exclude_fields_up/down or exclude_values_up/down in {self.__class__.__name__} Meta class. Or you are trying to set an invalid value: {v}')
+        elif self.__class__._is_valid_up_(k, v):
+            fields[k].value = v
         else:
-            raise AttributeError(f'Can not set field `{k}`. It is excluded using either exclude_fields_up or exclude_values_up in {self.__class__.__name__} Meta class. Or you are trying to set an invalid value: {v}')
+            raise AttributeError(f'Can not set field `{k}`. It is excluded using either exclude_fields_up/down or exclude_values_up/down in {self.__class__.__name__} Meta class. Or you are trying to set an invalid value: {v}')
 
     def __repr__(self):
         reprs = []
