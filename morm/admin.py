@@ -91,7 +91,7 @@ if __name__ == '__main__':
             with open(name, 'x', encoding='utf-8') as f:
                 f.write(content)
         except FileExistsError:
-            log.exception(f'Skipping creating file: {name}')
+            print(f'File exists: {name}')
     return files
 
 def main():
