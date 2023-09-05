@@ -36,11 +36,11 @@ def import_from_path(name: str, path: str):
     """
     spec = importlib.util.spec_from_file_location(name, path)
     module = importlib.util.module_from_spec(spec) # type: ignore
+    sys.modules[name] = module
     spec.loader.exec_module(module) # type: ignore
     return module
 
-def _cached_import(module_name):
-    print(module_name)
+def _cached_system_import(module_name):
     # Check whether module is loaded and fully initialized.
     if not (
         (module := sys.modules.get(module_name))
@@ -69,14 +69,14 @@ def import_module(path, base_path=None):
         path = path.replace(os.path.sep, '.').strip('.')
     if absolute_unix_path:
         return import_from_path(path, absolute_unix_path)
-    return _cached_import(path)
+    return _cached_system_import(path)
 
 def import_object(path, object_name=None, base_path=None):
     """Import an object by string path.
 
     Args:
         path (str): path to object, can be a dotted path as well
-        object_name (str, optional): name of the object to import. Defaults to None.
+        object_name (str, optional): name of the object to import. Defaults to last part of dotted path.
         base_path (str, optional): base path from where it can be imported by absolute import. Defaults to None.
 
     Returns:
@@ -89,7 +89,7 @@ def import_object(path, object_name=None, base_path=None):
             raise ImportError("%s doesn't look like an object path, please pass object_name parameter" % path) from err
 
     try:
-        return getattr(import_module(path, base_path), object_name)
+        return getattr(import_module(path, base_path=base_path), object_name)
     except AttributeError as err:
         raise ImportError(
             'Module "%s" does not define a "%s" attribute/class'
