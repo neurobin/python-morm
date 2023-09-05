@@ -34,16 +34,16 @@ from $app_py_path.v1.routers import root
 app = FastAPI()
 
 origins = [
-    "http://localhost",
-    "http://localhost:3000",
+    'http://localhost',
+    'http://localhost:3000',
 ]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=['*'],
+    allow_headers=['*'],
 )
 
 
@@ -69,6 +69,130 @@ class MyUvicornWorker(UvicornWorker):
     CONFIG_KWARGS = {'loop': 'asyncio', 'lifespan': 'off'}
 
 "
+    ["$root/core/utils.py"]="
+from fastapi import HTTPException
+from _morm_config_ import DB_POOL
+from morm.db import DB
+from $app_py_path.core.schemas.sql import Sql
+
+
+def fixType(x):
+    '''Fix type of string to int, float, bool, or None to be used in SQL queries
+
+    Args:
+        x (str): string to fix
+
+    Returns:
+        any: int, float, bool, or None to be used in SQL queries
+    '''
+    x = str(x).strip()
+    if x.lower() in ['true','ok','yes','y']: return True
+    if x.lower() in ['false','','no','n']: return False
+    if x.lower() in ['null','none','na','n/a']: return None
+    try:
+        if '.' in x: return float(x)
+        return int(x)
+    except:
+        return x
+
+async def get_table_info(m):
+    '''Get table/model information
+
+    Args:
+        m (ModelType): Model class
+
+    Returns:
+        dict: table/model information
+    '''
+    db = DB(DB_POOL)
+    db_table = m.Meta.db_table
+    meta = m.Meta.__dict__.copy()
+    try:
+        del meta['_field_defs_']
+        del meta['f']
+        for k in list(meta.keys()):
+            if k.startswith('_'): del meta[k]
+    except KeyError: ...
+    res = {
+        'general':{
+            'name': m.__name__,
+            'description': m.__doc__,
+            '_repr': repr(m),
+            },
+        'fields_detail': m._get_fields_json_(),
+        'meta': meta,
+    }
+    q = f\"select\\
+            relname as table_name,\\
+            nspname as schema,\\
+            reltuples as row_counts,\\
+            pg_relation_size(c.oid) AS size\\
+        from pg_class c JOIN pg_catalog.pg_namespace n\\
+        ON n.oid = c.relnamespace where relkind='r'\\
+        and relname = '{db_table}'\"
+    r = await db.fetch(q)
+    res['general']['stat'] = dict(**r[0])
+    # q = f'SELECT * FROM information_schema.columns WHERE table_name = '{db_table}';'
+    # r = await db.fetch(q)
+    # res['cols'] = r
+    # print(m._get_all_fields_json_())
+    return res
+
+async def run_sql(sql: Sql):
+    '''Run raw SQL query
+
+    Args:
+        sql (Sql): Sql dataclass object
+
+    Returns:
+        query result, depending on query function: sql.fn
+    '''
+    try:
+        db = DB(DB_POOL)
+        try:
+            fn = getattr(db, sql.fn)
+        except Exception as e:
+            raise HTTPException(status_code=403, detail=f'Unknown fn: {fn}')
+        return await fn(sql.q, *sql.vals)
+    except Exception as e:
+        raise HTTPException(status_code=403, detail=f'Error: {e}')
+
+"
+
+    ["$root/core/schemas/sql.py"]="
+from pydantic import BaseModel as PydanticBaseModel
+
+
+class Sql(PydanticBaseModel):
+    '''A simple SQL query model'''
+    fn:str = 'fetch'
+    q:str
+    vals:list = []
+
+"
+
+    ["$root/core/models/__init__.py"]="
+'''All models are available here in _all_models_ dict by their names.
+
+Please have unique names for your models to make proper use of the
+_all_models_ dict.
+'''
+
+import glob, os
+from morm.utils import import_module
+from morm.model import ModelType
+from $app_py_path.core.settings import BASE_DIR
+
+_all_models_ = {}
+
+for file in glob.glob(os.path.join(os.path.dirname(__file__), '*.py')):
+    if file.endswith('__init__.py'):
+        continue
+    module = import_module(file, base_path=BASE_DIR)
+    _all_models_.update(dict([(name, cls) for name, cls in module.__dict__.items() if isinstance(cls, ModelType) and not getattr(getattr(cls, 'Meta', None), 'abstract', True)]))
+
+"
+
     ["$root/core/models/base.py"]="
 from morm.pg_models import BaseCommon, Base, Model
 
@@ -84,14 +208,14 @@ class MyBase(BaseCommon):
     ["$root/core/models/user.py"]="
 from morm.fields import Field
 from morm.fields.common import ForeignKey, EmailField
-from morm.db import DB, Transaction, SERIALIZABLE, READ_COMMITTED, REPEATABLE_READ
-from _morm_config_ import DB_POOL
-from madmin.core.models.base import MyBase
+from $app_py_path.core.models.base import MyBase
 
 
 class Org(MyBase):
+    '''All available organizations'''
     class Meta:
         db_table = 'orgs'
+        exclude_fields_up = ('created_at',)
     name = Field('varchar(255)')
     url = Field('varchar(255)')
     description = Field('text')
@@ -99,8 +223,11 @@ class Org(MyBase):
 
 
 class User(MyBase):
+    '''All of our users'''
     class Meta:
         db_table = 'users'
+        exclude_fields_up = ('created_at',)
+        exclude_fields_down = ('password',)
 
     username = Field('varchar(65)')
     fullname = Field('varchar(65)')
@@ -113,11 +240,22 @@ class User(MyBase):
     lastLogin = Field('timestamp')
     isSuperUser = Field('boolean')
     isLive = Field('boolean')
+
+
+class NormalUser(User):
+    '''A proxy to User class that filters out sensitive fields during data retrieval using db(Model) queries'''
+    class Meta:
+        proxy = True
+        exclude_fields_up = ('created_at',)
+        exclude_fields_down = ('password','isSuperUser','isLive', 'lastLogin')
+
 "
     ["$root/core/settings.py"]="
 import os
 
 DEBUG = True if os.getenv('DEBUG', 'true').lower() == 'true' else False
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 "
     ["$root/v1/routers/__init__.py"]="
 '''Make a single APIRouter that contains all the routers.
@@ -129,18 +267,19 @@ such as route_0001_admin.py, route_0002_user.py, etc...
 
 from fastapi import APIRouter
 import glob, os
-from morm.utils import import_from_path
+from morm.utils import import_module
+from $app_py_path.core.settings import BASE_DIR
 
 router = APIRouter()
 
-__all_router_paths = []
+__all_router_paths = [] # This is for sorting the routers
 for file in glob.glob(os.path.join(os.path.dirname(__file__), '*.py')):
     if file.endswith('__init__.py'):
         continue
     __all_router_paths.append(file)
 sorted(__all_router_paths)
 for file in __all_router_paths:
-    module = import_from_path('tmp', file)
+    module = import_module(file, base_path=BASE_DIR)
     router.include_router(module.router)
 del __all_router_paths
 
@@ -404,6 +543,10 @@ gunicorn --timeout 300 --access-logfile - --workers 3 -k $app_py_path.workers.My
 for dir in "${dirs[@]}"; do
     mkdir -p "$dir"
     file="$dir/__init__.py"
+    if [[ -f "$file" ]]; then
+        echo "File exists: $file"
+        continue
+    fi
     if [[ "$dir" != 'nginx' ]]; then
         echo "${files[$file]}" > "$file"
     fi
