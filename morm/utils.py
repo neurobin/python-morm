@@ -10,7 +10,7 @@ __version__ = '0.0.1'
 
 import importlib.util
 import sys, os, re
-from importlib import import_module as system_import_module
+from importlib import import_module as importlib_import_module
 
 def Open(path: str, mode: str, **kwargs):
     """Wrapper for open with utf-8 encoding
@@ -24,30 +24,40 @@ def Open(path: str, mode: str, **kwargs):
     """
     return open(path, mode, encoding='utf-8', **kwargs)
 
-def import_from_path(name: str, path: str):
-    """Import a module from path
+def loaded_module(dotted_path: str):
+    """Return module if the module is loaded, otherwise return None
 
     Args:
-        name (str): module name (should be dotted path)
+        dotted_path (str): module dotted_path
+
+    Returns:
+        module if loaded, None otherwise
+    """
+    # Check whether module is loaded and fully initialized.
+    if not (
+        (module := sys.modules.get(dotted_path))
+        and (spec := getattr(module, "__spec__", None))
+        and getattr(spec, "_initializing", False) is False
+    ): return None
+    else:
+        print(f'Module already loaded: {dotted_path}')
+    return module
+
+def import_from_path(dotted_path: str, path: str):
+    """Import a module from path and record it in sys.modules[dotted_path]
+
+    Args:
+        dotted_path (str): module dotted_path
         path (str): path (file path)
 
     Returns:
         object: module object
     """
-    spec = importlib.util.spec_from_file_location(name, path)
-    module = importlib.util.module_from_spec(spec) # type: ignore
-    sys.modules[name] = module
-    spec.loader.exec_module(module) # type: ignore
-    return module
-
-def _cached_system_import(module_name):
-    # Check whether module is loaded and fully initialized.
-    if not (
-        (module := sys.modules.get(module_name))
-        and (spec := getattr(module, "__spec__", None))
-        and getattr(spec, "_initializing", False) is False
-    ):
-        module = system_import_module(module_name)
+    if not (module := loaded_module(dotted_path)):
+        spec = importlib.util.spec_from_file_location(dotted_path, path)
+        module = importlib.util.module_from_spec(spec) # type: ignore
+        sys.modules[dotted_path] = module
+        spec.loader.exec_module(module) # type: ignore
     return module
 
 def import_module(path, base_path=None):
@@ -69,7 +79,10 @@ def import_module(path, base_path=None):
         path = path.replace(os.path.sep, '.').strip('.')
     if absolute_unix_path:
         return import_from_path(path, absolute_unix_path)
-    return _cached_system_import(path)
+
+    if not (module := loaded_module(path)):
+        module = importlib_import_module(path)
+    return module
 
 def import_object(path, object_name=None, base_path=None):
     """Import an object by string path.
