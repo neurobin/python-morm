@@ -176,7 +176,8 @@ class DB(object):
 
     async def fetch(self, query: str, *args,
                     timeout: float = None,
-                    model_class: ModelType=None
+                    model_class: ModelType=None,
+                    **kwargs
                     ) -> Union[List[ModelBase], List[Record]]:
         """Make a query and get the results.
 
@@ -187,6 +188,10 @@ class DB(object):
             args (*list or *tuple): Query arguments.
             timeout (float, optional): Timeout value. Defaults to None.
             model_class (Model, optional): Defaults to None.
+            kwargs (**dict) : Other arguments that are not supported by
+                this method but may be supported by other methods.
+                This is to allow passing arguments to other methods
+                without changing the code.
 
         Returns:
             List[Model] or List[Record] : List of model instances if model_class is given, otherwise list of Record instances.
@@ -204,7 +209,8 @@ class DB(object):
 
     async def fetchrow(self, query: str, *args,
                         timeout: float = None,
-                        model_class: ModelType=None
+                        model_class: ModelType=None,
+                        **kwargs
                         ) -> Union[ModelBase, Record]:
         """Make a query and get the first row.
 
@@ -215,6 +221,10 @@ class DB(object):
             args (*list or *tuple): Query arguments.
             timeout (float, optional): Timeout value. Defaults to None.
             model_class (Model, optional): Defaults to None.
+            kwargs (**dict) : Other arguments that are not supported by
+                this method but may be supported by other methods.
+                This is to allow passing arguments to other methods
+                without changing the code.
 
         Returns:
             Record or model_clas object or None if no rows were selected.
@@ -231,7 +241,8 @@ class DB(object):
 
     async def fetchval(self, query: str, *args,
                         column: int = 0,
-                        timeout: float = None
+                        timeout: float = None,
+                        **kwargs
                         ) -> Any:
         """Run a query and return a column value in the first row.
 
@@ -240,6 +251,10 @@ class DB(object):
             args (*list or *tuple): Query arguments.
             column (int, optional): Column index. Defaults to 0.
             timeout (float, optional): Timeout. Defaults to None.
+            kwargs (**dict) : Other arguments that are not supported by
+                this method but may be supported by other methods.
+                This is to allow passing arguments to other methods
+                without changing the code.
 
         Returns:
             Any: Coulmn (indentified by index) value of first row.
@@ -248,7 +263,8 @@ class DB(object):
         return await pool.fetchval(query, *args, column=column, timeout=timeout)
 
     async def execute(self, query: str, *args,
-                        timeout: float = None
+                        timeout: float = None,
+                        **kwargs
                         ) -> str:
         """Execute a query.
 
@@ -256,6 +272,10 @@ class DB(object):
             query (str): Query to run.
             args (*list or *tuple): Query arguments.
             timeout (float, optional): Timeout. Defaults to None.
+            kwargs (**dict) : Other arguments that are not supported by
+                this method but may be supported by other methods.
+                This is to allow passing arguments to other methods
+                without changing the code.
 
         Returns:
             str: Status of the last SQL command
