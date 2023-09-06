@@ -39,8 +39,6 @@ def loaded_module(dotted_path: str):
         and (spec := getattr(module, "__spec__", None))
         and getattr(spec, "_initializing", False) is False
     ): return None
-    else:
-        print(f'Module already loaded: {dotted_path}')
     return module
 
 def import_from_path(dotted_path: str, path: str):
