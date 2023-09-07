@@ -28,10 +28,26 @@ files=(
     ["$root/main.py"]="
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.exceptions import RequestValidationError, WebSocketRequestValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from $app_py_path.v1 import routers
 from $app_py_path.v1.routers import root
+from $app_py_path.core.err_handler import http_exception_handler, request_validation_exception_handler, websocket_request_validation_exception_handler
 
 app = FastAPI()
+
+@app.exception_handler(StarletteHTTPException)
+async def custom_http_exception_handler(request, exc):
+    return await http_exception_handler(request, exc)
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request, exc):
+    return await request_validation_exception_handler(request, exc)
+
+@app.exception_handler(WebSocketRequestValidationError)
+async def websocket_validation_exception_handler(websocket, exc):
+    return await websocket_request_validation_exception_handler(websocket, exc)
+
 
 origins = [
     'http://localhost',
@@ -70,10 +86,14 @@ class MyUvicornWorker(UvicornWorker):
 
 "
     ["$root/core/utils.py"]="
-from fastapi import HTTPException
+import typing
 from _morm_config_ import DB_POOL
 from morm.db import DB
 from $app_py_path.core.schemas.sql import Sql
+from morm.model import ModelType
+from $app_py_path.core.models import _all_models_
+from $app_py_path.core.schemas.res import Err, Status
+
 
 
 def fixType(x):
@@ -95,7 +115,8 @@ def fixType(x):
     except:
         return x
 
-async def get_table_info(m):
+
+async def get_table_info(m: ModelType):
     '''Get table/model information
 
     Args:
@@ -122,14 +143,16 @@ async def get_table_info(m):
         'fields_detail': m._get_fields_json_(),
         'meta': meta,
     }
-    q = f\"select\\
-            relname as table_name,\\
-            nspname as schema,\\
-            reltuples as row_counts,\\
-            pg_relation_size(c.oid) AS size\\
-        from pg_class c JOIN pg_catalog.pg_namespace n\\
-        ON n.oid = c.relnamespace where relkind='r'\\
-        and relname = '{db_table}'\"
+    q = f'''
+        select
+            relname as table_name,
+            nspname as schema,
+            reltuples as row_counts,
+            pg_relation_size(c.oid) AS size
+        from pg_class c
+        JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+        where relkind='r' and relname = '{db_table}'
+        '''
     r = await db.fetch(q)
     res['general']['stat'] = dict(**r[0])
     # q = f'SELECT * FROM information_schema.columns WHERE table_name = '{db_table}';'
@@ -138,7 +161,7 @@ async def get_table_info(m):
     # print(m._get_all_fields_json_())
     return res
 
-async def run_sql(sql: Sql):
+async def run_sql(sql: Sql, timeout: float=None):
     '''Run raw SQL query
 
     Args:
@@ -149,25 +172,196 @@ async def run_sql(sql: Sql):
     '''
     try:
         db = DB(DB_POOL)
-        try:
-            fn = getattr(db, sql.fn)
-        except Exception as e:
-            raise HTTPException(status_code=403, detail=f'Unknown fn: {fn}')
-        return await fn(sql.q, *sql.vals)
+        fn = getattr(db, sql.fn)
+        model_class = _all_models_[sql.model] if sql.model else None
+        return await fn(sql.q, *sql.vals, timeout=timeout, model_class=model_class)
+    except KeyError as e:
+        raise Err(Status.not_found, errors=[f'Model not found: {sql.model}'])
+    except AttributeError as e:
+        raise Err(Status.bad_request, errors=[f'Unknown fn: {fn}'])
     except Exception as e:
-        raise HTTPException(status_code=403, detail=f'Error: {e}')
+        raise Err(Status.internal_server_error, errors=[f'Error: {e}'])
+
+"
+    ["$root/core/err_handler.py"]="'''error handler for madmin api'''
+from fastapi.exceptions import RequestValidationError, WebSocketRequestValidationError
+from fastapi.utils import is_body_allowed_for_status_code
+from fastapi.websockets import WebSocket
+from starlette.exceptions import HTTPException
+from starlette.requests import Request
+from starlette.responses import Response
+from $app_py_path.core.schemas.res import Res, Status, Err
+
+
+def parse_exc(exc):
+    errors = []
+    for e in exc.errors():
+        errors.append(e['msg']+': '+'.'.join(e['loc'][1:]))
+    return errors
+
+async def http_exception_handler(request: Request, exc: HTTPException) -> Response:
+    headers = getattr(exc, 'headers', None)
+    if not is_body_allowed_for_status_code(exc.status_code):
+        return Response(status_code=exc.status_code, headers=headers)
+    if isinstance(exc, Err): return exc
+    return Err(Status[exc.status_code], errors=[exc.detail], headers=headers)
+
+async def request_validation_exception_handler(
+    request: Request, exc: RequestValidationError
+) -> Err:
+    errors = parse_exc(exc)
+    return Err(Status.invalid_request, errors=errors)
+
+async def websocket_request_validation_exception_handler(
+    websocket: WebSocket, exc: WebSocketRequestValidationError
+) -> None:
+    errors = parse_exc(exc)
+    await websocket.close(
+        code=Status.invalid_request_ws.status, reason=Res(**Status.invalid_request_ws, errors=errors).model_dump_json()
+    )
 
 "
 
     ["$root/core/schemas/sql.py"]="
 from pydantic import BaseModel as PydanticBaseModel
+from pydantic import Field
 
 
 class Sql(PydanticBaseModel):
-    '''A simple SQL query model'''
-    fn:str = 'fetch'
-    q:str
-    vals:list = []
+    '''SQL query schema'''
+    fn:str = Field(default='fetch', description='Query function to run: fetch, fetchrow, fetchval, execute')
+    q:str = Field(description='SQL query', min_length=1)
+    vals:list = Field(default=[], description='Values to be passed to query: replacements for $1, $2, etc. sequentially')
+    model:str = Field(default='', description='Model name to be used for query')
+
+"
+
+    ["$root/core/schemas/res.py"]="'''Response schemas'''
+import typing
+from collections.abc import Mapping
+from starlette.datastructures import MutableHeaders
+from starlette.exceptions import HTTPException
+from fastapi.responses import JSONResponse
+from starlette.background import BackgroundTask
+from fastapi.encoders import jsonable_encoder
+from pydantic import BaseModel as PydanticBaseModel, Field, create_model, field_serializer, model_serializer
+
+DataType = typing.TypeVar('DataType')
+
+class Map(Mapping):
+    '''Map class to be used as a dict with dot notation'''
+    _fields_ = None
+
+    def __init__(self, **kwargs):
+        self._fields_ = kwargs
+        for k,v in kwargs.items():
+            setattr(self, k, v)
+
+    def __iter__(self):
+      for k,v in self._fields_.items():
+        yield k,v
+
+    def __len__(self) -> int:
+        return self._fields_.__len__()
+
+    def __getitem__(self, __key):
+        return self._fields_[__key]
+
+    def keys(self):
+        return self._fields_.keys()
+
+
+class _Status_Meta_(type):
+    unknown_status_error = Map(status=500, msg='unknown_status_error') # when status code is not defined in this class instance i.e Status class
+    def  __getitem__(cls, k):
+        if isinstance(k, str):
+            return getattr(cls, k, cls.unknown_status_error)
+        for key,v in cls.__dict__.items():
+            if isinstance(v, Map) and v.status == k:
+                return v
+        return cls.unknown_status_error
+
+class Status(metaclass=_Status_Meta_):
+    '''HTTP status codes in Map(status, msg) format)'''
+    success = Map(status=200, msg='success')
+    bad_request = Map(status=400, msg='bad_request')
+    unauthorized = Map(status=401, msg='unauthorized')
+    forbidden = Map(status=403, msg='forbidden')
+    not_found = Map(status=404, msg='not_found')
+    invalid_request = Map(status=422, msg='invalid_request')
+    invalid_request_ws = Map(status=1008, msg='invalid_request') # for websocket
+    internal_server_error = Map(status=500, msg='internal_server_error')
+    bad_gateway = Map(status=502, msg='bad_gateway')
+    service_unavailable = Map(status=503, msg='service_unavailable')
+    gateway_timeout = Map(status=504, msg='gateway_timeout')
+
+
+class Res(PydanticBaseModel, typing.Generic[DataType]):
+    '''Base response schema'''
+    data:DataType = Field(default=None, description='Response data')
+    status: int = Field(default=Status.success.status, description='HTTP status code')
+    msg:str = Field(default=Status.success.msg, description='response message')
+    errors:typing.Optional[list] = Field(default=None, description='Response errors')
+    warnings: typing.Optional[list] = Field(default=None, description='Response warnings')
+
+    @field_serializer('data')
+    def serialize_data(self, v, _info):
+        return jsonable_encoder(v)
+
+
+class Err(HTTPException, JSONResponse):
+    '''Error response schema, can be raised as exception or returned as response'''
+    def __init__(
+        self,
+        stat: Map=Status.internal_server_error,
+        errors: list | None = None,
+        headers: dict | None = None,
+        media_type: typing.Optional[str] = None,
+        background: typing.Optional[BackgroundTask] = None
+    ) -> None:
+        '''Error response schema class, can be raised as Exception or returned as a response directly'''
+        HTTPException.__init__(self, stat.status, detail=stat.msg, headers=headers)
+        errors = errors if errors else [stat.msg]
+        JSONResponse.__init__(self, content=Res[None](status=stat.status, msg=stat.msg, errors=errors).model_dump(), status_code=stat.status, headers=headers, media_type=media_type, background=background)
+
+    @property
+    def headers(self) -> MutableHeaders:
+        return super(JSONResponse, self).headers
+
+    @headers.setter
+    def headers(self, v: dict|None) -> MutableHeaders:
+        self.init_headers(v)
+
+
+############## improving swagger doc with res(dType) function ##############
+_global_cRes_ = {}
+def cRes(stat: Map):
+    '''Create response schema with custom default status code and message'''
+    name = f'Res{stat.status}{stat.msg}'
+    if name not in _global_cRes_:
+        _global_cRes_[name] = create_model(name, __base__=Res,
+                                status=(int, Field(default=stat.status, description='HTTP status code')),
+                                msg=(str, Field(default=stat.msg, description='response message'))
+                            )
+    return _global_cRes_[name]
+
+def eRes(stat: Map):
+    '''Return error response schema for different status codes to be used for 'responses' parameter in router decorators'''
+    return cRes(stat)[None]
+
+_eres_ = {
+    400: {'description': Status.bad_request.msg, 'model': eRes(Status.bad_request)},
+    401: {'description': Status.unauthorized.msg, 'model': eRes(Status.unauthorized)},
+    403: {'description': Status.forbidden.msg, 'model': eRes(Status.forbidden)},
+    404: {'description': Status.not_found.msg, 'model': eRes(Status.not_found)},
+    422: {'description': Status.invalid_request.msg, 'model': eRes(Status.invalid_request)},
+}
+def res(dType=DataType):
+    '''Return response schema for different status codes to be used for 'responses' parameter in router decorators'''
+    return {
+        200: {'description': Status.success.msg, 'model': Res[dType]},
+        **_eres_
+    }
 
 "
 
@@ -223,7 +417,7 @@ class Org(MyBase):
 
 
 class User(MyBase):
-    '''All of our users'''
+    '''Main user model'''
     class Meta:
         db_table = 'users'
         exclude_fields_up = ('created_at',)
@@ -242,8 +436,8 @@ class User(MyBase):
     isLive = Field('boolean')
 
 
-class NormalUser(User):
-    '''A proxy to User class that filters out sensitive fields during data retrieval using db(Model) queries'''
+class UserProfile(User):
+    '''A proxy model for normal user profile'''
     class Meta:
         proxy = True
         exclude_fields_up = ('created_at',)
@@ -284,11 +478,12 @@ for file in __all_router_paths:
 del __all_router_paths
 
 "
-    ["$root/v1/routers/root.py"]="
+    ["$root/v1/routers/root.py"]="'''project root routers'''
 from typing import List
 from fastapi import APIRouter, Request
 from pydantic import BaseModel
 from $app_py_path.core.settings import DEBUG
+from $app_py_path.core.schemas.res import Res, res
 
 
 router = APIRouter()
@@ -303,7 +498,7 @@ class RequestData(BaseModel):
     form: list
     body: str
 
-async def return_request(request: Request):
+async def return_request(request: Request) -> Res[RequestData]:
     body = await request.body()
     form = await request.form()
     data = RequestData(
@@ -316,11 +511,11 @@ async def return_request(request: Request):
         form=list(form),
         body=body.decode('utf-8'),
     )
-    return data
+    return Res(data=data)
 
 
-@router.get('/')
-async def handle_get(request: Request):
+@router.get('/', responses=res(RequestData))
+async def endpoint_root(request: Request):
     '''
     All available request data:
 
@@ -329,7 +524,7 @@ async def handle_get(request: Request):
     return await return_request(request)
 
 
-
+############ project root router: EndpointList ############
 class Endpoint(BaseModel):
     title: str
     url: str
@@ -340,9 +535,9 @@ class EndpointList(BaseModel):
     endpoints: List[Endpoint]
 
 endpoint_list = APIRouter()
-@endpoint_list.get('/')
-async def endpoint_list_get(request: Request):
-    return EndpointList(title='Welcome to our API base. We have a few versions available for you.', endpoints=[Endpoint(title='v1 endpoint of the API', url='/v1', version='v1')])
+@endpoint_list.get('/', responses=res(EndpointList))
+async def get_endpoint_list(request: Request):
+    return Res(data=EndpointList(title='Welcome to our API base. We have a few versions available for you.', endpoints=[Endpoint(title='v1 endpoint of the API', url='/v1', version='v1')]))
 
 "
 
@@ -562,4 +757,5 @@ done
 
 morm_admin init -p $app_py_path
 chmod +x ./run ./mgr ./gunicorn.sh
+. ./vact
 pip install -r requirements.txt
