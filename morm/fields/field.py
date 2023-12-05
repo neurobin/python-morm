@@ -184,7 +184,7 @@ class ColumnConfig():
             raise ex.UnsupportedError(f"{self.conf['sql_engine']} not supported yet.")
 
 
-def isSqlArray(value: Any) -> bool:
+def is_sql_array(value: Any) -> bool:
     """Check if the value is a list of sql values.
 
     Args:
@@ -291,7 +291,7 @@ class Field(object):
             _sql_unique = 'ALTER TABLE "{table}" DROP CONSTRAINT IF EXISTS "%s";' % (_unique_constraint,)
         sql_alter = (_sql_unique, *sql_alter)
         # handle default
-        if isinstance(default, (int, float, str, bool)) or isSqlArray(default):
+        if isinstance(default, (int, float, str, bool)) or is_sql_array(default):
             sql_alter = (*sql_alter, "ALTER TABLE \"{table}\" ALTER COLUMN \"{column}\" SET DEFAULT "+f"{sql_val(default, sql_type)};")
         self.sql_conf = ColumnConfig(sql_type=sql_type, sql_onadd=sql_onadd, sql_ondrop=sql_ondrop, sql_alter=sql_alter, sql_engine=sql_engine)
         self.validator = validator
