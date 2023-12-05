@@ -184,6 +184,46 @@ class ColumnConfig():
             raise ex.UnsupportedError(f"{self.conf['sql_engine']} not supported yet.")
 
 
+def isSqlArray(value: Any) -> bool:
+    """Check if the value is a list of sql values.
+
+    Args:
+        value (list): list of values
+
+    Returns:
+        bool: True if the value is a list of sql values
+    """
+    if not isinstance(value, list): return False
+    if len(value) == 0: return True
+    t = type(value[0])
+    for v in value:
+        if type(v) != t:
+            return False
+    return True
+
+
+def sql_val(value: Any, sql_type: str) -> str:
+    """Return the value as a string that can be used in sql.
+
+    Args:
+        value (Any): Any value
+
+    Returns:
+        str: string representation of the value
+    """
+    if isinstance(value, list):
+        return f"ARRAY[{', '.join([str(sql_val(x, sql_type)) for x in value])}]" if value else f'ARRAY[]::{sql_type}'
+    value = str(value)
+    if value.lower() in ['true']: return 'true'
+    if value.lower() in ['false']: return 'false'
+    if value.lower() in ['null','none']: return 'null'
+    try:
+        if '.' in value: return float(value)
+        return int(value)
+    except:
+        return f"'{value}'"
+
+
 class Field(object):
     """Initialize the Field object with data type (sql).
 
@@ -250,6 +290,10 @@ class Field(object):
         else:
             _sql_unique = 'ALTER TABLE "{table}" DROP CONSTRAINT IF EXISTS "%s";' % (_unique_constraint,)
         sql_alter = (_sql_unique, *sql_alter)
+        # handle default
+        if isinstance(default, (int, float, str, bool)) or isSqlArray(default):
+            _sql_default = "ALTER TABLE \"{table}\" ALTER COLUMN \"{column}\" SET DEFAULT "+f"{sql_val(default, sql_type)};"
+            sql_alter = (*sql_alter, _sql_default)
         self.sql_conf = ColumnConfig(sql_type=sql_type, sql_onadd=sql_onadd, sql_ondrop=sql_ondrop, sql_alter=sql_alter, sql_engine=sql_engine)
         self.validator = validator
         self.modifier = modifier
