@@ -292,8 +292,7 @@ class Field(object):
         sql_alter = (_sql_unique, *sql_alter)
         # handle default
         if isinstance(default, (int, float, str, bool)) or isSqlArray(default):
-            _sql_default = "ALTER TABLE \"{table}\" ALTER COLUMN \"{column}\" SET DEFAULT "+f"{sql_val(default, sql_type)};"
-            sql_alter = (*sql_alter, _sql_default)
+            sql_alter = (*sql_alter, "ALTER TABLE \"{table}\" ALTER COLUMN \"{column}\" SET DEFAULT "+f"{sql_val(default, sql_type)};")
         self.sql_conf = ColumnConfig(sql_type=sql_type, sql_onadd=sql_onadd, sql_ondrop=sql_ondrop, sql_alter=sql_alter, sql_engine=sql_engine)
         self.validator = validator
         self.modifier = modifier
