@@ -26,7 +26,6 @@ HOME = str(Path.home())
 MIGRATION_CURSOR_DIR = os.path.join(HOME, '.local', 'share', 'morm')
 os.makedirs(MIGRATION_CURSOR_DIR, exist_ok=True)
 
-
 def _get_changed_fields(curs: Dict[str, ColumnConfig],
                         pres: Dict[str, ColumnConfig])\
                         -> Dict[str, Dict[str, Union[None, str, ColumnConfig]]]:
@@ -412,7 +411,7 @@ class Migration():
             pass
         return mgrpy_files[len(prev_files):]
 
-    async def migrate(self, pool: Pool):
+    async def migrate(self, pool: Pool, update_cursor_on_error=False):
         """Run the migrations created by makemigrations beforehand.
 
         Args:
@@ -428,7 +427,11 @@ class Migration():
             mr = import_from_path(mn, file) # type: ignore
             async with Transaction(pool) as tdb:
                 mro: MigrationRunner = mr.MigrationRunner(tdb, self.model)
-                await mro.run()
+                try:
+                    await mro.run()
+                except:
+                    if not update_cursor_on_error:
+                        raise
                 self._update_migration_cursor(file)
                 print(f'   Migration applied: {mn}')
 
@@ -552,6 +555,7 @@ def migration_manager(pool: Pool, base_path: str, models: List[ModelType]):
     parser.add_argument('start_index', nargs='?', type=int, default=0, help='Start index for delete_migration_files command')
     parser.add_argument('end_index', nargs='?', type=int, default=0, help='End index for delete_migration_files command')
     parser.add_argument('-y', '--yes', action='store_true', help='Confirm all', default=False)
+    parser.add_argument('-f', '--force', action='store_true', help='Try force', default=False)
     parser.add_argument('-q', '--quiet', action='store_true', help='Suppress message', default=False)
 
     args = parser.parse_args()
@@ -561,7 +565,7 @@ def migration_manager(pool: Pool, base_path: str, models: List[ModelType]):
             Migration(model, base_path).make_migrations(yes=args.yes, silent=args.quiet)
     elif args.cmd == 'migrate':
         for model in models:
-            run_with_transaction(pool, Migration(model, base_path).migrate)
+            run_with_transaction(pool, Migration(model, base_path).migrate, update_cursor_on_error=args.force)
     elif args.cmd == 'delete_migration_files':
         if args.start_index == 0:
             raise ValueError(f'start_index and end_index must be given')
