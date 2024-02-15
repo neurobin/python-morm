@@ -575,7 +575,14 @@ class EndpointList(BaseModel):
 endpoint_list = APIRouter()
 @endpoint_list.get('/', responses=Res.schema_all(EndpointList))
 async def get_endpoint_list(request: Request):
-    return Res(data=EndpointList(title='Welcome to our API base.', endpoints=[Endpoint(title='v1 endpoint of the API', url='/v1', version='v1')]))
+    return Res(
+        EndpointList(
+            title='Welcome to our API base.',
+            endpoints=[
+                Endpoint(title='v1 endpoint of the API', url='/v1', version='v1'),
+            ]
+        )
+    )
 
 "
 
@@ -767,7 +774,7 @@ export ${app_py_path^^}_ENV=live # use live env (from vact)
 
 ################################################################################
 . ./vact
-gunicorn --timeout 300 --access-logfile - --workers 3 -k $app_py_path.workers.MyUvicornWorker  --worker-connections=1000 $app_py_path.main:app --bind unix:/tmp/.$app_py_path.sock
+gunicorn --timeout 300 --access-logfile - --workers $((2*$(nproc --all)+1)) -k $app_py_path.workers.MyUvicornWorker  --worker-connections=1000 $app_py_path.main:app --bind unix:/tmp/.$app_py_path.sock
 
 "
 
