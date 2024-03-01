@@ -6,7 +6,6 @@ __copyright__ = 'Copyright © Md Jahidul Hamid <https://github.com/neurobin/>'
 __license__ = '[BSD](http://www.opensource.org/licenses/bsd-license.php)'
 __version__ = '0.1.0'
 
-import collections
 import re
 import asyncio
 import nest_asyncio  # type: ignore
@@ -15,12 +14,11 @@ import logging
 
 import asyncpg # type: ignore
 from asyncpg import Record, Connection # type: ignore
-from typing import Optional, Dict, List, Tuple, TypeVar, Union, Any
+from typing import Dict, List, Tuple, Union, Any
 
 from morm import exceptions
 from morm.model import ModelType, Model, ModelBase, _FieldNames
 from morm.q import Q
-from morm.types import Void
 
 LOGGER_NAME = 'morm.db-'
 log = logging.getLogger(LOGGER_NAME)

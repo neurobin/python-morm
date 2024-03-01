@@ -4,18 +4,13 @@
 __author__ = 'Md Jahidul Hamid <jahidulhamid@yahoo.com>'
 __copyright__ = 'Copyright © Md Jahidul Hamid <https://github.com/neurobin/>'
 __license__ = '[BSD](http://www.opensource.org/licenses/bsd-license.php)'
-__version__ = '0.0.1'
+__version__ = '0.0.2'
 
 import inspect
-import typing
-from typing import Optional, Dict, List, Tuple, TypeVar, Union, Any, Iterator
-from collections import OrderedDict
+from typing import Dict, List, Tuple, Any, Iterator, ClassVar
 import copy
-from abc import ABCMeta
-from asyncpg import Record # type: ignore
-from morm.exceptions import ItemDoesNotExistError
 from morm.fields.field import Field, FieldValue
-from morm.types import Void
+from morm.void import Void
 import morm.meta as mt      # for internal use
 
 # morm.db must not be imported here.
@@ -37,7 +32,7 @@ class _FieldNames():
 
 
 class ModelType(type):
-    Meta: typing.ClassVar # fixing mypy error: "ModelType" has no attribute "Meta"
+    Meta: ClassVar # fixing mypy error: "ModelType" has no attribute "Meta"
     def __new__(mcs, class_name: str, bases: tuple, attrs: dict):
         # Ensure initialization is only performed for subclasses of Model
         # excluding Model class itself.
@@ -558,7 +553,7 @@ class Model(ModelBase):
 
     ```python
     from morm.model import Model
-    from morm.datetime import timestamp
+    from morm.dt import timestamp
 
     class Base(Model):
         class Meta:

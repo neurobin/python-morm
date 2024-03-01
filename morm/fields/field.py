@@ -8,7 +8,7 @@ __version__ = '0.0.1'
 
 import copy, inspect
 from typing import Any, Optional, Callable, Tuple, Dict, List, Union
-from morm.types import Void
+from morm.void import Void
 import morm.exceptions as ex
 
 

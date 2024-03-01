@@ -9,7 +9,7 @@ __version__ = '0.0.1'
 
 from morm.model import Model
 from morm.fields import Field
-from morm.datetime import timestamp
+from morm.dt import timestamp
 
 
 class Base(Model):

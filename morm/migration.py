@@ -4,7 +4,7 @@
 __author__ = 'Md Jahidul Hamid <jahidulhamid@yahoo.com>'
 __copyright__ = 'Copyright © Md Jahidul Hamid <https://github.com/neurobin/>'
 __license__ = '[BSD](http://www.opensource.org/licenses/bsd-license.php)'
-__version__ = '0.0.1'
+__version__ = '0.0.2'
 
 
 import asyncio
@@ -16,8 +16,8 @@ import glob
 import datetime
 import json
 from pathlib import Path
-from morm.db import DB, ModelQuery, Transaction, Pool
-from morm.model import ModelBase, ModelType
+from morm.db import DB, Transaction, Pool
+from morm.model import ModelType
 import morm.exceptions as exc
 from morm.fields.field import ColumnConfig
 from morm.utils import Open, import_from_path
