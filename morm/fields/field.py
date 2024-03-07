@@ -202,7 +202,7 @@ def is_sql_array(value: Any) -> bool:
     return True
 
 
-def sql_val(value: Any, sql_type: str) -> str:
+def sql_val(value: Any, sql_type: str) -> str|int|float|bool|None:
     """Return the value as a string that can be used in sql.
 
     Args:
@@ -324,7 +324,7 @@ class Field(object):
 
 
     def __eq__(self, other: 'Field') -> bool: # type: ignore
-        return other and self.sql_conf == other.sql_conf
+        return bool(other and self.sql_conf == other.sql_conf)
 
     def __repr__(self):
         reprs = []

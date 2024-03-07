@@ -82,8 +82,8 @@ class ModelType(type):
         if meta_attrs['proxy']:
             #proxy model inherits everything
             try:
-                meta_attrs['db_table'] = BaseMeta.db_table
-                meta_attrs['abstract'] = BaseMeta.abstract
+                meta_attrs['db_table'] = BaseMeta.db_table #type: ignore
+                meta_attrs['abstract'] = BaseMeta.abstract #type: ignore
             except AttributeError:
                 raise TypeError(f"This model '{class_name}' can not be a proxy model. It does not have a valid base or super base non-proxy model")
         else:
@@ -258,7 +258,7 @@ class ModelType(type):
 
     def _run_validations_(self, k: str, v: FieldValue):
         try:
-            validator = getattr(self, '_clean_' + k + '_')
+            validator = getattr(self, '_clean_' + k)
             v.value = validator(self, v.value)
         except AttributeError:
             v.value = v.value # at least trigger the value validation

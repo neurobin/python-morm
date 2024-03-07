@@ -107,6 +107,33 @@ User({'name': 'John Doe', 'profession': 'Teacher'})
 User({'name': 'John Doe', 'profession': 'Teacher'}, age=34)
 ```
 
+## Validations:
+
+You can setup validation directly on the attribute or define a class method named `_clean_fieldname` to run a validation and change the value before it is inserted or updated into the db.
+
+Example:
+
+```python
+class User(Base):
+    class Meta:
+        db_table = 'myapp_user'
+        abstract = False    # default is False
+        proxy = False       # default is False
+        # ... etc...
+        # see morm.meta.Meta for supported meta attributes.
+
+    name = Field('varchar(65)')
+    email = Field('varchar(255)')
+    password = Field('varchar(255)', validator=lambda x: len(x)>=8) # this one should return True or False.
+    profession = Field('varchar(255)', default='Unknown')
+    random = Field('integer', default=get_rand) # function can be default
+
+    def _clean_password(self, v): # this validator will run as well
+        if v = '12345678': # do something more meaningful though.
+            raise ValueError('Common password not allowed')
+        return v
+```
+
 ## Special Model Meta attribute `f`:
 
 You can access field names from `ModelClass.Meta.f`.

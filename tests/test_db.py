@@ -10,7 +10,7 @@ import sys, shutil
 from morm.db import Pool, DB, Transaction, ModelQuery
 import morm.model as mdl
 import morm.meta as mt
-from morm.types import Void
+from morm.void import Void
 from morm.fields import Field
 # from morm.model import ModelBase as Model
 from morm.model import Model

@@ -76,7 +76,7 @@ class Pool(object):
         loop ([type], optional): Asyncio even loop instance. Defaults to None.
         connection_class ([type], optional): The class to use for connections.  Must be a subclass of `asyncpg.connection.Connection`. Defaults to asyncpg.connection.Connection.
     """
-    def __init__(self, dsn: str = None,
+    def __init__(self, dsn: str|None = None,
                  min_size: int = 10,
                  max_size: int = 100,
                  max_queries: int = 50000,
@@ -173,8 +173,8 @@ class DB(object):
         return self._pool.pool
 
     async def fetch(self, query: str, *args,
-                    timeout: float = None,
-                    model_class: ModelType=None,
+                    timeout: float|None = None,
+                    model_class: ModelType|None = None,
                     **kwargs
                     ) -> Union[List[ModelBase], List[Record]]:
         """Make a query and get the results.
@@ -206,8 +206,8 @@ class DB(object):
             return new_records
 
     async def fetchrow(self, query: str, *args,
-                        timeout: float = None,
-                        model_class: ModelType=None,
+                        timeout: float|None = None,
+                        model_class: ModelType|None = None,
                         **kwargs
                         ) -> Union[ModelBase, Record]:
         """Make a query and get the first row.
@@ -239,7 +239,7 @@ class DB(object):
 
     async def fetchval(self, query: str, *args,
                         column: int = 0,
-                        timeout: float = None,
+                        timeout: float|None = None,
                         **kwargs
                         ) -> Any:
         """Run a query and return a column value in the first row.
@@ -261,7 +261,7 @@ class DB(object):
         return await pool.fetchval(query, *args, column=column, timeout=timeout)
 
     async def execute(self, query: str, *args,
-                        timeout: float = None,
+                        timeout: float|None = None,
                         **kwargs
                         ) -> str:
         """Execute a query.
@@ -363,7 +363,7 @@ class DB(object):
         query = f'DELETE FROM "{mob.__class__._get_db_table_()}" WHERE "{mob.__class__._get_pk_()}"=$1'
         return query, [pkval]
 
-    async def delete(self, mob: ModelBase, timeout: float = None) -> str:
+    async def delete(self, mob: ModelBase, timeout: float|None = None) -> str:
         """Delete the model object data from database.
 
         Args:
@@ -379,7 +379,7 @@ class DB(object):
         await mob._post_delete_(self)
         return res
 
-    async def insert(self, mob: ModelBase, timeout: float = None) -> Any:
+    async def insert(self, mob: ModelBase, timeout: float|None = None) -> Any:
         """Insert the current data state of mob into db.
 
         Args:
@@ -397,7 +397,7 @@ class DB(object):
         await mob._post_insert_(self)
         return pkval
 
-    async def update(self, mob: ModelBase, timeout: float = None) -> str:
+    async def update(self, mob: ModelBase, timeout: float|None = None) -> str:
         """Update the current changed data of mob onto db
 
         Args:
@@ -422,7 +422,7 @@ class DB(object):
         return res
 
 
-    async def save(self, mob: ModelBase, timeout: float = None) -> Union[str, Any]:
+    async def save(self, mob: ModelBase, timeout: float|None = None) -> Union[str, Any]:
         """Insert if not exists and update if exists.
 
         update is tried first, if fails (if pk does not exist), insert
@@ -444,7 +444,7 @@ class DB(object):
         await mob._post_save_(self)
         return res
 
-    def q(self, model: ModelType = None) -> 'ModelQuery':
+    def q(self, model: ModelType|None = None) -> 'ModelQuery':
         """Return a ModelQuery for model
 
         If `None` is passed, it will give a `ModelQuery` without setting
@@ -462,7 +462,7 @@ class DB(object):
         return self(model)
 
 
-    def __call__(self, model: ModelType = None) -> 'ModelQuery':
+    def __call__(self, model: ModelType|None = None) -> 'ModelQuery':
         """Return a ModelQuery for model
 
         If `None` is passed, it will give a `ModelQuery` without setting
@@ -538,7 +538,7 @@ class ModelQuery():
         db (DB): DB object
         model_class (ModelType): model
     """
-    def __init__(self, db: DB, model_class: ModelType = None):
+    def __init__(self, db: DB, model_class: ModelType|None = None):
         self.reset()
         self.db = db
         self.model = model_class # can be None
@@ -924,7 +924,7 @@ class ModelQuery():
         query = f'{self.start_query_str} {query} {self.end_query_str}'
         return query, self._args
 
-    async def fetch(self, timeout: float = None) -> Union[List[ModelBase], List[Record]]:
+    async def fetch(self, timeout: float|None = None) -> Union[List[ModelBase], List[Record]]:
         """Run query method `fetch` that returns the results in model class objects
 
         Returns the results in model class objects.
@@ -938,7 +938,7 @@ class ModelQuery():
         query, args = self.getq()
         return await self.db.fetch(query, *args, timeout=timeout, model_class=self.model)
 
-    async def fetchrow(self, timeout: float = None) -> Union[ModelBase, Record]:
+    async def fetchrow(self, timeout: float|None = None) -> Union[ModelBase, Record]:
         """Make a query and get the first row.
 
         Resultant record is mapped to model_class object.
@@ -952,7 +952,7 @@ class ModelQuery():
         query, args = self.getq()
         return await self.db.fetchrow(query, *args, timeout=timeout, model_class=self.model)
 
-    async def fetchval(self, column: int = 0, timeout: float = None) -> Any:
+    async def fetchval(self, column: int = 0, timeout: float|None = None) -> Any:
         """Run the query and return a column value in the first row.
 
         Args:
@@ -965,7 +965,7 @@ class ModelQuery():
         query, args = self.getq()
         return await self.db.fetchval(query, *args, column=column, timeout=timeout)
 
-    async def execute(self, timeout: float = None) -> str:
+    async def execute(self, timeout: float|None = None) -> str:
         """Execute the query.
 
         Args:
