@@ -107,7 +107,7 @@ User({'name': 'John Doe', 'profession': 'Teacher'})
 User({'name': 'John Doe', 'profession': 'Teacher'}, age=34)
 ```
 
-## Validations:
+## Validations
 
 You can setup validation directly on the attribute or define a class method named `_clean_fieldname` to run a validation and change the value before it is inserted or updated into the db.
 
