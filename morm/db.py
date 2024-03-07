@@ -292,7 +292,7 @@ class DB(object):
             (str, list): query, args
         """
         data = mob.Meta._fields_
-        new_data_gen = mob.__class__._get_FieldValue_data_valid_(data, up=True)
+        new_data_gen = mob.__class__._get_FieldValue_data_valid_(data, up=True, validate_all=True)
         columns = []
         values = []
         markers = []
