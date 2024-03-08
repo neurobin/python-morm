@@ -112,7 +112,7 @@ User({'name': 'John Doe', 'profession': 'Teacher'}, age=34)
 You can setup validation directly on the attribute or define a class method named `_clean_fieldname` to run a validation and change the value before it is inserted or updated into the db. These two types of validation works a bit differently:
 
 1. **Validation on field attribute:** Can not change the value, must return True or False. It has more strict behavior than the `_clean_*` method for the attribute. This will run even when you are setting the value of an attribute by model instance, e.g `user.islive = 'live'` this would throw `ValueError` if you set the validator as `islive = Field('boolean', validator=lambda x: x is None or isinstance(x, bool))`.
-2. **Validation with `_clean_{fieldName}` method:** Can change the value and must return the final value. It is only applied during insert or update using the model query handler (using `save` or `update` or `insert`). Raw query will bypass this validation.
+2. **Validation with `_clean_{fieldName}` method:** Can change the value and must return the final value. It is only applied during insert or update using the model query handler (using `save` or `update` or `insert`).
 
 Example:
 
