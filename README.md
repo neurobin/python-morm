@@ -6,7 +6,7 @@ Currently supports *PostgreSQL* with `asyncpg`.
 
 # Install
 
-**Requires Python 3.7+**
+**Requires Python 3.10+**
 
 ```bash
 pip install morm
