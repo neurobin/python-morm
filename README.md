@@ -109,7 +109,7 @@ User({'name': 'John Doe', 'profession': 'Teacher'}, age=34)
 
 ## Validations
 
-You can setup validation directly on the attribute or define a class method named `_clean_fieldname` to run a validation and change the value before it is inserted or updated into the db. These two types of validation works a bit differently:
+You can setup validation directly on the attribute or define a class method named `_clean_fieldname` to run a validation and change the value before it is inserted or updated into the db. These two types of validations work a bit differently:
 
 1. **Validation on field attribute:** Can not change the value, must return True or False. It has more strict behavior than the `_clean_*` method for the attribute. This will run even when you are setting the value of an attribute by model instance, e.g `user.islive = 'live'` this would throw `ValueError` if you set the validator as `islive = Field('boolean', validator=lambda x: x is None or isinstance(x, bool))`.
 2. **Validation with `_clean_{fieldName}` method:** Can change the value and must return the final value. It is only applied during insert or update using the model query handler (using `save` or `update` or `insert`).
@@ -127,7 +127,8 @@ class User(Base):
 
     name = Field('varchar(65)')
     email = Field('varchar(255)')
-    password = Field('varchar(255)', validator=lambda x: x is None or len(x)>=8) # this will restrict your devs to things such as user.password = '1234567' # <8 chars
+    # restrict your devs to things such as user.password = '1234567' # <8 chars
+    password = Field('varchar(255)', validator=lambda x: x is None or len(x)>=8)
     profession = Field('varchar(255)', default='Unknown')
     random = Field('integer', default=get_rand) # function can be default
 
