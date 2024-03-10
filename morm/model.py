@@ -256,15 +256,16 @@ class ModelType(type):
             res[k] = all_fields[k].to_json()
         return res
 
-    def _run_validations_(self, k: str, v: FieldValue):
+    def _run_validations_(self, k: str, v: FieldValue, mob=None) -> FieldValue:
         try:
-            validator = getattr(self, '_clean_' + k)
-            v.value = validator(self, v.value)
+            validator = getattr(mob, '_clean_' + k)
+            v.value = validator(v.value)
         except AttributeError:
             v.value = v.value # at least trigger the value validation
+        return v
 
 
-    def _get_FieldValue_data_valid_(self, data: dict, up=False, validate_all=False) -> Iterator[Tuple[str, Any]]:
+    def _get_FieldValue_data_valid_(self, data: dict, up=False, validate_all=False, mob=None) -> Iterator[Tuple[str, Any]]:
         """Yields valid key,value pairs from data.
 
         Validity is checked against include/exclude key/value criteria.
@@ -286,13 +287,13 @@ class ModelType(type):
             exclude_fields = self.Meta.exclude_fields_down
         # new_data = type(data)()
         for k,v in data.items():
-            if validate_all: self._run_validations_(k, v)
+            if validate_all: v = self._run_validations_(k, v, mob)
             if not self._is_valid_key_(k, fields, exclude_fields):
                 continue
             if not self._is_valid_value_(k, v.value, exclude_values):
                 continue
             if not validate_all: # run validations for to-be-changed fields only
-                self._run_validations_(k, v)
+                v = self._run_validations_(k, v, mob)
             yield k, v
 
 

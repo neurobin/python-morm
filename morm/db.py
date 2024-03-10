@@ -292,7 +292,7 @@ class DB(object):
             (str, list): query, args
         """
         data = mob.Meta._fields_
-        new_data_gen = mob.__class__._get_FieldValue_data_valid_(data, up=True, validate_all=True)
+        new_data_gen = mob.__class__._get_FieldValue_data_valid_(data, up=True, validate_all=True, mob=mob)
         columns = []
         values = []
         markers = []
@@ -329,7 +329,7 @@ class DB(object):
         """
         pkval = getattr(mob, mob.__class__._get_pk_()) #save method depends on it's AttributeError
         data = mob.Meta._fields_
-        new_data_gen = mob.__class__._get_FieldValue_data_valid_(data, up=True)
+        new_data_gen = mob.__class__._get_FieldValue_data_valid_(data, up=True, mob=mob)
         colval = []
         values = []
         c = 0

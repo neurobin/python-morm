@@ -43,9 +43,10 @@ class EmailField(Field):
         max_length (int, optional): Defaults to 255.
     """
 
-    def __init__(self, max_length=255, **kwargs):
+    def __init__(self, max_length=255, allow_null=True, **kwargs):
         sql_type = f'varchar({max_length})'
         def validate_email(email):
+            if not email: return True if allow_null else False
             EMAIL_VALIDATION_REGEX = re.compile(r'[^@\s]+@[^@\s]+\.[^@\s]+')
             return bool(EMAIL_VALIDATION_REGEX.fullmatch(email))
         super(EmailField, self).__init__(sql_type, validator=validate_email, **kwargs)
