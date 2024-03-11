@@ -77,6 +77,7 @@ class ModelType(type):
         _set_meta_attr('exclude_fields_down', ())
         _set_meta_attr('exclude_values_up', {'':()}, mutable=True)
         _set_meta_attr('exclude_values_down', {'':()}, mutable=True)
+        _set_meta_attr('ignore_init_exclude_error', True)
         _set_meta_attr('_field_defs_', {}, internal=True, mutable=True)
 
         if meta_attrs['proxy']:
@@ -385,11 +386,13 @@ class ModelBase(metaclass=ModelType):
         exclude_fields_down = ()
         exclude_values_up = {'':()}
         exclude_values_down = {'':()}
+        ignore_init_exclude_error = True
 
         #internal
         _field_defs_: Dict[str, Field]
         _fields_: Dict[str, FieldValue]
         _fromdb_: List[str]
+        _initializing_: bool = False
 
 
     def __init__(self, *args, **kwargs):
@@ -398,6 +401,7 @@ class ModelBase(metaclass=ModelType):
             _fromdb_: List[str] = []
         # super(ModelBase, self).__setattr__('Meta', Meta)
         self.__dict__['Meta'] = Meta
+        self.Meta._initializing_ = True
         for k, v in self.__class__.Meta._field_defs_.items():
             self.Meta._fields_[k] = FieldValue(v)
         for arg in args:
@@ -409,6 +413,7 @@ class ModelBase(metaclass=ModelType):
                 setattr(self, k, v)
         for k,v in kwargs.items():
             setattr(self, k, v)
+        self.Meta._initializing_ = False
 
     def __iter__(self):
         """Iter through k, v where k is field name and v is field value
@@ -457,10 +462,14 @@ class ModelBase(metaclass=ModelType):
             elif self.__class__._is_valid_up_(k, v):
                 fields[k]._ignore_first_change_count_ = True
                 fields[k].value = v
+            elif self.__class__.Meta.ignore_init_exclude_error and self.Meta._initializing_: # ignore this error at init
+                return
             else:
                 raise AttributeError(f'Can not set field `{k}`. It is excluded using either exclude_fields_up/down or exclude_values_up/down in {self.__class__.__name__} Meta class. Or you are trying to set an invalid value: {v}')
         elif self.__class__._is_valid_up_(k, v):
             fields[k].value = v
+        elif self.__class__.Meta.ignore_init_exclude_error and self.Meta._initializing_: # ignore this error at init
+            return
         else:
             raise AttributeError(f'Can not set field `{k}`. It is excluded using either exclude_fields_up/down or exclude_values_up/down in {self.__class__.__name__} Meta class. Or you are trying to set an invalid value: {v}')
 
