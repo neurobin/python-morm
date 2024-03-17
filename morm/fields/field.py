@@ -273,6 +273,7 @@ class Field(object):
                 default: Any=Void,
                 value: Any=Void,
                 unique=False,
+                index=None, # 'btree', 'hash', 'gin', 'gist', prepend with - to remove the index.
                 choices: Tuple[Tuple[str, Any], ...] = (),
                 help_text: str = '',
                 validator: Callable=always_valid,
@@ -289,7 +290,20 @@ class Field(object):
             _sql_unique = 'ALTER TABLE "{table}" ADD CONSTRAINT "%s" UNIQUE ("{column}");' % (_unique_constraint,)
         else:
             _sql_unique = 'ALTER TABLE "{table}" DROP CONSTRAINT IF EXISTS "%s";' % (_unique_constraint,)
+        if index:
+            idx_remove = True if index[0] == '-' else False
+            if idx_remove:
+                index = index[1:]
+            if index not in ['btree', 'hash', 'gin', 'gist', 'spgist', 'brin']:
+                raise ValueError(f"Invalid index type: {index}")
+            _index_name = '__IDX_{table}_{column}_'+index+'__'
+            if not idx_remove:
+                _sql_index = 'CREATE INDEX IF NOT EXISTS "%s" ON "{table}" USING %s ("{column}")' % (_index_name, index)
+            else:
+                _sql_index = 'DROP INDEX IF EXISTS "%s"' % (_index_name,)
         sql_alter = (_sql_unique, *sql_alter)
+        if index:
+            sql_alter = (*sql_alter, _sql_index)
         # handle default
         if isinstance(default, (int, float, str, bool)) or is_sql_array(default):
             sql_alter = (*sql_alter, "ALTER TABLE \"{table}\" ALTER COLUMN \"{column}\" SET DEFAULT "+f"{sql_val(default, sql_type)};")
