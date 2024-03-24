@@ -432,6 +432,9 @@ class ModelBase(metaclass=ModelType):
         else:
             super().__delattr__(k)
 
+    def __getitem__(self, k):
+        return getattr(self, k)
+
     def __getattr__(self, k):
         Meta = self.__dict__['Meta']
         fields = Meta._fields_
@@ -441,6 +444,9 @@ class ModelBase(metaclass=ModelType):
                 return v
             raise AttributeError(f'Invalid attempt to access field `{k}`. It is excluded using either exclude_fields_down or exclude_values_down in {self.__class__.__name__} Meta class. Or it does not have any valid value.')
         raise AttributeError
+
+    def __setitem__(self, k, v):
+        setattr(self, k, v)
 
     def __setattr__(self, k: str, v):
         if k == 'Meta':
