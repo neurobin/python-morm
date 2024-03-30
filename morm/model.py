@@ -6,7 +6,7 @@ __copyright__ = 'Copyright © Md Jahidul Hamid <https://github.com/neurobin/>'
 __license__ = '[BSD](http://www.opensource.org/licenses/bsd-license.php)'
 __version__ = '0.0.2'
 
-import inspect
+import inspect, re
 from typing import Dict, List, Tuple, Any, Iterator, ClassVar
 import copy
 from morm.fields.field import Field, FieldValue
@@ -126,7 +126,10 @@ class ModelType(type):
         return super().__new__(mcs, class_name, bases, new_attrs)
 
     def __repr__(cls):
-        return inspect.getsource(cls)
+        src = inspect.getsource(cls)
+        # remove the function definitions as they may contain sensitive data
+        src = re.sub(r'\n\s+def\s+[\s\S]*$', '\n', src, flags=re.MULTILINE)
+        return src
 
     def __setattr__(self, k, v):
         raise NotImplementedError("You can not set model attributes outside model definition.")

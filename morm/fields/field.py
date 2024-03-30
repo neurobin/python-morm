@@ -332,7 +332,9 @@ class Field(object):
         for k,v in args.items():
             if k in ['self', '_init_args']: continue
             if callable(v):
-                self._json_[k] = inspect.getsource(v)
+                v_src = inspect.getsource(v)
+                v_src = v_src.split('\n')[0].strip()+' ...'
+                self._json_[k] = v_src
             else:
                 self._json_[k] = 'Void' if v == Void else v
 
@@ -349,7 +351,9 @@ class Field(object):
             else:
                 try:
                     if callable(self.__dict__[k]):
-                        reprs.append(f'{k}={inspect.getsource(self.__dict__[k])}')
+                        k_src = inspect.getsource(self.__dict__[k])
+                        k_src = k_src.split('\n')[0].strip()+' ...'
+                        reprs.append(f'{k}={k_src}')
                     else:
                         reprs.append(f'{k}={repr(self.__dict__[k])}')
                 except KeyError: pass
