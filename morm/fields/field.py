@@ -8,6 +8,8 @@ __version__ = '0.0.1'
 
 import copy, inspect
 from typing import Any, Optional, Callable, Tuple, Dict, List, Union
+from decimal import Decimal
+from pydantic import Field as pdField
 from morm.void import Void
 import morm.exceptions as ex
 
@@ -134,7 +136,7 @@ class ColumnConfig():
         queries = []
         msgs = []
         if self.conf['sql_type'] != prev.conf['sql_type']:
-            q = f'ALTER TABLE "{table_name}" ALTER COLUMN "{self.conf["column_name"]}" SET DATA TYPE {self.conf["sql_type"]};'
+            q = f'ALTER TABLE "{table_name}" ALTER COLUMN "{self.conf["column_name"]}" SET DATA TYPE {self.conf["sql_type"]} USING "{self.conf["column_name"]}"::{self.conf["sql_type"]};'
             queries.append(q)
             msg = f"\n* > MODIFY: {prev.conf['column_name']}: {prev.conf['sql_type']} --> {self.conf['sql_type']}"
             msgs.append(msg)
@@ -223,6 +225,35 @@ def sql_val(value: Any, sql_type: str) -> str|int|float|bool|None:
     except:
         return f"'{value}'"
 
+def sqlTypeToNative(sql_type: str, optional=False, containerType=None) -> Any:
+    '''Convert sql type to python native type.
+
+    Returns:
+        Tuple[Any, Any]: (native_type, raw_type)
+    '''
+    dtype = str
+    if 'interval' in sql_type:
+        dtype = str
+    if 'int' in sql_type or 'serial' in sql_type:
+        dtype = int
+    elif 'float' in sql_type or 'double' in sql_type or 'real' in sql_type:
+        dtype = float
+    elif 'money' in sql_type or 'numeric' in sql_type or 'decimal' in sql_type:
+        dtype = Decimal
+    elif 'bool' in sql_type:
+        dtype = bool
+    elif 'json' in sql_type:
+        dtype = Union[Dict[str, Any], List]
+    elif 'bytea' in sql_type:
+        dtype = bytearray
+
+    if '[' in sql_type or 'array' in sql_type.lower():
+        containerType = List
+    if optional:
+        return Optional[dtype] if containerType is None else Optional[containerType[dtype]], dtype
+    return dtype if containerType is None else containerType[dtype], dtype
+
+
 
 class Field(object):
     """Initialize the Field object with data type (sql).
@@ -253,12 +284,18 @@ class Field(object):
 
     Args:
         sql_type (str): Data type in SQL.
+        max_length (int, optional): Maximum length of the field. Defaults to None.
+        max_digits (int, optional): Maximum digits for numeric type. Defaults to None.
+        decimal_places (int, optional): Decimal places for numeric type. Defaults to None.
+        array_dimension (Tuple[int, ...], optional): Array dimension. Defaults to ().
         sql_onadd (str): sql to add in ADD clause after 'ADD COLUMN column_name data_type'
         sql_ondrop (str): Either 'RESTRICT' or 'CASCADE'.
         sql_alter (Tuple[str]): Alter column queries; Example: ('ALTER TABLE "{table}" ALTER COLUMN "{column}" DROP DEFAULT',).
         sql_engine (str): db engine, postgresql, mysql etc.. Defaults to 'postgresql'
         default (Any, optional): Pythonic default value (can be a callable). Defaults to Void. (Do not use mutable values, use function instead)
         value (Any, optional): Set a value that will prevail unless changed manually. Can be a function. Useful to make updated_at like fields.
+        unique (bool, optional): Whether the field is unique. Defaults to False.
+        index (str, optional): Index type. Defaults to None. 'btree', 'hash', 'gin', 'gist', prepend with - to remove the index.
         choices (Tuple[Tuple[str, Any], ...], optional): choices tuple: (('Name of choice', 'value'), ...)
         help_text (str, optional):  help text to describe this field.
         validator (callable, optional): A callable that accepts exactly one argument. Validates the value in `clean` method. Defaults to always_valid.
@@ -266,6 +303,10 @@ class Field(object):
         fallback (bool, optional): Whether invalid value should fallback to default value suppressing exception. (May hide bugs in your program)
     """
     def __init__(self, sql_type: str,
+                max_length: Optional[int]=None, # added to sql_type e.g varchar(max_length)
+                max_digits: Optional[int]=None, # added to sql_type e.g numeric(max_digits, decimal_places)
+                decimal_places: Optional[int]=None, # added to sql_type e.g numeric(max_digits, decimal_places)
+                array_dimension: Tuple[int, ...] = (),
                 sql_onadd='',
                 sql_ondrop='',
                 sql_alter: Tuple[str, ...] = (),
@@ -283,6 +324,23 @@ class Field(object):
         # 1. Must precede with underscore if not in the parameter list
         # 2. Make sure to exclude unnecessary variables in the self._json_ like 'self' etc..
         _init_args = list(locals().keys())[1:] # this must be the first line here in __init__
+        self.native_type, self.native_type_raw = sqlTypeToNative(sql_type, optional=default is not Void, containerType=None if not array_dimension else List)
+        if max_length and self.native_type_raw is not str:
+            raise ValueError(f"max_length is only valid for types that are string like, {sql_type} given.")
+        self.max_length = max_length
+        if max_length or max_digits:
+            if '(' in sql_type:
+                raise ValueError(f"Please remove (max_length) or (max_digits) from sql_type: {sql_type} as you are using max_length or max_digits explicitly.")
+        if max_length:
+            sql_type = f'{sql_type}({max_length})'
+        elif max_digits and decimal_places:
+            sql_type = f'{sql_type}({max_digits}, {decimal_places})'
+        elif max_digits:
+            sql_type = f'{sql_type}({max_digits})'
+        if array_dimension:
+            if '[' in sql_type or 'array' in sql_type.lower():
+                raise ValueError(f"Please remove array indicator from sql_type: {sql_type} as you are using array_dimension.")
+            sql_type = f'{sql_type}'+ ''.join([f'[{x}]' for x in array_dimension])
 
         self.sql_type = sql_type
         _unique_constraint = '__UNQ_{table}_{column}__'
@@ -291,13 +349,13 @@ class Field(object):
         else:
             _sql_unique = 'ALTER TABLE "{table}" DROP CONSTRAINT IF EXISTS "%s";' % (_unique_constraint,)
         if index:
-            idx_remove = True if index[0] == '-' else False
-            if idx_remove:
+            _idx_remove = True if index[0] == '-' else False
+            if _idx_remove:
                 index = index[1:]
             if index not in ['btree', 'hash', 'gin', 'gist', 'spgist', 'brin']:
                 raise ValueError(f"Invalid index type: {index}")
             _index_name = '__IDX_{table}_{column}_'+index+'__'
-            if not idx_remove:
+            if not _idx_remove:
                 _sql_index = 'CREATE INDEX IF NOT EXISTS "%s" ON "{table}" USING %s ("{column}")' % (_index_name, index)
             else:
                 _sql_index = 'DROP INDEX IF EXISTS "%s"' % (_index_name,)
@@ -306,7 +364,7 @@ class Field(object):
             sql_alter = (*sql_alter, _sql_index)
         # handle default
         if isinstance(default, (int, float, str, bool)) or is_sql_array(default):
-            sql_alter = (*sql_alter, "ALTER TABLE \"{table}\" ALTER COLUMN \"{column}\" SET DEFAULT "+f"{sql_val(default, sql_type)};")
+            sql_alter = (*sql_alter, "ALTER TABLE \"{table}\" ALTER COLUMN \"{column}\" SET DEFAULT "+f"{sql_val(default, sql_type)}::{sql_type};")
         self.sql_conf = ColumnConfig(sql_type=sql_type, sql_onadd=sql_onadd, sql_ondrop=sql_ondrop, sql_alter=sql_alter, sql_engine=sql_engine)
         self.validator = validator
         self.modifier = modifier
@@ -330,7 +388,7 @@ class Field(object):
         }
         args = locals()
         for k,v in args.items():
-            if k in ['self', '_init_args']: continue
+            if k in ['self', '_init_args'] or k.startswith('_'): continue
             if callable(v):
                 v_src = inspect.getsource(v)
                 v_src = v_src.split('\n')[0].strip()+' ...'
@@ -366,6 +424,39 @@ class Field(object):
         res['_repr'] = self.__repr__()
         del res['_init_args']
         return res
+
+    def to_pydantic_override(self, dType) -> Tuple[Any, Dict[str, Any]]:
+        '''Override this method to return the type and a dict of pydantic field overrides.
+
+        you can return a different dType to change the type of the field in pydantic model.
+
+        Parameters:
+            dType: The type that is returned by the default to_pydantic method.
+
+        '''
+        return dType, {}
+
+    def to_pydantic(self):
+        """Get the pydantic field with type
+
+        Returns:
+            (dataType, pydantic.Field)
+        """
+        opts = {
+            'description': self.help_text,
+            'title': self.name.replace('_', ' ').title(),
+        }
+        if self.default is not Void:
+            k = 'default_factory' if callable(self.default) else 'default'
+            opts[k] = self.default
+        if self.max_length: opts['max_length'] = self.max_length
+        if self.max_digits: opts['max_digits'] = self.max_digits
+        if self.decimal_places: opts['decimal_places'] = self.decimal_places
+
+        # Final processing: overrides
+        dType, _opts = self.to_pydantic_override(self.native_type)
+        opts.update(_opts)
+        return dType, pdField(**opts)
 
     def __invert__(self):
         return self.name
