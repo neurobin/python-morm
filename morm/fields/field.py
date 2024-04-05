@@ -336,11 +336,13 @@ class Field(object):
         # 1. Must precede with underscore if not in the parameter list
         # 2. Make sure to exclude unnecessary variables in the self._json_ like 'self' etc..
         _init_args = list(locals().keys())[1:] # this must be the first line here in __init__
+        self.max_length = max_length
+        self.max_digits = max_digits
+        self.decimal_places = decimal_places
         self.validator_text = validator_text
         self.native_type, self.native_type_raw = sqlTypeToNative(sql_type, optional=default is not Void, containerType=None if not array_dimension else List)
         if max_length and self.native_type_raw is not str:
             raise ValueError(f"max_length is only valid for types that are string like, {sql_type} given.")
-        self.max_length = max_length
         if max_length or max_digits:
             if '(' in sql_type:
                 raise ValueError(f"Please remove (max_length) or (max_digits) from sql_type: {sql_type} as you are using max_length or max_digits explicitly.")
@@ -449,7 +451,7 @@ class Field(object):
         '''
         return dType, {}
 
-    def to_pydantic(self):
+    def to_pydantic(self, include_validator=True) -> Tuple[Any, pdField]:
         """Get the pydantic field with type
 
         Returns:
@@ -468,7 +470,8 @@ class Field(object):
 
         # Final processing: overrides
         dType, _opts = self.to_pydantic_override(self.native_type)
-        dType = Annotated[dType, AfterValidator(wrap_validator(self.validator, help=self.validator_text))]
+        if include_validator:
+            dType = Annotated[dType, AfterValidator(wrap_validator(self.validator, help=self.validator_text))]
         opts.update(_opts)
         return dType, pdField(**opts)
 

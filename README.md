@@ -457,3 +457,25 @@ To run the production app as a service with `systemctl start app`, copy the **ap
 
 * You can setup your venv path in the `vact` file. To activate the venv with all the environment vars, just run `. vact`.
 * An environment file `.env_APP` is created in your home directory containing dev and production environments.
+
+
+# Pydantic support
+
+You can get pydantic model from any morm model using the `_pydantic_` method, e.g `User._pydantic_()` would give you the pydantic version of your `User` model. The `_pydantic_()` method supports a few parameters to customize the generated pydantic model:
+
+* `up=False`: Defines if the model should be for up (update into database) or down (retrieval from database).
+* `suffix=None`: You can add a suffix to the name of the generated pydantic model.
+* `include_validators=False`: Whether the validators defined in each field (with validator parameter) should be added as pydantic validators. Note that, the model field validators return True or False, while pydantic validators return the value, this conversion is automatically added internally while generating the pydantic model.
+
+If you are using our FastAPI framework, generating good docs for user data retrieval using the User model would be as simple as:
+
+```python
+@router.get('/crud/{model}', responses=Res.schema_all(User._pydantic_())
+async def get(request: Request, model: str, vals = '', col:str='', comp: str='=$1'):
+     if some_authentication_error:
+        raise Res(status=Res.Status.unauthorized, errors=['Invalid Credentials!']) # throws a correct HTTP error with additional error message
+    ...
+    return Res(user)
+```
+
+The above will define all common response types: 200, 401, 403, etc.. and the 200 success response will show an example with correct data types from your User model.
