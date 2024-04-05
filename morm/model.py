@@ -9,6 +9,7 @@ __version__ = '0.0.2'
 import inspect, re
 from typing import Dict, List, Tuple, Any, Iterator, ClassVar
 import copy
+from pydantic import create_model as create_pydantic_model
 from morm.fields.field import Field, FieldValue
 from morm.void import Void
 import morm.meta as mt      # for internal use
@@ -259,6 +260,18 @@ class ModelType(type):
         for k in fields:
             res[k] = all_fields[k].to_json()
         return res
+
+    def _pydantic_(self, up=False, suffix=None):
+        name = self.__name__
+        u = '_UP' if up else '_DOWN'
+        if suffix: u = suffix
+        name = name + u
+        res = {}
+        fields = self._get_fields_(up)
+        all_fields = self._get_all_fields_()
+        for k in fields:
+            res[k] = all_fields[k].to_pydantic()
+        return create_pydantic_model(name, **res)
 
     def _run_validations_(self, k: str, v: FieldValue, mob=None) -> FieldValue:
         try:

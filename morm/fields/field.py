@@ -9,7 +9,8 @@ __version__ = '0.0.1'
 import copy, inspect
 from typing import Any, Optional, Callable, Tuple, Dict, List, Union
 from decimal import Decimal
-from pydantic import Field as pdField
+from typing_extensions import Annotated
+from pydantic import Field as pdField, AfterValidator
 from morm.void import Void
 import morm.exceptions as ex
 
@@ -36,6 +37,17 @@ def nomodify(value: Any) -> Any:
     """
     return value
 
+def wrap_validator(func, help=''):
+    def wrapped(v):
+        if func(v):
+            return v
+        msg = f"Validation failed for {v}"
+        if help == 'auto':
+            msg += ". Reason: " + inspect.getsource(func).split('\n')[0].strip()
+        elif help:
+            msg += f". Reason: {help}"
+        raise ValueError(msg)
+    return wrapped
 
 class ColumnConfig():
     """Config container for each column/feild.
@@ -254,7 +266,6 @@ def sqlTypeToNative(sql_type: str, optional=False, containerType=None) -> Any:
     return dtype if containerType is None else containerType[dtype], dtype
 
 
-
 class Field(object):
     """Initialize the Field object with data type (sql).
 
@@ -318,12 +329,14 @@ class Field(object):
                 choices: Tuple[Tuple[str, Any], ...] = (),
                 help_text: str = '',
                 validator: Callable=always_valid,
+                validator_text: str = '',
                 modifier: Callable=nomodify,
                 fallback=False,): # if you add new param here, update __repr__ method
         # Rules for using a variable name here as local variables go into the self._json_:
         # 1. Must precede with underscore if not in the parameter list
         # 2. Make sure to exclude unnecessary variables in the self._json_ like 'self' etc..
         _init_args = list(locals().keys())[1:] # this must be the first line here in __init__
+        self.validator_text = validator_text
         self.native_type, self.native_type_raw = sqlTypeToNative(sql_type, optional=default is not Void, containerType=None if not array_dimension else List)
         if max_length and self.native_type_raw is not str:
             raise ValueError(f"max_length is only valid for types that are string like, {sql_type} given.")
@@ -455,6 +468,7 @@ class Field(object):
 
         # Final processing: overrides
         dType, _opts = self.to_pydantic_override(self.native_type)
+        dType = Annotated[dType, AfterValidator(wrap_validator(self.validator, help=self.validator_text))]
         opts.update(_opts)
         return dType, pdField(**opts)
 
