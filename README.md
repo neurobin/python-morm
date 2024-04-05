@@ -61,7 +61,7 @@ class User(Base):
     password = Field('varchar(255)')
 ```
 
-An advanced model could look like this:
+Advanced models could look like this:
 
 ```python
 import random
@@ -82,9 +82,16 @@ class User(Base):
     password = Field('varchar(255)')
     profession = Field('varchar(255)', default='Unknown')
     random = Field('integer', default=get_rand) # function can be default
+
+class UserProfile(User):
+    class Meta:
+        proxy = True
+        exclude_fields_down = ('password',) # exclude sensitive fields in retrieval
+        # this will also exclude this field from swagger docs if you are
+        # using our fastAPI framework
 ```
 
-**Rules for field names**
+## Rules for field names
 
 1. Must not start with an underscore (`_`). You can set arbitrary variables to the model instance with names starting with underscores; normally you can not set any variable to a model instance. Names not starting with an underscore are all expected to be field names, variables or methods that are defined during class definition.
 2. `_<name>_` such constructions are reserved for pre-defined overridable methods such as `_pre_save_`, `_post_save_`, etc..
@@ -465,17 +472,17 @@ You can get pydantic model from any morm model using the `_pydantic_` method, e.
 
 * `up=False`: Defines if the model should be for up (update into database) or down (retrieval from database).
 * `suffix=None`: You can add a suffix to the name of the generated pydantic model.
-* `include_validators=False`: Whether the validators defined in each field (with validator parameter) should be added as pydantic validators. Note that, the model field validators return True or False, while pydantic validators return the value, this conversion is automatically added internally while generating the pydantic model.
+* `include_validators=None`: Whether the validators defined in each field (with validator parameter) should be added as pydantic validators. When `None` (which is default) validators will be included for data update into database (i.e for `up=True`). Note that, the model field validators return True or False, while pydantic validators return the value, this conversion is automatically added internally while generating the pydantic model.
 
 If you are using our FastAPI framework, generating good docs for user data retrieval using the User model would be as simple as:
 
 ```python
 @router.get('/crud/{model}', responses=Res.schema_all(User._pydantic_())
-async def get(request: Request, model: str, vals = '', col:str='', comp: str='=$1'):
+async def get(request: Request, model: str, vals = '', col: str='', comp: str='=$1'):
      if some_authentication_error:
         raise Res(status=Res.Status.unauthorized, errors=['Invalid Credentials!']) # throws a correct HTTP error with additional error message
     ...
     return Res(user)
 ```
 
-The above will define all common response types: 200, 401, 403, etc.. and the 200 success response will show an example with correct data types from your User model.
+The above will define all common response types: 200, 401, 403, etc.. and the 200 success response will show an example with correct data types from your User model and will show only the fields that are allowed to be shown (controlled with `exclude_fields_down` or `fields_down` in the `User.Meta`).

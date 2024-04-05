@@ -261,7 +261,7 @@ class ModelType(type):
             res[k] = all_fields[k].to_json()
         return res
 
-    def _pydantic_(self, up=False, suffix=None, include_validators=False):
+    def _pydantic_(self, up=False, suffix=None, include_validators=None):
         '''Create a pydantic model from the model
 
         ### Parameters:
@@ -271,11 +271,13 @@ class ModelType(type):
         suffix: str
             Suffix to append to the model name, default: _UP or _DOWN
         include_validators: bool
-            Include validators for each fields, default: False
+            Include validators for each fields, default: None. When None
+            It will include validators when up=True.
 
         ### Returns:
             pydantic model
         '''
+        include_validators = up if include_validators is None else include_validators
         name = self.__name__
         u = '_UP' if up else '_DOWN'
         if suffix: u = suffix
