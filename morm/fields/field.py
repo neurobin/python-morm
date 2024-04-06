@@ -10,7 +10,7 @@ import copy, inspect
 from typing import Any, Optional, Callable, Tuple, Dict, List, Union
 from decimal import Decimal
 from typing_extensions import Annotated
-from pydantic import Field as pdField, AfterValidator
+from pydantic import Field as pdField, AfterValidator, ValidationError
 from morm.void import Void
 import morm.exceptions as ex
 
@@ -46,7 +46,7 @@ def wrap_validator(func, help=''):
             msg += ". Reason: " + inspect.getsource(func).split('\n')[0].strip()
         elif help:
             msg += f". Reason: {help}"
-        raise ValueError(msg)
+        raise ValidationError(msg)
     return wrapped
 
 class ColumnConfig():
@@ -507,16 +507,26 @@ class Field(object):
         Returns:
             Any: value
         """
-        if not self.validator(value):
-            value = self.modifier(value)
-        else:
+        emsg = f"Value ({value}) (type: {type(value)}) did not pass validation check for '{self.name}'"
+        if self.validator_text:
+            emsg += f". {self.validator_text}"
+        try:
+            if not self.validator(value):
+                value = self.modifier(value)
+            else:
+                return value
+            # the value may have been changed, try to validate again
+            if not self.validator(value):
+                if fallback:
+                    return self.get_default()
+                raise ValueError(emsg)
             return value
-        # the value may have been changed, try to validate again
-        if not self.validator(value):
-            if fallback:
-                return self.get_default()
-            raise ValueError("Value (%s) (type: %s) did not pass validation check for '%s'" % (str(value), type(value), self.name,))
-        return value
+        except ValidationError as e:
+            raise e
+        except ValueError as e:
+            raise e
+        except Exception as e:
+            raise ValueError(emsg + f". Reason: {str(e)}")
 
     def get_default(self):
         """Get the default value.
