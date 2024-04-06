@@ -41,6 +41,6 @@ setup(name="morm",
         'Programming Language :: Python :: 3',
       ],
       python_requires='>=3.10.0',
-      install_requires=['asyncpg','nest_asyncio', 'pydantic>=2.6.4'],
+      install_requires=['asyncpg','nest_asyncio', 'pydantic>=2.6.4', 'orjson'],
       scripts=['morm/morm_admin', 'morm/init_fap',],
 test_suite="morm.tests.test")

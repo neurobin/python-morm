@@ -1,3 +1,4 @@
 asyncpg
 nest_asyncio
 pydantic>=2.6.4
+orjson

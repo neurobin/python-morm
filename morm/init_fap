@@ -328,14 +328,14 @@ class Status(metaclass=_Status_Meta_):
 import typing, re
 from starlette.datastructures import MutableHeaders
 from starlette.exceptions import HTTPException
-from fastapi.responses import JSONResponse, ORJSONResponse
+from fastapi.responses import ORJSONResponse
 from starlette.background import BackgroundTask
 from pydantic import Field, create_model
 from $app_py_path.core.schemas.internal import _global_Res_, DataType, _Res
 from $app_py_path.core.schemas.status import Status, Map
 
 
-class Res(HTTPException, JSONResponse, typing.Generic[DataType]):
+class Res(HTTPException, ORJSONResponse, typing.Generic[DataType]):
     '''Response schema, can be raised as exception or returned as response
 
     #### Res.schema
@@ -363,7 +363,7 @@ class Res(HTTPException, JSONResponse, typing.Generic[DataType]):
         HTTPException.__init__(self, status.status, detail=status.msg, headers=headers)
         errors = [status.msg] if status != Status.success and not errors else errors
         ResClass = self.__class__.schema(DataType, status)
-        JSONResponse.__init__(self, content=ResClass(data=data,status=status.status, msg=status.msg, errors=errors, warnings=warnings).model_dump(), status_code=status.status, headers=headers, media_type=media_type, background=background)
+        ORJSONResponse.__init__(self, content=ResClass(data=data,status=status.status, msg=status.msg, errors=errors, warnings=warnings).model_dump(), status_code=status.status, headers=headers, media_type=media_type, background=background)
 
     @classmethod
     def schema(cls, dType: DataType, status: Map):
@@ -393,7 +393,7 @@ class Res(HTTPException, JSONResponse, typing.Generic[DataType]):
 
     @property
     def headers(self) -> MutableHeaders:
-        return super(JSONResponse, self).headers
+        return super(ORJSONResponse, self).headers
 
     @headers.setter
     def headers(self, v: dict|None) -> MutableHeaders:
