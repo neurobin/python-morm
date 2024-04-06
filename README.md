@@ -494,17 +494,24 @@ It may seem tempting to add json and jsonb support with `asyncpg.Connection.set_
 
 ```python
 class User(Base):
-    meta_data = Field('jsonb')
+    settings = Field('jsonb')
     ...
-    def _clean_meta_data(self, v):
+
+    def _clean_settings(self, v):
         if not isinstance(v, str):
             v = json.dumps(v)
         return v
 ```
 
-If you want to have it converted to json during data retrieval from database as well, pass a validator which should return False if it is not json, and then pass a modifier in the field to do the conversion. Do note that modifier only runs if validator fails. In this case, you do not need to do the conversion again in the `_clean_{field}` method.
+If you want to have it converted to json during data retrieval from database as well, pass a validator which should return False if it is not json, and then pass a modifier in the field to do the conversion. Do note that modifier only runs if validator fails. Thus you will set and get the value as json (list or dict) and the `_clean_settings` will covert it back to text during database insert or update.
 
 ```python
 class User(Base):
-    meta_data = Field('jsonb', validator=lambda x: isinstance(x, list|dict), modifier=lambda x: json.loads(x))
+    settings = Field('jsonb', validator=lambda x: isinstance(x, list|dict), modifier=lambda x: json.loads(x))
+    ...
+
+    def _clean_settings(self, v):
+        if not isinstance(v, str):
+            v = json.dumps(v)
+        return v
 ```

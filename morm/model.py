@@ -292,7 +292,8 @@ class ModelType(type):
     def _run_validations_(self, k: str, v: FieldValue, mob=None) -> FieldValue:
         try:
             validator = getattr(mob, '_clean_' + k)
-            v.set_value_raw(validator(v.value)) # do not trigger the field validator
+            v._value = validator(v.value) # do not trigger the field validator
+            # and do not increase the change count
         except AttributeError:
             pass
         return v
@@ -496,10 +497,10 @@ class ModelBase(metaclass=ModelType):
         if k in self.Meta._fromdb_:
             self.Meta._fromdb_.remove(k)
             if self.__class__._is_valid_down_(k, v):
-                fields[k].set_value_raw(v)
+                fields[k].value = v
             elif self.__class__._is_valid_up_(k, v):
                 fields[k]._ignore_first_change_count_ = True
-                fields[k].set_value_raw(v)
+                fields[k].value = v
             elif self.__class__.Meta.ignore_init_exclude_error and self.Meta._initializing_: # ignore this error at init
                 return
             else:
