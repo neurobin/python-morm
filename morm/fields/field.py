@@ -489,6 +489,23 @@ class Field(object):
         self._name = v
         self.sql_conf.conf['column_name'] = v
 
+    def field_validator_error(self, value: Any, e=None) -> str:
+        """Get the error message for the validator
+
+        Args:
+            value (Any): value
+            e (Exception, optional): Exception. Defaults to None.
+
+        Returns:
+            str: error message
+        """
+        emsg = f"Value of type '{type(value).__name__}' did not pass validation check for field '{self.name}'"
+        if self.validator_text:
+            emsg += f". {self.validator_text}"
+        if e:
+            emsg += f". Reason: {str(e)}"
+        return emsg
+
     def clean(self, value: Any, fallback: bool=False):
         """Clean the value by calling validator -> modifier -> validator
 
@@ -507,9 +524,6 @@ class Field(object):
         Returns:
             Any: value
         """
-        emsg = f"Value ({value}) (type: {type(value)}) did not pass validation check for '{self.name}'"
-        if self.validator_text:
-            emsg += f". {self.validator_text}"
         try:
             if not self.validator(value):
                 value = self.modifier(value)
@@ -519,14 +533,12 @@ class Field(object):
             if not self.validator(value):
                 if fallback:
                     return self.get_default()
-                raise ValueError(emsg)
+                raise ValueError(self.field_validator_error(value))
             return value
-        except ValidationError as e:
-            raise e
-        except ValueError as e:
-            raise e
+        except ValidationError:
+            raise
         except Exception as e:
-            raise ValueError(emsg + f". Reason: {str(e)}")
+            raise ValueError(self.field_validator_error(value,e=e)) from e
 
     def get_default(self):
         """Get the default value.
