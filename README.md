@@ -486,3 +486,25 @@ async def get(request: Request, model: str, vals = '', col: str='', comp: str='=
 ```
 
 The above will define all common response types: 200, 401, 403, etc.. and the 200 success response will show an example with correct data types from your User model and will show only the fields that are allowed to be shown (controlled with `exclude_fields_down` or `fields_down` in the `User.Meta`).
+
+
+# JSON handling
+
+It may seem tempting to add json and jsonb support with `asyncpg.Connection.set_type_codec()` method, but we have not provided any option to use this method easily in `morm`, as it turned out to be making the queries very very slow. If you want to handle json, better add a `_clean_{field}` method in your model and  do the conversion there:
+
+```python
+class User(Base):
+    meta_data = Field('jsonb')
+    ...
+    def _clean_meta_data(self, v):
+        if not isinstance(v, str):
+            v = json.dumps(v)
+        return v
+```
+
+If you want to have it converted to json during data retrieval from database as well, pass a validator which should return False if it is not json, and then pass a modifier in the field to do the conversion. Do note that modifier only runs if validator fails. In this case, you do not need to do the conversion again in the `_clean_{field}` method.
+
+```python
+class User(Base):
+    meta_data = Field('jsonb', validator=lambda x: isinstance(x, list|dict), modifier=lambda x: json.loads(x))
+```
