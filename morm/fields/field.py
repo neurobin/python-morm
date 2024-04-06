@@ -604,12 +604,17 @@ class FieldValue():
             v (Any): value
             fallback (bool, optional): Whether to fallback to default value if v is invalid. Defaults to False.
         """
-        self._value = self._field.clean(v, fallback=fallback)
+        v = self._field.clean(v, fallback=fallback)
+        self.set_value_raw(v)
+        # when the clean method raises exception, it will not be counted as
+        # a successful value assignment.
+
+    def set_value_raw(self, v):
+        self._value = v
         if not self._ignore_first_change_count_: # if from db, then value change count won't change
             self.value_change_count += 1 # This must be the last line
         self._ignore_first_change_count_ = False
-        # when the clean method raises exception, it will not be counted as
-        # a successful value assignment.
+
 
     def delete_value(self):
         """Return the value to its initial state.

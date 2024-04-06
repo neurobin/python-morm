@@ -36,11 +36,11 @@ def record_to_model(record: Record, model_class: ModelType) -> Model:
     Returns:
         Model: Model instance.
     """
-    new_record = model_class()
+    mob = model_class()
     for k,v in record.items():
-        new_record.Meta._fromdb_.append(k)
-        setattr(new_record, k, v)
-    return new_record
+        mob.Meta._fromdb_.append(k)
+        setattr(mob, k, v)
+    return mob
 
 
 class Pool(object):
