@@ -70,6 +70,7 @@ class ModelType(type):
                     meta_attrs[k] = v
 
         _set_meta_attr('proxy', False)
+        _set_meta_attr('sudo', None)
         _set_meta_attr('pk', 'id')
         _set_meta_attr('ordering', ())
         _set_meta_attr('fields_up', ())
@@ -106,6 +107,8 @@ class ModelType(type):
                 if meta_attrs['proxy'] and n in attrs:
                     raise ValueError(f"Proxy model '{class_name}' can not define new field: {n}")
                 v.name = n
+                if meta_attrs['sudo'] is not None and v.sudo is None:
+                    v.sudo = meta_attrs['sudo']
                 # v.sql_conf.conf['table_name'] = meta_attrs['db_table'] # Field must not contain table_name, because it is void when model is abstract and it gets inherited.
                 meta_attrs['_field_defs_'][n] = v
             elif n in attrs:
@@ -224,6 +227,25 @@ class ModelType(type):
         else:
             raise AttributeError(f"No such field `{n}` in model `{self.__name__}`")
 
+    def _check_sudo_(self, sudo: bool, n: str='') -> bool|List[str]:
+        """Check if the given sudo can get access to the field
+        Or return a list of fields that can be accessed with the given
+        value of sudo.
+        """
+        if n:
+            return self.Meta._field_defs_[self._check_field_name_(n)].check_sudo(sudo)
+        return [k for k, v in self.Meta._field_defs_.items() if v.check_sudo(sudo)]
+
+    def _sudo_fields_(self) -> Iterator[str]:
+        """Yield field names that require elevated access
+
+        Yields:
+            str: field name
+        """
+        for k, v in self.Meta._field_defs_.items():
+            if v.sudo:
+                yield k
+
     def _get_fields_(self, up=False) -> Iterator[str]:
         """Yields field names that pass include/exclude criteria
 
@@ -299,7 +321,7 @@ class ModelType(type):
         return v
 
 
-    def _get_FieldValue_data_valid_(self, data: dict, up=False, validate_all=False, mob=None) -> Iterator[Tuple[str, Any]]:
+    def _get_FieldValue_data_valid_(self, data: dict, up=False, validate_all=False, mob=None, sudo=False) -> Iterator[Tuple[str, Any]]:
         """Yields valid key,value pairs from data.
 
         Validity is checked against include/exclude key/value criteria.
@@ -328,6 +350,9 @@ class ModelType(type):
                 continue
             if not validate_all: # run validations for to-be-changed fields only
                 v = self._run_validations_(k, v, mob)
+            # check sudo
+            if not v._field.check_sudo(sudo):
+                raise ValueError(f"Field {k} requires elevated access.")
             yield k, v
 
 
@@ -412,6 +437,7 @@ class ModelBase(metaclass=ModelType):
         db_table = Void
         abstract = True
         proxy = False
+        sudo = False
         ordering = ()
         fields_up = ()
         fields_down = ()

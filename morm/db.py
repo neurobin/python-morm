@@ -155,10 +155,11 @@ class DB(object):
         con (Connection): Connection. Defaults to None.
     """
 
-    def __init__(self, pool: Pool, con: Connection=None):
+    def __init__(self, pool: Pool, con: Connection=None, sudo=False):
         self._pool = pool
         self._con = con
         self.DATA_NO_CHANGE = 'DATA_NO_CHANGE_TRIGGERED'
+        self.sudo = sudo
 
     def corp(self) -> Union[asyncpg.pool.Pool, Connection]:
         """Return the connection if available, otherwise return a Pool.
@@ -292,7 +293,7 @@ class DB(object):
             (str, list): query, args
         """
         data = mob.Meta._fields_
-        new_data_gen = mob.__class__._get_FieldValue_data_valid_(data, up=True, validate_all=True, mob=mob)
+        new_data_gen = mob.__class__._get_FieldValue_data_valid_(data, up=True, validate_all=True, mob=mob, sudo=self.sudo)
         columns = []
         values = []
         markers = []
@@ -329,7 +330,7 @@ class DB(object):
         """
         pkval = getattr(mob, mob.__class__._get_pk_()) #save method depends on it's AttributeError
         data = mob.Meta._fields_
-        new_data_gen = mob.__class__._get_FieldValue_data_valid_(data, up=True, mob=mob)
+        new_data_gen = mob.__class__._get_FieldValue_data_valid_(data, up=True, mob=mob, sudo=self.sudo)
         colval = []
         values = []
         c = 0
