@@ -312,7 +312,7 @@ class Field(object):
         validator (callable, optional): A callable that accepts exactly one argument. Validates the value in `clean` method. Defaults to always_valid.
         modifier (callable, optional): A callable that accepts exactly one argument. Modifies the value if validation fails when the `clean` method is called.. Defaults to nomodify.
         fallback (bool, optional): Whether invalid value should fallback to default value suppressing exception. (May hide bugs in your program)
-        sudo (bool, optional): Require elevated permission to change the value of this field. Defaults to False.
+        sudo (bool, optional): Mark this field as requiring elevated permission (for something that you will implement in your app). Defaults to None.
     """
     def __init__(self, sql_type: str,
                 max_length: Optional[int]=None, # added to sql_type e.g varchar(max_length)
