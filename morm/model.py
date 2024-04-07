@@ -284,7 +284,7 @@ class ModelType(type):
         return res
 
     def _pydantic_(self, up=False, suffix=None, include_validators=None):
-        '''Create a pydantic model from the model
+        '''Create a pydantic model from the morm model
 
         ### Parameters:
 
