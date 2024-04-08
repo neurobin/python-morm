@@ -360,6 +360,16 @@ class UserAdmin(Base):
     active_subscriptions = Field('integer[]', groups=('staff',))
 ```
 
+# Sudo (Elevated access to fields)
+
+We believe writing to certain fields or areas of your system should require elevated access.
+
+`Field` can take an argument `sudo` that means **elevated access required**. IF `sudo` is set to true for some field, you will not be able to write to this field using the `ModelQuery` (direct raw query can still be performed) unless your db instance is set to have `sudo=True` as well:
+
+```python
+db = DB(DB_POOL, sudo=True)
+```
+
 # Migration
 
 **Migration is a new feature and only forward migrations are supported as of now.**
