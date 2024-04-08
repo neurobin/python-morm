@@ -327,7 +327,7 @@ class Field(object):
                 default: Any=Void,
                 value: Any=Void,
                 unique=False,
-                index=None, # 'btree', 'hash', 'gin', 'gist', prepend with - to remove the index.
+                index: Tuple[str] | str | None=None, # 'btree', 'hash', 'gin', 'gist', prepend with - to remove the index. Can be a tuple to specify multiple indexes.
                 choices: Tuple[Tuple[str, Any], ...] = (),
                 help_text: str = '',
                 validator: Callable=always_valid,
@@ -370,19 +370,26 @@ class Field(object):
             _sql_unique = 'ALTER TABLE "{table}" ADD CONSTRAINT "%s" UNIQUE ("{column}");' % (_unique_constraint,)
         else:
             _sql_unique = 'ALTER TABLE "{table}" DROP CONSTRAINT IF EXISTS "%s";' % (_unique_constraint,)
-        if index:
-            _idx_remove = True if index[0] == '-' else False
-            if _idx_remove:
-                index = index[1:]
-            if index not in ['btree', 'hash', 'gin', 'gist', 'spgist', 'brin']:
-                raise ValueError(f"Invalid index type: {index}")
-            _index_name = '__IDX_{table}_{column}_'+index+'__'
-            if not _idx_remove:
-                _sql_index = 'CREATE INDEX IF NOT EXISTS "%s" ON "{table}" USING %s ("{column}")' % (_index_name, index)
-            else:
-                _sql_index = 'DROP INDEX IF EXISTS "%s"' % (_index_name,)
         sql_alter = (_sql_unique, *sql_alter)
+        _sql_index = ''
         if index:
+            if isinstance(index, str):
+                index = (index,)
+            for idx in index:
+                _idx_remove = True if idx[0] == '-' else False
+                _idx_ops = ''
+                if ':' in idx:
+                    idx, _idx_ops = idx.split(':', 1)
+                if _idx_remove:
+                    idx = idx[1:]
+                if idx.lower() not in ['btree', 'hash', 'gin', 'gist', 'spgist', 'brin']:
+                    raise ValueError(f"Invalid index type: {idx}")
+                _index_name = '__IDX_{table}_{column}_'+idx+'__'
+                if not _idx_remove:
+                    _sql_index += 'CREATE INDEX IF NOT EXISTS "%s" ON "{table}" USING %s ("{column}" %s);' % (_index_name, idx, _idx_ops)
+                else:
+                    _sql_index += 'DROP INDEX IF EXISTS "%s";' % (_index_name,)
+        if _sql_index:
             sql_alter = (*sql_alter, _sql_index)
         # handle default
         if isinstance(default, (int, float, str, bool)) or is_sql_array(default):
