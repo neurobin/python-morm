@@ -374,7 +374,7 @@ class Field(object):
         _sql_index = ''
         if index:
             if isinstance(index, str):
-                index = (index,)
+                index = index.split(',')
             for idx in index:
                 _idx_remove = True if idx[0] == '-' else False
                 _idx_ops = ''
