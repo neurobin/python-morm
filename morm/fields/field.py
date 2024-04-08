@@ -327,7 +327,7 @@ class Field(object):
                 default: Any=Void,
                 value: Any=Void,
                 unique=False,
-                index: Tuple[str] | str | None=None, # 'btree', 'hash', 'gin', 'gist', prepend with - to remove the index. Can be a tuple to specify multiple indexes.
+                index: Tuple[str] | str | None=None, # 'btree', 'hash', 'gin', 'gist', prepend with - to remove the index. Can be a tuple or comma separated string to specify multiple indexes.
                 choices: Tuple[Tuple[str, Any], ...] = (),
                 help_text: str = '',
                 validator: Callable=always_valid,

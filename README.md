@@ -326,6 +326,40 @@ async with Transaction(DB_POOL) as tdb:
     await tdb.save(user5)
 ```
 
+# Indexing
+
+You can use the `index: Tuple[str] | str | None` parameter to define what type/s of indexing should be applied to the field. Examples:
+
+```python
+class User(Base):
+    parent_id = Field('integer', index='hash')
+    username = Field('varchar(65)', index='hash,btree') # two indexes
+    email = Field('varchar(255)', index=('hash', 'btree')) # tuple is allowed as well
+    perms = Field('integer[]', index='gin:gin__int_ops')
+```
+
+If you want to remove the indexing, Add a `-` minus sign to the specific index and then run migration. After that you can safely remove the index keyword, e.g:
+
+```bash
+--- parent_id = Field('integer', index='-hash')
+===$ ./mgr makemigrations
+===$ ./mgr migrate
+>>> parent_id = Field('integer', index='') # now you can remove the hash
+```
+
+# Field/Model grouping
+
+You can group your model fields, for example, you can define groups like `admin`, `mod`, `staff`, `normal` and make your model fields organized into these groups. This will enable you to implement complex field level organized access controls. You can say, that the `password` field belongs to the *admin* group, then `subscriptions` field to *mod* group and then `active_subscriptions` to *staff* group.
+
+```python
+class UserAdmin(Base):
+    class Meta:
+        groups = ('admin',) # this model belongs to the admin group
+    password = Field('varchar(100)', groups=('admin',))
+    subscriptions = Field('integer[]', groups=('mod',))
+    active_subscriptions = Field('integer[]', groups=('staff',))
+```
+
 # Migration
 
 **Migration is a new feature and only forward migrations are supported as of now.**
