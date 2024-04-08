@@ -313,6 +313,7 @@ class Field(object):
         modifier (callable, optional): A callable that accepts exactly one argument. Modifies the value if validation fails when the `clean` method is called.. Defaults to nomodify.
         fallback (bool, optional): Whether invalid value should fallback to default value suppressing exception. (May hide bugs in your program)
         sudo (bool, optional): Mark this field as requiring elevated permission (for something that you will implement in your app). Defaults to None.
+        groups (tuple, optional): Groups that this field belongs to. Defaults to ().
     """
     def __init__(self, sql_type: str,
                 max_length: Optional[int]=None, # added to sql_type e.g varchar(max_length)
@@ -333,12 +334,15 @@ class Field(object):
                 validator_text: str = '',
                 modifier: Callable=nomodify,
                 fallback=False,
-                sudo=None): # if you add new param here, update __repr__ method
+                sudo=None,
+                groups: Tuple[str, ...]=(),
+            ): # if you add new param here, update __repr__ method
         # Rules for using a variable name here as local variables go into the self._json_:
         # 1. Must precede with underscore if not in the parameter list
         # 2. Make sure to exclude unnecessary variables in the self._json_ like 'self' etc..
         _init_args = list(locals().keys())[1:] # this must be the first line here in __init__
         self.sudo = sudo
+        self.groups = groups
         self.max_length = max_length
         self.max_digits = max_digits
         self.decimal_places = decimal_places

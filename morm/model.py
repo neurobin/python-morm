@@ -71,6 +71,7 @@ class ModelType(type):
 
         _set_meta_attr('proxy', False)
         _set_meta_attr('sudo', None)
+        _set_meta_attr('groups', ())
         _set_meta_attr('pk', 'id')
         _set_meta_attr('ordering', ())
         _set_meta_attr('fields_up', ())
@@ -81,6 +82,7 @@ class ModelType(type):
         _set_meta_attr('exclude_values_down', {'':()}, mutable=True)
         _set_meta_attr('ignore_init_exclude_error', True)
         _set_meta_attr('_field_defs_', {}, internal=True, mutable=True)
+        _set_meta_attr('_field_groups_', {}, internal=True, mutable=True)
 
         if meta_attrs['proxy']:
             #proxy model inherits everything
@@ -110,6 +112,10 @@ class ModelType(type):
                 if meta_attrs['sudo'] is not None and v.sudo is None:
                     v.sudo = meta_attrs['sudo']
                 # v.sql_conf.conf['table_name'] = meta_attrs['db_table'] # Field must not contain table_name, because it is void when model is abstract and it gets inherited.
+                for g in v.groups:
+                    gs = meta_attrs['_field_groups_'].setdefault(g, [])
+                    if n not in gs:
+                        gs.append(n)
                 meta_attrs['_field_defs_'][n] = v
             elif n in attrs:
                 new_attrs[n] = attrs[n]
@@ -245,6 +251,48 @@ class ModelType(type):
         for k, v in self.Meta._field_defs_.items():
             if v.sudo:
                 yield k
+
+    def _groups_(self) -> Tuple[str]:
+        """Get groups that this model belongs to
+
+        Returns:
+            Tuple[str]: Tuple of group names
+        """
+        return tuple(self.Meta.groups)
+
+    def _group_fields_(self, g: str) -> Tuple[str]:
+        """Get field names of a group
+
+        Args:
+            g (str): group name
+
+        Returns:
+            Tuple[str]: Tuple of field names
+        """
+        return tuple(self.Meta._field_groups_.get(g, []))
+
+    def _field_groups_(self, n) -> Tuple[str]:
+        """Get groups of a field
+
+        Args:
+            n (str): field name
+
+        Returns:
+            Tuple[str]: List of group names
+        """
+        return tuple(self.Meta._field_defs_[self._check_field_name_(n)].groups)
+
+    def _check_group_(self, g: str, n: str) -> bool:
+        """Check if a field belongs to a group
+
+        Args:
+            g (str): group name
+            n (str): field name
+
+        Returns:
+            bool: True if field belongs to the group
+        """
+        return n in self._group_fields_(g)
 
     def _get_fields_(self, up=False) -> Iterator[str]:
         """Yields field names that pass include/exclude criteria
@@ -438,6 +486,7 @@ class ModelBase(metaclass=ModelType):
         abstract = True
         proxy = False
         sudo = None
+        groups = ()
         ordering = ()
         fields_up = ()
         fields_down = ()
@@ -449,6 +498,7 @@ class ModelBase(metaclass=ModelType):
 
         #internal
         _field_defs_: Dict[str, Field]
+        _field_groups_: Dict[str, List[str]]
         _fields_: Dict[str, FieldValue]
         _fromdb_: List[str]
         _initializing_: bool = False
