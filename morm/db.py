@@ -978,7 +978,7 @@ class ModelQuery():
         query, args = self.getq()
         return await self.db.execute(query, *args, timeout=timeout)
 
-    async def get(self, *vals: Any, col: str = '', comp: str = '=$1') -> Union[ModelBase, Record]:
+    async def get(self, *vals: Any, col: str = '', comp: str = '=$1', many=False) -> Union[ModelBase, Record] | List[Union[ModelBase, Record]]:
         """Get the first row found by column and value.
 
         If `col` is not given, it defaults to the primary key (`pk`) of
@@ -1004,13 +1004,16 @@ class ModelQuery():
             *vals (any): Values to compare. Must be referenced with $1, $2 etc.. in `comp`.
             col (str, optional): Column name. Defaults to the primary key.
             comp (str, optional): Comparison. Defaults to '=$1'.
+            many (bool, optional): If True, return all rows. Defaults to False.
 
         Returns:
             model_clas object or None if no rows were selected.
         """
         if not col:
             col = self.model.Meta.pk    #type: ignore
-        return await self.reset().qfilter().qc(col, comp, *vals).fetchrow()
+        if not many:
+            return await self.reset().qfilter().qc(col, comp, *vals).fetchrow()
+        return await self.reset().qfilter().qc(col, comp, *vals).fetch()
 
 SERIALIZABLE = 'serializable'
 REPEATABLE_READ = 'repeatable_read'
