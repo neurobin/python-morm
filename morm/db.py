@@ -859,7 +859,7 @@ class ModelQuery():
         """
         return self.q('WHERE')
 
-    def qfilter(self, no_ordering=False) -> 'ModelQuery':
+    def qfilter(self, no_ordering=False, select_cols=()) -> 'ModelQuery':
         """Initiate a filter.
 
         This initiates a `SELECT` query upto `WHERE`. You can then use the
@@ -875,12 +875,16 @@ class ModelQuery():
 
         Args:
             no_ordering (bool): Whether to remove the default ordering SQL. Defaults to False.
+            select_cols (list): List of columns to select. Defaults to empty list which means all columns.
 
         Returns:
             ModelQuery: returns self to enable method chaining
         """
         if not self.__filter_initiated:
-            down_fields = ','.join([Q(x) for x in self.model._get_fields_(up=False)]) #type: ignore
+            valid_cols = self.model._get_fields_(up=False)
+            if select_cols:
+                valid_cols = set(valid_cols) & set(select_cols)
+            down_fields = ','.join([Q(x) for x in valid_cols]) #type: ignore
             self.reset().q(f'SELECT {down_fields} FROM "{self.model._get_db_table_()}" WHERE') #type: ignore
             self.__filter_initiated = True
             order_by = self.ordering
@@ -978,7 +982,7 @@ class ModelQuery():
         query, args = self.getq()
         return await self.db.execute(query, *args, timeout=timeout)
 
-    async def get(self, *vals: Any, col: str = '', comp: str = '=$1', many=False) -> Union[ModelBase, Record] | List[Union[ModelBase, Record]]:
+    async def get(self, *vals: Any, col: str = '', comp: str = '=$1', many=False, select_cols=()) -> Union[ModelBase, Record] | List[Union[ModelBase, Record]]:
         """Get the first row found by column and value.
 
         If `col` is not given, it defaults to the primary key (`pk`) of
@@ -1005,6 +1009,7 @@ class ModelQuery():
             col (str, optional): Column name. Defaults to the primary key.
             comp (str, optional): Comparison. Defaults to '=$1'.
             many (bool, optional): If True, return all rows. Defaults to False.
+            select_cols (list, optional): List of columns to select. Defaults to empty list which means all columns.
 
         Returns:
             model_clas object or None if no rows were selected.
@@ -1012,8 +1017,8 @@ class ModelQuery():
         if not col:
             col = self.model.Meta.pk    #type: ignore
         if not many:
-            return await self.reset().qfilter().qc(col, comp, *vals).fetchrow()
-        return await self.reset().qfilter().qc(col, comp, *vals).fetch()
+            return await self.reset().qfilter(select_cols=select_cols).qc(col, comp, *vals).fetchrow()
+        return await self.reset().qfilter(select_cols=select_cols).qc(col, comp, *vals).fetch()
 
 SERIALIZABLE = 'serializable'
 REPEATABLE_READ = 'repeatable_read'
