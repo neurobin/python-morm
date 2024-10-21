@@ -929,7 +929,7 @@ class ModelQuery():
         query = f'{self.start_query_str} {query} {self.end_query_str}'
         return query, self._args
 
-    async def fetch(self, model_class='self', timeout: float|None = None) -> Union[List[ModelBase], List[Record]]:
+    async def fetch(self, timeout: float|None = None, model_class='self') -> Union[List[ModelBase], List[Record]]:
         """Run query method `fetch` that returns the results in model class objects
 
         Returns the results in model class objects.
@@ -944,7 +944,7 @@ class ModelQuery():
         query, args = self.getq()
         return await self.db.fetch(query, *args, timeout=timeout, model_class=model_class)
 
-    async def fetchrow(self, model_class='self', timeout: float|None = None) -> Union[ModelBase, Record]:
+    async def fetchrow(self, timeout: float|None = None, model_class='self') -> Union[ModelBase, Record]:
         """Make a query and get the first row.
 
         Resultant record is mapped to model_class object.
