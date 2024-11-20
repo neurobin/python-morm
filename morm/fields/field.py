@@ -314,6 +314,7 @@ class Field(object):
         fallback (bool, optional): Whether invalid value should fallback to default value suppressing exception. (May hide bugs in your program)
         sudo (bool, optional): Mark this field as requiring elevated permission (for something that you will implement in your app). Defaults to None.
         groups (tuple, optional): Groups that this field belongs to. Defaults to ().
+        allow_null (bool, optional): Allow null value. Defaults to False.
     """
     def __init__(self, sql_type: str,
                 max_length: Optional[int]=None, # added to sql_type e.g varchar(max_length)
@@ -336,6 +337,7 @@ class Field(object):
                 fallback=False,
                 sudo=None,
                 groups: Tuple[str, ...]=(),
+                allow_null=False,
             ): # if you add new param here, update __repr__ method
         # Rules for using a variable name here as local variables go into the self._json_:
         # 1. Must precede with underscore if not in the parameter list
@@ -391,6 +393,8 @@ class Field(object):
                     _sql_index += 'DROP INDEX IF EXISTS "%s";' % (_index_name,)
         if _sql_index:
             sql_alter = (*sql_alter, _sql_index)
+        if allow_null:
+            sql_alter = (*sql_alter, 'ALTER TABLE "{table}" ALTER COLUMN "{column}" DROP NOT NULL;')
         # handle default
         if isinstance(default, (int, float, str, bool)) or is_sql_array(default):
             sql_alter = (*sql_alter, "ALTER TABLE \"{table}\" ALTER COLUMN \"{column}\" SET DEFAULT "+f"{sql_val(default, sql_type)}::{sql_type};")
