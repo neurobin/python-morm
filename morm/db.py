@@ -391,6 +391,7 @@ class DB(object):
             (Any): Value of primary key of the inserted row
         """
         query, args = self.get_insert_query(mob, reset=True)
+        print(query, args)
         await mob._pre_insert_(self)
         pkval = await self.fetchval(query, *args, timeout=timeout)
         if pkval is not None:

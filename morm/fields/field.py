@@ -7,6 +7,7 @@ __license__ = '[BSD](http://www.opensource.org/licenses/bsd-license.php)'
 __version__ = '0.0.1'
 
 import copy, inspect
+from enum import Enum
 from typing import Any, Optional, Callable, Tuple, Dict, List, Union
 from decimal import Decimal
 from typing_extensions import Annotated
@@ -338,6 +339,7 @@ class Field(object):
                 sudo=None,
                 groups: Tuple[str, ...]=(),
                 allow_null=False,
+                drop_constraints: Tuple[str, ...] = (),
             ): # if you add new param here, update __repr__ method
         # Rules for using a variable name here as local variables go into the self._json_:
         # 1. Must precede with underscore if not in the parameter list
@@ -349,6 +351,10 @@ class Field(object):
         self.max_digits = max_digits
         self.decimal_places = decimal_places
         self.validator_text = validator_text
+        if isinstance(default, Enum):
+            default = default.value
+        if isinstance(value, Enum):
+            value = value.value
         self.native_type, self.native_type_raw = sqlTypeToNative(sql_type, optional=default is not Void, containerType=None if not array_dimension else List)
         if max_length and self.native_type_raw is not str:
             raise ValueError(f"max_length is only valid for types that are string like, {sql_type} given.")
@@ -398,6 +404,12 @@ class Field(object):
         # handle default
         if isinstance(default, (int, float, str, bool)) or is_sql_array(default):
             sql_alter = (*sql_alter, "ALTER TABLE \"{table}\" ALTER COLUMN \"{column}\" SET DEFAULT "+f"{sql_val(default, sql_type)}::{sql_type};")
+
+        for drc in drop_constraints:
+            if drc == 'fk':
+                drc = '__FK_{table}_{column}__'
+            sql_alter = (*sql_alter, 'ALTER TABLE "{table}" DROP CONSTRAINT IF EXISTS "%s";' % (drc,))
+
         self.sql_conf = ColumnConfig(sql_type=sql_type, sql_onadd=sql_onadd, sql_ondrop=sql_ondrop, sql_alter=sql_alter, sql_engine=sql_engine)
         self.validator = validator
         self.modifier = modifier

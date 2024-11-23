@@ -431,6 +431,9 @@ class Migration():
                     await mro.run()
                 except:
                     if not update_cursor_on_error:
+                        # delete the file and the json file in the parent directory
+                        self._move_to_trash(file)
+                        self._move_to_trash(os.path.dirname(os.path.dirname(file)) + os.path.sep + mn + '.json')
                         raise
                 self._update_migration_cursor(file)
                 print(f'   Migration applied: {mn}')
