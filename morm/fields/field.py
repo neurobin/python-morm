@@ -338,7 +338,7 @@ class Field(object):
                 fallback=False,
                 sudo=None,
                 groups: Tuple[str, ...]=(),
-                allow_null=False,
+                allow_null=None,
                 drop_constraints: Tuple[str, ...] = (),
             ): # if you add new param here, update __repr__ method
         # Rules for using a variable name here as local variables go into the self._json_:
@@ -401,6 +401,8 @@ class Field(object):
             sql_alter = (*sql_alter, _sql_index)
         if allow_null:
             sql_alter = (*sql_alter, 'ALTER TABLE "{table}" ALTER COLUMN "{column}" DROP NOT NULL;')
+        elif allow_null is False:
+            sql_alter = (*sql_alter, 'ALTER TABLE "{table}" ALTER COLUMN "{column}" SET NOT NULL;')
         # handle default
         if isinstance(default, (int, float, str, bool)) or is_sql_array(default):
             sql_alter = (*sql_alter, "ALTER TABLE \"{table}\" ALTER COLUMN \"{column}\" SET DEFAULT "+f"{sql_val(default, sql_type)}::{sql_type};")
