@@ -559,3 +559,693 @@ class User(Base):
             v = json.dumps(v)
         return v
 ```
+
+# Advanced Developer Guide
+
+## Understanding the Architecture
+
+### Core Components
+
+**morm** is built around several key modules that work together:
+
+1. **Model Layer** (`morm.model`): Metaclass-based model system with field definitions
+2. **Database Layer** (`morm.db`): Connection pooling, transactions, and query execution
+3. **Query Builder** (`morm.q`, `ModelQuery`): Fluent API for building SQL queries
+4. **Field System** (`morm.fields`): Type-safe field definitions with validation
+5. **Migration System** (`morm.migration`): Forward-only schema migrations
+
+### Model Metaclass System
+
+The ORM uses Python metaclasses to provide powerful model introspection and validation:
+
+```python
+from morm.model import Model
+from morm.fields import Field
+
+class User(Model):
+    # Fields are discovered and processed at class creation time
+    # The ModelType metaclass handles:
+    # - Field name assignment
+    # - Inheritance resolution (abstract, proxy models)
+    # - Meta attribute processing
+    # - Validation setup
+
+    name = Field('varchar(100)')
+    email = Field('varchar(255)')
+```
+
+**Key metaclass features:**
+
+- **Field Discovery**: All `Field` instances are automatically detected and registered
+- **Meta Inheritance**: Smart inheritance of Meta attributes based on abstract/proxy settings
+- **Validation**: Field names starting with `_` are rejected (reserved for internal use)
+- **Type Safety**: `Meta.f` provides spell-safe field name access
+
+## Advanced Query Building
+
+### Query Counter (`qh.c`)
+
+The query counter is essential for building dynamic queries safely:
+
+```python
+from morm.db import DB
+
+db = DB(DB_POOL)
+qh = db(User)
+
+# Instead of hardcoding $1, $2, use the counter
+query = qh.q(f'SELECT * FROM {qh.db_table}')\
+          .q(f'WHERE {qh.f.age} > ${qh.c}', 18)\
+          .q(f'AND {qh.f.status} = ${qh.c}', 'active')\
+          .q(f'AND {qh.f.created_at} > ${qh.c}', '2024-01-01')
+```
+
+**Why use `qh.c`?**
+- Prevents parameter numbering errors
+- Makes queries composable and reusable
+- Automatically tracks positional argument count
+
+### Named Parameters
+
+For complex queries, use named parameters:
+
+```python
+qh = db(User)\
+    .q_(f'SELECT * FROM {qh.db_table}')\
+    .q_(f'WHERE {qh.f.age} > :min_age AND {qh.f.status} = :status',
+        min_age=18, status='active')
+```
+
+### Query Method Families
+
+**Positional arguments** (`q`, `qc`, `qu`):
+- Fast, no parsing overhead
+- Use when you don't need named params
+
+**Named arguments** (`q_`, `qc_`):
+- Adds parsing overhead
+- Use for readability and reusability
+
+```python
+# Efficient for simple queries
+qh.qc('status', '=$1', 'active')
+
+# Better for complex, reusable queries
+qh.qc_('status', '=:status', status='active')
+```
+
+## Field System Deep Dive
+
+### Field Types and SQL Mapping
+
+```python
+from morm.fields import Field
+
+class Product(Base):
+    # String types
+    name = Field('varchar(255)')
+    description = Field('text')
+
+    # Numeric types
+    price = Field('numeric(10,2)')  # or use max_digits/decimal_places
+    quantity = Field('integer')
+    rating = Field('real')
+
+    # Boolean
+    active = Field('boolean')
+
+    # Date/Time
+    created = Field('timestamp with time zone')
+
+    # Arrays (PostgreSQL)
+    tags = Field('varchar(50)[]')  # or use array_dimension
+    prices = Field('numeric', array_dimension=(10,))  # Array with dimension
+
+    # JSON
+    metadata = Field('jsonb')
+```
+
+### Field Parameters Deep Dive
+
+```python
+class User(Base):
+    # Basic constraints
+    email = Field('varchar(255)',
+                  unique=True,           # Adds UNIQUE constraint
+                  sql_onadd='NOT NULL')  # Applied when column is added
+
+    # Indexing strategies
+    username = Field('varchar(65)',
+                     index='btree,hash')  # Multiple indexes
+    tags = Field('integer[]',
+                 index='gin:gin__int_ops')  # GIN with operator class
+
+    # Default values
+    status = Field('varchar(20)',
+                   default='pending')    # Static default
+    created = Field('timestamp',
+                    default=datetime.now)  # Callable default
+
+    # Perpetual values (always recomputed)
+    updated = Field('timestamp',
+                    value=datetime.now)  # Always set on save
+
+    # Validation
+    age = Field('integer',
+                validator=lambda x: x is None or (0 <= x <= 150),
+                validator_text='Age must be between 0 and 150')
+
+    # Sudo (elevated access required)
+    salary = Field('numeric(10,2)',
+                   sudo=True)  # Requires db = DB(pool, sudo=True)
+
+    # Field groups
+    ssn = Field('varchar(11)',
+                groups=('admin', 'hr'))
+
+    # Allow null
+    middle_name = Field('varchar(100)',
+                        allow_null=True)
+```
+
+### Field Validation Flow
+
+When you set a field value, it goes through this flow:
+
+```
+1. __setattr__ called
+2. Field validator checked (if fails, raises ValueError)
+3. FieldValue.set_value() called
+4. Field.clean() runs validator -> modifier -> validator
+5. Value stored in FieldValue._value
+6. value_change_count incremented
+```
+
+When saving to database:
+
+```
+1. get_insert_query() or get_update_query() called
+2. _get_FieldValue_data_valid_() filters fields
+3. _clean_{fieldname}() method called for each field (if defined)
+4. Field sudo permissions checked
+5. Query built with cleaned values
+```
+
+## Meta Attribute Reference
+
+### Field Control
+
+```python
+class User(Base):
+    class Meta:
+        # Include/Exclude fields for retrieval (SELECT)
+        fields_down = ('id', 'name', 'email')  # Only these fields
+        exclude_fields_down = ('password',)     # All except these
+
+        # Include/Exclude fields for updates (INSERT/UPDATE)
+        fields_up = ()                          # Empty = all allowed
+        exclude_fields_up = ('id', 'created')   # Don't allow these
+```
+
+**Priority**: `fields_*` takes precedence over `exclude_fields_*`
+
+### Value Filtering
+
+```python
+from morm.void import Void
+
+class User(Base):
+    class Meta:
+        # Exclude specific values from retrieval
+        exclude_values_down = {
+            '': (None, Void),           # Exclude None/Void for all fields
+            'status': ('deleted',),     # Exclude 'deleted' status
+        }
+
+        # Exclude specific values from updates
+        exclude_values_up = {
+            '': (None,),                # Don't update with None
+            'price': (0,),              # Don't allow 0 price
+        }
+```
+
+### Model Behavior
+
+```python
+class User(Base):
+    class Meta:
+        db_table = 'app_users'         # Custom table name
+        abstract = True                 # No table, used as base
+        proxy = False                   # Default: False
+        pk = 'id'                       # Primary key field name
+        ordering = ('name', '-created') # + = ASC, - = DESC
+        sudo = True                     # All fields require elevated access
+        groups = ('admin',)             # Model belongs to groups
+        ignore_init_exclude_error = True  # Allow excluded fields in __init__
+```
+
+## Advanced Patterns
+
+### Abstract Base Models
+
+Create reusable base models with common fields:
+
+```python
+from morm.model import Model
+from morm.fields import Field
+from morm.dt import timestamp
+
+class TimestampedModel(Model):
+    class Meta:
+        abstract = True
+
+    created_at = Field('timestamp with time zone',
+                       sql_alter=('ALTER TABLE "{table}" ALTER COLUMN "{column}" SET DEFAULT NOW()',))
+    updated_at = Field('timestamp with time zone',
+                       value=timestamp)
+
+class AuditModel(TimestampedModel):
+    class Meta:
+        abstract = True
+
+    created_by = Field('integer')
+    updated_by = Field('integer')
+
+# Concrete model with all fields from both base classes
+class Article(AuditModel):
+    title = Field('varchar(255)')
+    content = Field('text')
+```
+
+### Proxy Models
+
+Proxy models share the same table but have different Python behavior:
+
+```python
+class User(Base):
+    name = Field('varchar(100)')
+    email = Field('varchar(255)')
+    role = Field('varchar(20)')
+
+class AdminUser(User):
+    class Meta:
+        proxy = True  # No new table
+        exclude_fields_down = ()  # Show all fields for admins
+
+class PublicUser(User):
+    class Meta:
+        proxy = True
+        exclude_fields_down = ('email', 'role')  # Hide sensitive fields
+```
+
+**Important**: Proxy models:
+- Cannot define new fields
+- Share the same database table
+- Can have different `fields_down`, `exclude_fields_down`, etc.
+- Proxy setting is inherited by child models
+
+### Lifecycle Hooks
+
+Override these async methods to add custom behavior:
+
+```python
+class User(Base):
+    async def _pre_save_(self, db):
+        """Called before save (both insert and update)"""
+        # Validate business rules
+        if not self.email:
+            raise ValueError("Email required")
+
+    async def _post_save_(self, db):
+        """Called after save"""
+        # Send welcome email, log activity, etc.
+        await send_notification(self.email)
+
+    async def _pre_insert_(self, db):
+        """Called before insert only"""
+        # Set initial values
+        self.status = 'pending'
+
+    async def _post_insert_(self, db):
+        """Called after insert"""
+        # Create related records
+        profile = UserProfile(user_id=self.id)
+        await db.save(profile)
+
+    async def _pre_update_(self, db):
+        """Called before update only"""
+        pass
+
+    async def _post_update_(self, db):
+        """Called after update"""
+        pass
+
+    async def _pre_delete_(self, db):
+        """Called before delete"""
+        # Check constraints
+        if self.role == 'admin':
+            raise ValueError("Cannot delete admin users")
+
+    async def _post_delete_(self, db):
+        """Called after delete"""
+        # Cleanup related data
+        await db(UserProfile).qfilter().qc('user_id', '=$1', self.id).execute()
+```
+
+### Complex Queries
+
+#### Joins (Manual)
+
+```python
+db = DB(DB_POOL)
+qh = db(User)
+
+# Manual joins are supported
+query = qh.q(f'''
+    SELECT u.*, p.bio
+    FROM {qh.db_table} u
+    LEFT JOIN "user_profile" p ON u.id = p.user_id
+    WHERE u.{qh.f.status} = ${qh.c}
+''', 'active')
+
+# Returns User instances with only User fields populated
+users = await query.fetch()
+
+# For custom results, use fetch without model_class
+results = await query.fetch(model_class=None)  # Returns Record objects
+```
+
+#### Aggregations
+
+```python
+# Count users by role
+qh = db(User)
+result = await qh.q(f'''
+    SELECT {qh.f.role}, COUNT(*) as count
+    FROM {qh.db_table}
+    GROUP BY {qh.f.role}
+''').fetch(model_class=None)
+
+for row in result:
+    print(f"{row['role']}: {row['count']}")
+```
+
+#### Subqueries
+
+```python
+qh = db(User)
+subquery = f'''(
+    SELECT user_id
+    FROM "orders"
+    WHERE total > 1000
+)'''
+
+users = await qh.q(f'''
+    SELECT * FROM {qh.db_table}
+    WHERE id IN {subquery}
+''').fetch()
+```
+
+### Transaction Best Practices
+
+```python
+from morm.db import Transaction, SERIALIZABLE
+
+# Standard transaction
+async with Transaction(DB_POOL) as tdb:
+    user = await tdb(User).get(1)
+    user.balance -= 100
+    await tdb.save(user)
+
+    order = Order(user_id=user.id, amount=100)
+    await tdb.save(order)
+    # Automatically commits on success, rolls back on exception
+
+# With isolation level
+async with Transaction(DB_POOL, isolation=SERIALIZABLE) as tdb:
+    # Highest isolation level
+    pass
+
+# Read-only transaction (optimization)
+async with Transaction(DB_POOL, readonly=True) as tdb:
+    users = await tdb(User).qfilter().qc('status', '=$1', 'active').fetch()
+
+# Manual transaction control
+tr = Transaction(DB_POOL)
+tdb = await tr.start()
+try:
+    # Your operations
+    await tr.commit()
+except:
+    await tr.rollback()
+    raise
+finally:
+    await tr.end()
+```
+
+### Efficient Bulk Operations
+
+```python
+db = DB(DB_POOL)
+
+# Bulk insert using raw query
+users_data = [
+    ('John', 'john@example.com'),
+    ('Jane', 'jane@example.com'),
+    # ... more users
+]
+
+qh = db(User)
+await qh.q(f'''
+    INSERT INTO {qh.db_table} ({qh.f.name}, {qh.f.email})
+    VALUES ($1, $2), ($3, $4)
+''', *[item for sublist in users_data for item in sublist]).execute()
+
+# Or use unnest for PostgreSQL
+await qh.q(f'''
+    INSERT INTO {qh.db_table} ({qh.f.name}, {qh.f.email})
+    SELECT * FROM UNNEST($1::varchar[], $2::varchar[])
+''', [u[0] for u in users_data], [u[1] for u in users_data]).execute()
+```
+
+### Using Field Groups for Access Control
+
+```python
+class User(Base):
+    class Meta:
+        groups = ('public',)
+
+    name = Field('varchar(100)', groups=('public',))
+    email = Field('varchar(255)', groups=('member',))
+    phone = Field('varchar(20)', groups=('member', 'admin'))
+    salary = Field('numeric', groups=('admin',))
+    ssn = Field('varchar(11)', groups=('admin',))
+
+# Check field groups
+admin_fields = User._group_fields_('admin')  # ('phone', 'salary', 'ssn')
+member_fields = User._group_fields_('member')  # ('email', 'phone')
+
+# Check if field belongs to group
+is_admin_field = User._check_group_('admin', 'salary')  # True
+```
+
+### Migration Workflow
+
+```python
+# In your mgr.py after running `morm_admin init`
+
+from _morm_config_ import DB_POOL
+from morm.migration import migration_manager
+from app.models import User, Product, Order  # Your models
+
+if __name__ == '__main__':
+    migration_manager(
+        pool=DB_POOL,
+        base_path='./migration_data',
+        models=[User, Product, Order]
+    )
+```
+
+**Migration commands:**
+
+```bash
+# Create migration files
+python mgr.py makemigrations
+
+# Apply migrations
+python mgr.py migrate
+
+# Delete migrations (useful during development)
+python mgr.py delete_migration_files 5 10  # Delete migrations 5-10
+
+# Auto-confirm (CI/CD)
+python mgr.py makemigrations -y
+python mgr.py migrate -y
+```
+
+### Custom Migration Logic
+
+```python
+# In migration_data/User/.queue/User_00000042_*.py
+
+import morm
+
+class MigrationRunner(morm.migration.MigrationRunner):
+    migration_query = """ALTER TABLE "User" ADD COLUMN "status" varchar(20);"""
+
+    async def run_before(self):
+        """Runs before the migration query"""
+        # Backup data, validate preconditions, etc.
+        count = await self.tdb.fetchval('SELECT COUNT(*) FROM "User"')
+        if count > 10000:
+            print(f"Warning: Migrating {count} users")
+
+    async def run_after(self):
+        """Runs after the migration query"""
+        # Set default status for existing users
+        dbm = self.tdb(self.model)
+        await dbm.q('UPDATE "User" SET "status" = $1 WHERE "status" IS NULL',
+                   'active').execute()
+```
+
+## Performance Tips
+
+1. **Use connection pooling** appropriately:
+   ```python
+   # Adjust pool size based on your workload
+   DB_POOL = Pool(
+       min_size=10,   # Keep some connections ready
+       max_size=90,   # Limit concurrent connections
+       max_queries=50000,  # Recycle connections periodically
+   )
+   ```
+
+2. **Limit fields in SELECT**:
+   ```python
+   # Only fetch needed fields
+   users = await db(User).qfilter(select_cols=['id', 'name']).fetch()
+   ```
+
+3. **Use `fields_down` in Meta** for frequently accessed models:
+   ```python
+   class UserList(User):
+       class Meta:
+           proxy = True
+           fields_down = ('id', 'name', 'avatar')  # Only essential fields
+   ```
+
+4. **Batch operations** when possible:
+   ```python
+   # Instead of multiple single saves
+   async with Transaction(DB_POOL) as tdb:
+       for user_data in users:
+           user = User(user_data)
+           await tdb.save(user)
+   ```
+
+5. **Use indexes** wisely:
+   ```python
+   # Add indexes for frequently queried columns
+   email = Field('varchar(255)', index='btree')
+   tags = Field('integer[]', index='gin')
+   ```
+
+## Debugging Tips
+
+### Enable Query Logging
+
+```python
+import logging
+
+logging.basicConfig(level=logging.DEBUG)
+logging.getLogger('morm.db').setLevel(logging.DEBUG)
+```
+
+### Inspect Generated Queries
+
+```python
+qh = db(User)
+query, args = qh.qfilter().qc('status', '=$1', 'active').getq()
+print(f"Query: {query}")
+print(f"Args: {args}")
+```
+
+### Check Field Definitions
+
+```python
+# Get all fields with their config
+fields_json = User._get_all_fields_json_()
+print(fields_json)
+
+# Get specific field
+field = User._get_all_fields_()['email']
+print(field.sql_conf.to_json())
+```
+
+### Validate Model Setup
+
+```python
+# Check what fields will be retrieved
+down_fields = list(User._get_fields_(up=False))
+print(f"Fields for retrieval: {down_fields}")
+
+# Check what fields can be updated
+up_fields = list(User._get_fields_(up=True))
+print(f"Fields for update: {up_fields}")
+
+# Check sudo fields
+sudo_fields = list(User._sudo_fields_())
+print(f"Sudo fields: {sudo_fields}")
+```
+
+## Common Pitfalls
+
+1. **Mutable defaults**: Don't use mutable defaults directly
+   ```python
+   # WRONG
+   tags = Field('jsonb', default=[])
+
+   # CORRECT
+   tags = Field('jsonb', default=lambda: [])
+   ```
+
+2. **In-place mutations**: Don't modify mutable values in-place
+   ```python
+   # WRONG - change won't be tracked
+   user.tags.append('new-tag')
+   await db.save(user)
+
+   # CORRECT - assign new value
+   user.tags = [*user.tags, 'new-tag']
+   await db.save(user)
+   ```
+
+3. **Field name typos**: Use `Meta.f` to prevent typos
+   ```python
+   # Typo won't be caught
+   data = {'profesion': 'Teacher'}  # typo!
+
+   # Typo will raise AttributeError
+   f = User.Meta.f
+   data = {f.profession: 'Teacher'}  # spell-safe
+   ```
+
+4. **Forgetting await**: All database operations are async
+   ```python
+   # WRONG
+   user = db(User).get(1)  # Returns coroutine
+
+   # CORRECT
+   user = await db(User).get(1)
+   ```
+
+5. **Transaction context**: Don't mix db and tdb
+   ```python
+   # WRONG
+   async with Transaction(DB_POOL) as tdb:
+       user = await db(User).get(1)  # Using wrong handle
+
+   # CORRECT
+   async with Transaction(DB_POOL) as tdb:
+       user = await tdb(User).get(1)  # Use tdb inside transaction
+   ```
