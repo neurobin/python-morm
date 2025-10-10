@@ -213,7 +213,91 @@ ALTER TABLE "User" DROP CONSTRAINT IF EXISTS "__UNQ_User_profession__";; ALTER T
             await mgo.migrate(self.DB_POOL)
         asyncio.get_event_loop().run_until_complete(_my_migrate())
 
+    def test_unique_groups(self):
+        """Test unique_groups functionality in migrations"""
+        print('\n=== Testing unique_groups feature ===')
 
+        # Test 1: Model with unique_groups
+        class UserWithUniqueGroups(Model):
+            class Meta:
+                db_table = 'UserUniqueTest'
+                unique_groups = {
+                    'name_email': ['name', 'email'],
+                    'email_profession': ['email', 'profession']
+                }
+
+            id = Field('SERIAL', sql_onadd='PRIMARY KEY NOT NULL')
+            name = Field('varchar(255)')
+            email = Field('varchar(255)')
+            profession = Field('varchar(100)')
+
+        print(' - [x] Checking unique_groups in Meta')
+        self.assertTrue(hasattr(UserWithUniqueGroups.Meta, 'unique_groups'))
+        self.assertEqual(UserWithUniqueGroups.Meta.unique_groups, {
+            'name_email': ['name', 'email'],
+            'email_profession': ['email', 'profession']
+        })
+
+        # Test 2: CREATE TABLE query includes constraints
+        mgpath_test = '/tmp/_morm_unique_groups_test_' + str(random.random())
+        mgo = mg.Migration(UserWithUniqueGroups, mgpath_test)
+
+        create_query = mgo.get_create_table_query()
+        print('\n - [x] Checking CREATE TABLE query')
+        print(create_query)
+
+        self.assertIn('__UNQ_UserUniqueTest_name_email__', create_query)
+        self.assertIn('__UNQ_UserUniqueTest_email_profession__', create_query)
+        self.assertIn('UNIQUE ("name", "email")', create_query)
+        self.assertIn('UNIQUE ("email", "profession")', create_query)
+        self.assertIn('ALTER TABLE "UserUniqueTest" ADD CONSTRAINT', create_query)
+
+        # Test 3: Migration JSON includes unique_groups
+        print(' - [x] Checking migration JSON structure')
+        self.assertIn('unique_groups', mgo.current_json)
+        self.assertEqual(mgo.current_json['unique_groups'], {
+            'name_email': ['name', 'email'],
+            'email_profession': ['email', 'profession']
+        })
+
+        # Test 4: Change detection
+        print(' - [x] Testing unique_groups change detection')
+        import json
+        os.makedirs(mgo.migration_dir, exist_ok=True)
+
+        # Create a previous migration with different unique_groups
+        prev_json = mgo.current_json.copy()
+        prev_json['unique_groups'] = {
+            'old_constraint': ['name', 'profession']
+        }
+        prev_file = os.path.join(mgo.migration_dir, 'UserUniqueTest_00000001_test.json')
+        with open(prev_file, 'w') as f:
+            json.dump(prev_json, f)
+
+        # Create new migration object to detect changes
+        mgo2 = mg.Migration(UserWithUniqueGroups, mgpath_test)
+        changes = list(mgo2._get_unique_groups_changes())
+
+        self.assertGreater(len(changes), 0)
+
+        queries_combined = ' '.join([q for q, m in changes])
+        print(f'\n   Detected {len(changes)} changes')
+        for q, m in changes:
+            print(f'   {m}')
+
+        # Should drop old constraint
+        self.assertIn('DROP CONSTRAINT', queries_combined)
+        self.assertIn('__UNQ_UserUniqueTest_old_constraint__', queries_combined)
+
+        # Should add new constraints
+        self.assertIn('ADD CONSTRAINT', queries_combined)
+        self.assertIn('__UNQ_UserUniqueTest_name_email__', queries_combined)
+        self.assertIn('__UNQ_UserUniqueTest_email_profession__', queries_combined)
+
+        # Cleanup
+        shutil.rmtree(mgpath_test)
+
+        print(' - [x] unique_groups tests passed!')
 
 
 if __name__ == "__main__":

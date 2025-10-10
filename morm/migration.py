@@ -253,6 +253,7 @@ class Migration():
         self.default_json = {
             'db_table': self.db_table,
             'fields': {},
+            'unique_groups': {},
         }
         self._fields = self._get_fields()
 
@@ -262,12 +263,17 @@ class Migration():
         for k, v in fields.items():
             self._pfields[k] = ColumnConfig(**v)
 
+        # Get unique_groups from previous and current
+        self._punique_groups: Dict[str, List[str]] = pjson.get('unique_groups', {})
+        self._cunique_groups: Dict[str, List[str]] = dict(self.model.Meta.unique_groups)
+
         self.cjson_fields = {}
         for k, v in self.cfields.items():
             self.cjson_fields[k] = v.to_json()
 
         self.current_json = self.default_json
         self.current_json['fields'] = self.cjson_fields
+        self.current_json['unique_groups'] = self._cunique_groups
 
     @property
     def cfields(self) -> Dict[str, ColumnConfig]:
@@ -295,11 +301,12 @@ class Migration():
         return fieldscc
 
     @staticmethod
-    def _get_create_table_query(db_table: str, fields: Dict[str, ColumnConfig]) -> str:
+    def _get_create_table_query(db_table: str, fields: Dict[str, ColumnConfig], unique_groups: Dict[str, List[str]] = {}) -> str:
         """Get the complete create table query
 
         Args:
             fields (Dict[str, ColumnConfig]): fields that will be used to create the create quey
+            unique_groups (Dict[str, List[str]]): unique constraint groups
 
         Returns:
             str: query string
@@ -315,7 +322,20 @@ class Migration():
         cqe = '\n);'
         create_q = f'{cq0}{cqm}{cqe}'
         alter_q = '\n'.join(aq)
-        total_q = f'{create_q}{alter_q}'
+
+        # Add unique constraints
+        unique_constraints = []
+        for group_name, field_list in unique_groups.items():
+            columns = ', '.join([f'"{f}"' for f in field_list])
+            constraint_name = f'__UNQ_{db_table}_{group_name}__'
+            constraint_q = f'ALTER TABLE "{db_table}" ADD CONSTRAINT "{constraint_name}" UNIQUE ({columns});'
+            unique_constraints.append(constraint_q)
+
+        unique_q = '\n'.join(unique_constraints)
+        if unique_q:
+            total_q = f'{create_q}{alter_q}\n{unique_q}'
+        else:
+            total_q = f'{create_q}{alter_q}'
         return total_q
 
     def get_create_table_query(self) -> str:
@@ -324,7 +344,7 @@ class Migration():
         Returns:
             str: query string
         """
-        return self._get_create_table_query(self.db_table, self.cfields)
+        return self._get_create_table_query(self.db_table, self.cfields, self._cunique_groups)
 
     def _get_json_from_file(self, path: str) -> Dict[str, Any]:
         """Get json from file or return a default json if file does not exist.
@@ -499,6 +519,44 @@ class Migration():
             else:
                 raise ValueError(f"Invalid operation: {op}")
             yield query, f'\n{"*"*79}{msg}\n\n{query}\n{"*"*79}'
+
+        # Detect unique_groups changes
+        for q, m in self._get_unique_groups_changes():
+            if q:
+                yield q, f'\n{"*"*79}{m}\n\n{q}\n{"*"*79}'
+
+    def _get_unique_groups_changes(self) -> Iterator[Tuple[str, str]]:
+        """Detect changes in unique_groups and generate migration queries
+
+        Yields:
+            Iterator[Tuple[str, str]]: yield query, descriptive_message
+        """
+        # Find removed unique constraints
+        for group_name, field_list in self._punique_groups.items():
+            if group_name not in self._cunique_groups:
+                constraint_name = f'__UNQ_{self.db_table}_{group_name}__'
+                query = f'ALTER TABLE "{self.db_table}" DROP CONSTRAINT IF EXISTS "{constraint_name}";'
+                msg = f'\n* > DROP UNIQUE CONSTRAINT: {group_name} ({", ".join(field_list)})'
+                yield query, msg
+
+        # Find added or modified unique constraints
+        for group_name, field_list in self._cunique_groups.items():
+            if group_name not in self._punique_groups:
+                # New constraint
+                columns = ', '.join([f'"{f}"' for f in field_list])
+                constraint_name = f'__UNQ_{self.db_table}_{group_name}__'
+                query = f'ALTER TABLE "{self.db_table}" ADD CONSTRAINT "{constraint_name}" UNIQUE ({columns});'
+                msg = f'\n* > ADD UNIQUE CONSTRAINT: {group_name} ({", ".join(field_list)})'
+                yield query, msg
+            elif self._punique_groups[group_name] != field_list:
+                # Modified constraint - drop and recreate
+                constraint_name = f'__UNQ_{self.db_table}_{group_name}__'
+                drop_query = f'ALTER TABLE "{self.db_table}" DROP CONSTRAINT IF EXISTS "{constraint_name}";'
+                columns = ', '.join([f'"{f}"' for f in field_list])
+                add_query = f'ALTER TABLE "{self.db_table}" ADD CONSTRAINT "{constraint_name}" UNIQUE ({columns});'
+                query = f'{drop_query}\n{add_query}'
+                msg = f'\n* > MODIFY UNIQUE CONSTRAINT: {group_name}\n  Old: ({", ".join(self._punique_groups[group_name])})\n  New: ({", ".join(field_list)})'
+                yield query, msg
 
 
     def _get_previous_migration_file_path(self) -> str:

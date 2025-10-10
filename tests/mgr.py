@@ -6,6 +6,12 @@ from morm.fields import Field
 from morm.pg_models import Base
 
 class SiteUser(Base):
+    class Meta:
+        unique_groups = {
+            'name_profession': ['name', 'profession'],
+            'profession_age': ['profession', 'age']
+        }
+
     name = Field('varchar(254)')
     profession = Field('varchar(258)')
     age = Field('integer')

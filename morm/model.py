@@ -81,6 +81,7 @@ class ModelType(type):
         _set_meta_attr('exclude_values_up', {'':()}, mutable=True)
         _set_meta_attr('exclude_values_down', {'':()}, mutable=True)
         _set_meta_attr('ignore_init_exclude_error', True)
+        _set_meta_attr('unique_groups', {}, mutable=True)
         _set_meta_attr('_field_defs_', {}, internal=True, mutable=True)
         _set_meta_attr('_field_groups_', {}, internal=True, mutable=True)
 
@@ -495,6 +496,7 @@ class ModelBase(metaclass=ModelType):
         exclude_values_up = {'':()}
         exclude_values_down = {'':()}
         ignore_init_exclude_error = True
+        unique_groups = {}
 
         #internal
         _field_defs_: Dict[str, Field]
