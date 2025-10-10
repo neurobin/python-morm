@@ -187,6 +187,7 @@ my_data = {
 * `exclude_fields_down` (*Tuple[str]*): Exclude these fields when retrieving data from db. Empty tuple means no restriction.
 * `exclude_values_up` (*Dict[str, Tuple[Any]]*): Exclude fields with these values when updating. Empty dict and empty tuple means no restriction. Example: `{'': (None,), 'price': (0,)}` when field name is left empty ('') that criteria will be applied to all fields.
 * `exclude_values_down` (*Dict[str, Tuple[Any]]*): Exclude fields with these values when retrieving data. Empty dict and empty tuple means no restriction. Example: `{'': (None,), 'price': (0,)}` when field name is left empty ('') that criteria will be applied to all fields.
+* `unique_groups` (*Dict[str, List[str]]*): Define multi-column unique constraints. Each key is a group name, and the value is a list of field names that form a composite unique constraint. The order of fields in the list is preserved in the database constraint. Example: `{'user_email': ['user_id', 'email'], 'category_order': ['category', 'order']}`.
 * `f`: Access field names.
 
 # CRUD
@@ -727,6 +728,104 @@ class User(Base):
     middle_name = Field('varchar(100)',
                         allow_null=True)
 ```
+
+### Multi-Column Unique Constraints
+
+You can define composite unique constraints using the `unique_groups` Meta attribute. This is useful when you need uniqueness across multiple columns rather than just a single column.
+
+```python
+class UserEmail(Base):
+    class Meta:
+        # Define groups of fields that must be unique together
+        unique_groups = {
+            'user_email': ['user_id', 'email'],  # (user_id, email) must be unique
+            'user_provider': ['user_id', 'provider']  # (user_id, provider) must be unique
+        }
+
+    user_id = Field('integer')
+    email = Field('varchar(255)')
+    provider = Field('varchar(50)')
+    verified = Field('boolean', default=False)
+
+class ProductSKU(Base):
+    class Meta:
+        unique_groups = {
+            'warehouse_sku': ['warehouse_id', 'sku'],  # Unique SKU per warehouse
+        }
+
+    warehouse_id = Field('integer')
+    sku = Field('varchar(100)')
+    quantity = Field('integer')
+```
+
+**Important notes:**
+- Each key in `unique_groups` is a group name (used in constraint naming)
+- The value is a list of field names that form the composite unique constraint
+- The order of fields in the list matters and is preserved in the database constraint
+- The migration system automatically detects changes to unique_groups and generates appropriate SQL
+
+**Constraint naming:** Constraints are named using the pattern `__UNQ_{table}_{groupname}__`
+
+Example:
+```python
+# For the UserEmail model above, the constraint would be named:
+# __UNQ_UserEmail_user_email__
+# __UNQ_UserEmail_user_provider__
+```
+
+**Real-world use cases:**
+
+1. **User authentication with multiple providers:**
+   ```python
+   class UserAuth(Base):
+       class Meta:
+           unique_groups = {
+               'user_provider': ['user_id', 'provider'],
+           }
+
+       user_id = Field('integer')
+       provider = Field('varchar(50)')  # 'google', 'github', 'email'
+       provider_user_id = Field('varchar(255)')
+   ```
+
+2. **Multi-tenant applications:**
+   ```python
+   class TenantData(Base):
+       class Meta:
+           unique_groups = {
+               'tenant_key': ['tenant_id', 'key'],
+           }
+
+       tenant_id = Field('integer')
+       key = Field('varchar(100)')
+       value = Field('text')
+   ```
+
+3. **Inventory management:**
+   ```python
+   class Inventory(Base):
+       class Meta:
+           unique_groups = {
+               'location_product': ['location_id', 'product_id'],
+           }
+
+       location_id = Field('integer')
+       product_id = Field('integer')
+       quantity = Field('integer')
+   ```
+
+4. **Ordering/sorting with categories:**
+   ```python
+   class MenuItem(Base):
+       class Meta:
+           unique_groups = {
+               'category_order': ['category_id', 'sort_order'],
+           }
+
+       category_id = Field('integer')
+       sort_order = Field('integer')
+       name = Field('varchar(255)')
+   ```
 
 ### Field Validation Flow
 

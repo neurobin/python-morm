@@ -31,6 +31,7 @@ class Meta(metaclass=MetaType):
     * `exclude_fields_down` (*Tuple[str]*): Exclude these fields when retrieving data from db. Empty tuple means no restriction.
     * `exclude_values_up` (*Dict[str, Tuple[Any]]*): Exclude fields with these values when updating. Empty dict and empty tuple means no restriction. Example: `{'': (None,), 'price': (0,)}` when field name is left empty ('') that criteria will be applied to all fields.
     * `exclude_values_down` (*Dict[str, Tuple[Any]]*): Exclude fields with these values when retrieving data. Empty dict and empty tuple means no restriction. Example: `{'': (None,), 'price': (0,)}` when field name is left empty ('') that criteria will be applied to all fields.
+    * `unique_groups` (*Dict[str, List[str]]*): Define multi-column unique constraints. Each key is a group name, and the value is a list of field names that form a composite unique constraint. The order of fields in the list is preserved in the database constraint. Example: `{'user_email': ['user_id', 'email'], 'category_order': ['category', 'order']}`.
     * `f`: Access field names.
     """
     # _field_defs_ = {} This must not be included in Meta class
