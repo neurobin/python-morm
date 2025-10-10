@@ -23,7 +23,7 @@ from morm.fields.field import ColumnConfig
 from morm.utils import Open, import_from_path
 
 HOME = str(Path.home())
-MIGRATION_CURSOR_DIR = os.path.join(HOME, '.local', 'share', 'morm')
+MIGRATION_CURSOR_DIR = os.getenv('MORM_MIGRATION_CURSOR_DIR', os.path.join(HOME, '.local', 'share', 'morm'))
 os.makedirs(MIGRATION_CURSOR_DIR, exist_ok=True)
 
 def _get_changed_fields(curs: Dict[str, ColumnConfig],
@@ -350,10 +350,10 @@ class Migration():
 
     def _move_to_trash(self, path: str):
         dirn = os.path.dirname(path)
-        # n = os.path.basename(path)
+        filename = os.path.basename(path)
         trash = os.path.join(dirn, '.trash')
         os.makedirs(trash, exist_ok=True)
-        shutil.move(path, trash)
+        shutil.move(path, os.path.join(trash, filename))
 
     def _move_all_to_trash(self, file_list: List[str]):
         for f in file_list:
@@ -429,14 +429,15 @@ class Migration():
                 mro: MigrationRunner = mr.MigrationRunner(tdb, self.model)
                 try:
                     await mro.run()
+                    print(f'   Migration applied: {mn}')
                 except:
                     if not update_cursor_on_error:
                         # delete the file and the json file in the parent directory
                         self._move_to_trash(file)
                         self._move_to_trash(os.path.dirname(os.path.dirname(file)) + os.path.sep + mn + '.json')
                         raise
+                    print(f'   Migration skipped: {mn}')
                 self._update_migration_cursor(file)
-                print(f'   Migration applied: {mn}')
 
     def make_migrations(self, yes=False, silent=False):
         """Prepare migration files.
