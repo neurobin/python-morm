@@ -9,4 +9,6 @@ __pycache__/
 .coverage*
 .mypy_cache
 .vscode/
+.venv/
+.venv_test/
 

@@ -3,7 +3,7 @@ import unittest
 from copy import copy, deepcopy
 import pickle
 
-from morm.types import Void, VoidType
+from morm.void import Void, VoidType
 
 
 class TestMethods(unittest.TestCase):

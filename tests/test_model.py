@@ -8,7 +8,7 @@ import inspect
 from morm.db import Pool, DB, Transaction
 import morm.model as mdl
 import morm.meta as mt
-from morm.types import Void
+from morm.void import Void
 import morm.fields.field as fdl
 
 
