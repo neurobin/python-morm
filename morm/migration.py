@@ -559,7 +559,7 @@ def migration_manager(pool: Pool, base_path: str, models: List[ModelType]):
     parser.add_argument('start_index', nargs='?', type=int, default=0, help='Start index for delete_migration_files command')
     parser.add_argument('end_index', nargs='?', type=int, default=0, help='End index for delete_migration_files command')
     parser.add_argument('-y', '--yes', action='store_true', help='Confirm all', default=False)
-    parser.add_argument('-f', '--force', action='store_true', help='Try force', default=False)
+    parser.add_argument('-f', '--force', action='store_true', help='Skip errors', default=False)
     parser.add_argument('-q', '--quiet', action='store_true', help='Suppress message', default=False)
 
     args = parser.parse_args()
