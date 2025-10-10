@@ -4,7 +4,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PREP_SCRIPT="$ROOT_DIR/prepenv.sh"
-VENV_DIR="$ROOT_DIR/.venv_test"
+VENV_DIR="$ROOT_DIR/.venv_test_temp"
 
 print(){
     echo
@@ -18,7 +18,7 @@ fi
 
 print "Preparing environment (this may install packages / postgresql)..."
 # Run prepenv to ensure venv and dependencies are installed and postgres prepared
-bash "$PREP_SCRIPT"
+bash "$PREP_SCRIPT" "$VENV_DIR"
 
 # Activate venv
 # shellcheck source=/dev/null
@@ -31,3 +31,6 @@ coverage run --source=morm -m unittest discover -s tests
 coverage html
 
 print "Unittest run complete; HTML report is in htmlcov/index.html"
+rm -r "$VENV_DIR"
+print "Removed virtual environment at $VENV_DIR"
+print "All done."

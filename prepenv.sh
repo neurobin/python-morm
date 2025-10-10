@@ -4,7 +4,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REQUIREMENTS_FILE="$ROOT_DIR/requirements.txt"
-VENV_DIR="$ROOT_DIR/.venv_test"
+VENV_DIR="${1:-$ROOT_DIR/.venv_test}"
 
 POSTGRES_USER=jahid
 POSTGRES_PASS='md5709c4fb68f87bdae8d9698d2f3368dc6'
