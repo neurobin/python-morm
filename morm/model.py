@@ -397,7 +397,7 @@ class ModelType(type):
                 continue
             if not self._is_valid_value_(k, v.value, exclude_values):
                 continue
-            if not validate_all: # run validations for to-be-changed fields only
+            if not validate_all and v.value_change_count > 0: # run validations for to-be-changed fields only
                 v = self._run_validations_(k, v, mob)
             # check sudo
             if not v._field.check_sudo(sudo):
