@@ -11,6 +11,7 @@ from enum import Enum
 from typing import Any, Optional, Callable, Tuple, Dict, List, Union
 from decimal import Decimal
 from typing_extensions import Annotated
+import json
 from pydantic import Field as pdField, AfterValidator, ValidationError
 from morm.void import Void
 import morm.exceptions as ex
@@ -226,6 +227,13 @@ def sql_val(value: Any, sql_type: str) -> str|int|float|bool|None:
     Returns:
         str: string representation of the value
     """
+    if sql_type.lower() == 'jsonb':
+        if isinstance(value, (dict, list)):
+            json_str = json.dumps(value).replace("'", "''")
+            return f"'{json_str}'::{sql_type}"
+        else:
+            escaped_val = str(value).replace("'", "''")
+            return f"'{escaped_val}'::{sql_type}"
     if isinstance(value, list):
         return f"ARRAY[{', '.join([str(sql_val(x, sql_type)) for x in value])}]" if value else f'ARRAY[]::{sql_type}'
     value = str(value)
