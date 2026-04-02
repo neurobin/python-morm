@@ -227,7 +227,7 @@ def sql_val(value: Any, sql_type: str) -> str|int|float|bool|None:
     Returns:
         str: string representation of the value
     """
-    if sql_type.lower() == 'jsonb':
+    if sql_type.lower() in ['jsonb', 'json']:
         if isinstance(value, (dict, list)):
             json_str = json.dumps(value).replace("'", "''")
             return f"'{json_str}'::{sql_type}"
