@@ -7,6 +7,7 @@ __license__ = '[BSD](http://www.opensource.org/licenses/bsd-license.php)'
 __version__ = '0.0.1'
 
 
+from datetime import datetime
 from morm.model import Model
 from morm.fields import Field
 from morm.dt import timestamp
@@ -31,3 +32,13 @@ class BaseCommon(Base):
         abstract = True
     created_at = Field('TIMESTAMP WITH TIME ZONE', sql_onadd='NOT NULL', sql_alter=('ALTER TABLE "{table}" ALTER COLUMN "{column}" SET DEFAULT NOW()',), help_text='Timestamp of creation, defaults to NOW()')
     updated_at = Field('TIMESTAMP WITH TIME ZONE', sql_onadd='NOT NULL', value=timestamp, help_text='Timestamp of last update, auto updated to NOW()')
+
+    def _clean_created_at(self,v):
+        if isinstance(v, str):
+            v = datetime.fromisoformat(v)
+        return v
+
+    def _clean_updated_at(self,v):
+        if isinstance(v, str):
+            v = datetime.fromisoformat(v)
+        return v
