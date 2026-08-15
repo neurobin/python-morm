@@ -188,6 +188,7 @@ my_data = {
 * `exclude_values_up` (*Dict[str, Tuple[Any]]*): Exclude fields with these values when updating. Empty dict and empty tuple means no restriction. Example: `{'': (None,), 'price': (0,)}` when field name is left empty ('') that criteria will be applied to all fields.
 * `exclude_values_down` (*Dict[str, Tuple[Any]]*): Exclude fields with these values when retrieving data. Empty dict and empty tuple means no restriction. Example: `{'': (None,), 'price': (0,)}` when field name is left empty ('') that criteria will be applied to all fields.
 * `unique_groups` (*Dict[str, List[str]]*): Define multi-column unique constraints. Each key is a group name, and the value is a list of field names that form a composite unique constraint. The order of fields in the list is preserved in the database constraint. Example: `{'user_email': ['user_id', 'email'], 'category_order': ['category', 'order']}`.
+* `indexes` (*Dict[str, Dict]*): Define named composite indexes. Each key is an index name. Each value is a dict with `cols` (list/tuple, single name, or comma-separated string) and `indexes` (comma-separated string or list/tuple of methods: `btree`, `hash`, `gin`, `gist`, `spgist`, `brin`). Example: `{'my_index': {'cols': ['id', 'userID'], 'indexes': 'hash,btree'}}`.
 * `f`: Access field names.
 
 # CRUD
@@ -346,6 +347,48 @@ If you want to remove the indexing, Add a `-` minus sign to the specific index a
 ===$ ./mgr makemigrations
 ===$ ./mgr migrate
 >>> parent_id = Field('integer', index='') # now you can remove the hash
+```
+
+# Composite indexes
+
+You can define named multi-column indexes on `Meta.indexes`. This is in addition to per-field `index=`.
+
+```python
+class SiteUser(Base):
+    class Meta:
+        indexes = {
+            'my_index': {
+                'cols': ['id', 'userID'],   # list/tuple
+                'indexes': 'hash,btree',    # str or list/tuple
+            },
+            'user_lookup': {
+                'cols': 'userID',           # single column as string
+                'indexes': 'hash',
+            },
+            'id_user': {
+                'cols': 'id,userID',        # comma-separated columns
+                'indexes': ['btree'],
+            },
+        }
+
+    id = Field('serial')
+    userID = Field('integer')
+```
+
+**Notes:**
+- The outer key is the logical index name and is used in the database index name.
+- `cols` may be a list/tuple, a single field name, or a comma-separated string. Order is preserved.
+- `indexes` may be a comma-separated string or a list/tuple of PostgreSQL methods (`btree`, `hash`, `gin`, `gist`, `spgist`, `brin`). Operator classes work as `gin:gin__int_ops`.
+- To drop a composite index, remove its entry from `Meta.indexes` and run migrations.
+- Migrations store a normalized form (`cols` and `indexes` as lists), so `'id,userID'` and `['id', 'userID']` are the same change.
+
+**Index naming:** `__IDX_{table}_{name}_{method}__`
+
+Example:
+
+```python
+# CREATE INDEX IF NOT EXISTS "__IDX_SiteUser_my_index_hash__" ON "SiteUser" USING hash ("id", "userID");
+# CREATE INDEX IF NOT EXISTS "__IDX_SiteUser_my_index_btree__" ON "SiteUser" USING btree ("id", "userID");
 ```
 
 # Field/Model grouping

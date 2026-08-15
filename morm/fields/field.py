@@ -39,6 +39,109 @@ def nomodify(value: Any) -> Any:
     """
     return value
 
+VALID_INDEX_METHODS = frozenset(('btree', 'hash', 'gin', 'gist', 'spgist', 'brin'))
+
+
+def parse_name_list(value: Any, *, what: str = 'name') -> List[str]:
+    """Split a string, list, or tuple into a list of stripped names.
+
+    A string may be a single name or a comma-separated list.
+    """
+    if value is None or value == '':
+        return []
+    if isinstance(value, str):
+        parts = value.split(',')
+    elif isinstance(value, (list, tuple)):
+        parts = []
+        for item in value:
+            if isinstance(item, str):
+                parts.extend(item.split(','))
+            else:
+                raise TypeError(f"Invalid {what} item type: {type(item)}")
+    else:
+        raise TypeError(f"Invalid {what} type: {type(value)}. Expected str, list, or tuple.")
+    names = [p.strip() for p in parts]
+    if any(not n for n in names):
+        raise ValueError(f"Empty {what} in {value!r}")
+    return names
+
+
+def parse_index_specs(index: Any) -> List[Tuple[str, str, bool]]:
+    """Parse Field.index / Meta index methods into (method, ops, remove)."""
+    if not index:
+        return []
+    specs: List[Tuple[str, str, bool]] = []
+    for idx in parse_name_list(index, what='index'):
+        idx_remove = idx[0] == '-'
+        idx_ops = ''
+        if ':' in idx:
+            idx, idx_ops = idx.split(':', 1)
+        if idx_remove:
+            idx = idx[1:]
+        if idx.lower() not in VALID_INDEX_METHODS:
+            raise ValueError(f"Invalid index type: {idx}")
+        specs.append((idx, idx_ops, idx_remove))
+    return specs
+
+
+def _index_method_key(method: str, ops: str) -> str:
+    return f'{method}:{ops}' if ops else method
+
+
+def normalize_meta_indexes(indexes: Any) -> Dict[str, Dict[str, List[str]]]:
+    """Normalize Meta.indexes to ``{name: {'cols': [...], 'indexes': [...]}}``."""
+    if not indexes:
+        return {}
+    if not isinstance(indexes, dict):
+        raise TypeError(f"indexes must be a dict, got {type(indexes)}")
+    out: Dict[str, Dict[str, List[str]]] = {}
+    for name, spec in indexes.items():
+        if not isinstance(spec, dict):
+            raise TypeError(f"Index '{name}' must be a dict with 'cols' and 'indexes'")
+        cols = parse_name_list(spec.get('cols'), what='column')
+        if not cols:
+            raise ValueError(f"Index '{name}' has no columns")
+        methods: List[str] = []
+        for method, ops, remove in parse_index_specs(spec.get('indexes')):
+            if remove:
+                raise ValueError(
+                    f"Index '{name}' uses '-' prefix; remove the Meta.indexes entry to drop it"
+                )
+            methods.append(_index_method_key(method, ops))
+        if not methods:
+            raise ValueError(f"Index '{name}' has no index methods")
+        out[str(name)] = {'cols': cols, 'indexes': methods}
+    return out
+
+
+def composite_index_name(db_table: str, name: str, method: str) -> str:
+    return f'__IDX_{db_table}_{name}_{method}__'
+
+
+def get_composite_index_create_sql(db_table: str, name: str, cols: List[str], methods: Any) -> str:
+    parts = []
+    for method, ops, remove in parse_index_specs(methods):
+        iname = composite_index_name(db_table, name, method)
+        if remove:
+            parts.append(f'DROP INDEX IF EXISTS "{iname}";')
+            continue
+        col_sql = ', '.join(
+            f'"{c}" {ops}'.rstrip() if ops else f'"{c}"'
+            for c in cols
+        )
+        parts.append(
+            f'CREATE INDEX IF NOT EXISTS "{iname}" ON "{db_table}" USING {method} ({col_sql});'
+        )
+    return '\n'.join(parts)
+
+
+def get_composite_index_drop_sql(db_table: str, name: str, methods: Any) -> str:
+    parts = []
+    for method, ops, _remove in parse_index_specs(methods):
+        iname = composite_index_name(db_table, name, method)
+        parts.append(f'DROP INDEX IF EXISTS "{iname}";')
+    return '\n'.join(parts)
+
 def wrap_validator(func, help=''):
     def wrapped(v):
         if func(v):
@@ -389,17 +492,7 @@ class Field(object):
         sql_alter = (_sql_unique, *sql_alter)
         _sql_index = ''
         if index:
-            if isinstance(index, str):
-                index = index.split(',')
-            for idx in index:
-                _idx_remove = True if idx[0] == '-' else False
-                _idx_ops = ''
-                if ':' in idx:
-                    idx, _idx_ops = idx.split(':', 1)
-                if _idx_remove:
-                    idx = idx[1:]
-                if idx.lower() not in ['btree', 'hash', 'gin', 'gist', 'spgist', 'brin']:
-                    raise ValueError(f"Invalid index type: {idx}")
+            for idx, _idx_ops, _idx_remove in parse_index_specs(index):
                 _index_name = '__IDX_{table}_{column}_'+idx+'__'
                 if not _idx_remove:
                     _sql_index += 'CREATE INDEX IF NOT EXISTS "%s" ON "{table}" USING %s ("{column}" %s);' % (_index_name, idx, _idx_ops)

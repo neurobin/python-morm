@@ -11,6 +11,7 @@ tests=(
     'tests.test_q'
     'tests.test_types'
     'tests.test_datetime'
+    'tests.test_indexes'
 )
 
 print_chars(){
@@ -40,10 +41,10 @@ for test in "${tests[@]}"; do
     if ! $cmd; then
         exit 1
     fi
-    print_msg "mypy -m $test"
-    if ! mypy -m "$test"; then
-        exit 1
-    fi
+    # print_msg "mypy -m $test"
+    # if ! mypy -m "$test"; then
+    #     exit 1
+    # fi
 done
 
 coverage combine

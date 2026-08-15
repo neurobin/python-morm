@@ -19,7 +19,12 @@ from pathlib import Path
 from morm.db import DB, Transaction, Pool
 from morm.model import ModelType
 import morm.exceptions as exc
-from morm.fields.field import ColumnConfig
+from morm.fields.field import (
+    ColumnConfig,
+    get_composite_index_create_sql,
+    get_composite_index_drop_sql,
+    normalize_meta_indexes,
+)
 from morm.utils import Open, import_from_path
 
 HOME = str(Path.home())
@@ -254,6 +259,7 @@ class Migration():
             'db_table': self.db_table,
             'fields': {},
             'unique_groups': {},
+            'indexes': {},
         }
         self._fields = self._get_fields()
 
@@ -267,6 +273,9 @@ class Migration():
         self._punique_groups: Dict[str, List[str]] = pjson.get('unique_groups', {})
         self._cunique_groups: Dict[str, List[str]] = dict(self.model.Meta.unique_groups)
 
+        self._pindexes: Dict[str, Dict[str, List[str]]] = normalize_meta_indexes(pjson.get('indexes', {}))
+        self._cindexes: Dict[str, Dict[str, List[str]]] = normalize_meta_indexes(self.model.Meta.indexes)
+
         self.cjson_fields = {}
         for k, v in self.cfields.items():
             self.cjson_fields[k] = v.to_json()
@@ -274,6 +283,7 @@ class Migration():
         self.current_json = self.default_json
         self.current_json['fields'] = self.cjson_fields
         self.current_json['unique_groups'] = self._cunique_groups
+        self.current_json['indexes'] = self._cindexes
 
     @property
     def cfields(self) -> Dict[str, ColumnConfig]:
@@ -301,12 +311,13 @@ class Migration():
         return fieldscc
 
     @staticmethod
-    def _get_create_table_query(db_table: str, fields: Dict[str, ColumnConfig], unique_groups: Dict[str, List[str]] = {}) -> str:
+    def _get_create_table_query(db_table: str, fields: Dict[str, ColumnConfig], unique_groups: Dict[str, List[str]] = {}, indexes: Dict[str, Dict[str, List[str]]] = {}) -> str:
         """Get the complete create table query
 
         Args:
             fields (Dict[str, ColumnConfig]): fields that will be used to create the create quey
             unique_groups (Dict[str, List[str]]): unique constraint groups
+            indexes (Dict[str, Dict[str, List[str]]]): named composite indexes
 
         Returns:
             str: query string
@@ -332,8 +343,17 @@ class Migration():
             unique_constraints.append(constraint_q)
 
         unique_q = '\n'.join(unique_constraints)
-        if unique_q:
-            total_q = f'{create_q}{alter_q}\n{unique_q}'
+
+        index_qs = []
+        for index_name, spec in indexes.items():
+            index_qs.append(get_composite_index_create_sql(
+                db_table, index_name, spec['cols'], spec['indexes']
+            ))
+        index_q = '\n'.join(index_qs)
+
+        extras = [q for q in (unique_q, index_q) if q]
+        if extras:
+            total_q = f'{create_q}{alter_q}\n' + '\n'.join(extras)
         else:
             total_q = f'{create_q}{alter_q}'
         return total_q
@@ -344,7 +364,7 @@ class Migration():
         Returns:
             str: query string
         """
-        return self._get_create_table_query(self.db_table, self.cfields, self._cunique_groups)
+        return self._get_create_table_query(self.db_table, self.cfields, self._cunique_groups, self._cindexes)
 
     def _get_json_from_file(self, path: str) -> Dict[str, Any]:
         """Get json from file or return a default json if file does not exist.
@@ -525,6 +545,10 @@ class Migration():
             if q:
                 yield q, f'\n{"*"*79}{m}\n\n{q}\n{"*"*79}'
 
+        for q, m in self._get_indexes_changes():
+            if q:
+                yield q, f'\n{"*"*79}{m}\n\n{q}\n{"*"*79}'
+
     def _get_unique_groups_changes(self) -> Iterator[Tuple[str, str]]:
         """Detect changes in unique_groups and generate migration queries
 
@@ -556,6 +580,50 @@ class Migration():
                 add_query = f'ALTER TABLE "{self.db_table}" ADD CONSTRAINT "{constraint_name}" UNIQUE ({columns});'
                 query = f'{drop_query}\n{add_query}'
                 msg = f'\n* > MODIFY UNIQUE CONSTRAINT: {group_name}\n  Old: ({", ".join(self._punique_groups[group_name])})\n  New: ({", ".join(field_list)})'
+                yield query, msg
+
+
+    def _get_indexes_changes(self) -> Iterator[Tuple[str, str]]:
+        """Detect changes in Meta.indexes and generate migration queries.
+
+        Yields:
+            Iterator[Tuple[str, str]]: yield query, descriptive_message
+        """
+        def _cols_msg(spec: Dict[str, List[str]]) -> str:
+            return ', '.join(spec.get('cols', []))
+
+        def _methods_msg(spec: Dict[str, List[str]]) -> str:
+            return ', '.join(spec.get('indexes', []))
+
+        for index_name, spec in self._pindexes.items():
+            if index_name not in self._cindexes:
+                query = get_composite_index_drop_sql(
+                    self.db_table, index_name, spec['indexes']
+                )
+                msg = f'\n* > DROP INDEX: {index_name} ({_cols_msg(spec)}) USING {_methods_msg(spec)}'
+                yield query, msg
+
+        for index_name, spec in self._cindexes.items():
+            if index_name not in self._pindexes:
+                query = get_composite_index_create_sql(
+                    self.db_table, index_name, spec['cols'], spec['indexes']
+                )
+                msg = f'\n* > ADD INDEX: {index_name} ({_cols_msg(spec)}) USING {_methods_msg(spec)}'
+                yield query, msg
+            elif self._pindexes[index_name] != spec:
+                old = self._pindexes[index_name]
+                drop_query = get_composite_index_drop_sql(
+                    self.db_table, index_name, old['indexes']
+                )
+                add_query = get_composite_index_create_sql(
+                    self.db_table, index_name, spec['cols'], spec['indexes']
+                )
+                query = f'{drop_query}\n{add_query}'
+                msg = (
+                    f'\n* > MODIFY INDEX: {index_name}\n'
+                    f'  Old: ({_cols_msg(old)}) USING {_methods_msg(old)}\n'
+                    f'  New: ({_cols_msg(spec)}) USING {_methods_msg(spec)}'
+                )
                 yield query, msg
 
 

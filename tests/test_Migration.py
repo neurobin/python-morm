@@ -8,7 +8,7 @@ from morm.void import Void, VoidType
 import morm.migration as mg
 from morm.model import Model, ModelType, Field
 from morm.fields.field import ColumnConfig
-import os, shutil, sys
+import os, shutil, sys, json
 from morm.db import DB, Pool, Transaction
 import morm.exceptions as ex
 import random
@@ -298,6 +298,66 @@ ALTER TABLE "User" DROP CONSTRAINT IF EXISTS "__UNQ_User_profession__";; ALTER T
         shutil.rmtree(mgpath_test)
 
         print(' - [x] unique_groups tests passed!')
+
+    def test_indexes(self):
+        """Test Meta.indexes composite index functionality in migrations"""
+        print('\n=== Testing indexes feature ===')
+
+        class UserWithIndexes(Model):
+            class Meta:
+                db_table = 'UserIndexTest'
+                indexes = {
+                    'id_user': {'cols': 'id,userID', 'indexes': 'hash,btree'},
+                    'user_lookup': {'cols': 'userID', 'indexes': ['hash']},
+                }
+
+            id = Field('SERIAL', sql_onadd='PRIMARY KEY NOT NULL')
+            userID = Field('integer')
+            name = Field('varchar(255)')
+
+        print(' - [x] Checking indexes in Meta')
+        self.assertTrue(hasattr(UserWithIndexes.Meta, 'indexes'))
+        self.assertEqual(UserWithIndexes.Meta.indexes['id_user']['cols'], 'id,userID')
+
+        mgpath_test = '/tmp/_morm_indexes_test_' + str(random.random())
+        mgo = mg.Migration(UserWithIndexes, mgpath_test)
+
+        create_query = mgo.get_create_table_query()
+        print('\n - [x] Checking CREATE TABLE query')
+        self.assertIn('__IDX_UserIndexTest_id_user_hash__', create_query)
+        self.assertIn('__IDX_UserIndexTest_id_user_btree__', create_query)
+        self.assertIn('USING hash ("id", "userID")', create_query)
+        self.assertIn('USING btree ("id", "userID")', create_query)
+        self.assertIn('USING hash ("userID")', create_query)
+
+        print(' - [x] Checking migration JSON structure')
+        self.assertIn('indexes', mgo.current_json)
+        self.assertEqual(mgo.current_json['indexes'], {
+            'id_user': {'cols': ['id', 'userID'], 'indexes': ['hash', 'btree']},
+            'user_lookup': {'cols': ['userID'], 'indexes': ['hash']},
+        })
+
+        print(' - [x] Testing indexes change detection')
+        os.makedirs(mgo.migration_dir, exist_ok=True)
+        prev_json = json.loads(json.dumps(mgo.current_json))
+        prev_json['indexes'] = {
+            'old_index': {'cols': ['name'], 'indexes': ['btree']},
+        }
+        prev_file = os.path.join(mgo.migration_dir, 'UserIndexTest_00000001_test.json')
+        with open(prev_file, 'w') as f:
+            json.dump(prev_json, f)
+
+        mgo2 = mg.Migration(UserWithIndexes, mgpath_test)
+        changes = list(mgo2._get_indexes_changes())
+        self.assertGreater(len(changes), 0)
+        queries_combined = ' '.join([q for q, m in changes])
+        self.assertIn('DROP INDEX', queries_combined)
+        self.assertIn('__IDX_UserIndexTest_old_index_btree__', queries_combined)
+        self.assertIn('CREATE INDEX', queries_combined)
+        self.assertIn('__IDX_UserIndexTest_id_user_hash__', queries_combined)
+
+        shutil.rmtree(mgpath_test)
+        print(' - [x] indexes tests passed!')
 
 
 if __name__ == "__main__":
