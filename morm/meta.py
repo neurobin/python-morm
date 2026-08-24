@@ -13,6 +13,9 @@ class MetaType(type):
         raise NotImplementedError("Meta class attribute can not be set outside of class definition.")
     def __delattr__(self, k):
         raise NotImplementedError("Meta class attribute can not be deleted outside of class definition.")
+    def __call__(cls, alias: str, *, as_prefix: 'str | None' = ''):
+        from morm.model import AliasedMeta
+        return AliasedMeta(cls, alias, as_prefix=as_prefix)
 
 
 class Meta(metaclass=MetaType):
@@ -40,5 +43,3 @@ class Meta(metaclass=MetaType):
     # this/these fields which is not expected.
 
     # f is a reserved attribute to access field names
-    def __init__(self):
-        raise NotImplementedError("Creating instances of Meta class is not supported")

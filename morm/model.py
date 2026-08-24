@@ -32,6 +32,43 @@ class _FieldNames():
         raise NotImplementedError
 
 
+class AliasedMeta():
+    """Proxy that wraps a Model's Meta class with table alias awareness.
+
+    Provides `f` and `fs` properties that produce alias-qualified SQL.
+    """
+
+    def __init__(self, meta_cls, alias: str, *, as_prefix: str | None = ''):
+        self._meta = meta_cls
+        self._alias = alias
+        self._as_prefix = as_prefix
+
+    @property
+    def f(self) -> _FieldNames:
+        alias = self._alias
+        meta = self._meta
+        from morm.q import Q
+        def func(k):
+            if k not in meta._field_defs_:
+                raise AttributeError(f"No such field '{k}'")
+            field = meta._field_defs_[k]
+            if not field.persisted:
+                return f'({field.expression})'
+            return f'{Q(alias)}.{Q(k)}'
+        return _FieldNames(func)
+
+    @property
+    def fs(self) -> _FieldNames:
+        alias = self._alias
+        as_prefix = self._as_prefix
+        meta = self._meta
+        def func(k):
+            if k not in meta._field_defs_:
+                raise AttributeError(f"No such field '{k}'")
+            return meta._field_defs_[k].select_sql(k, alias=alias, as_prefix=as_prefix)
+        return _FieldNames(func)
+
+
 class ModelType(type):
     Meta: ClassVar # fixing mypy error: "ModelType" has no attribute "Meta"
     def __new__(mcs, class_name: str, bases: tuple, attrs: dict):

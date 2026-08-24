@@ -225,6 +225,40 @@ await db.q(Order).q(
 - `Meta.fs` / `qh.fs` — full SELECT fragments with `AS` alias.
 - ExprFields are read-only on the model instance; values are set when loading from the database.
 
+## Table Alias Support
+
+When building JOINs or subqueries you can qualify column references with a table alias using `Meta(alias)` or `db(Model, alias)`:
+
+```python
+# Class-level alias proxy
+om = Order.Meta('o')
+om.f.price                         # "o"."price"
+om.fs.price                        # "o"."price" AS "price"
+
+# Custom AS prefix
+om = Order.Meta('o', as_prefix='o__')
+om.fs.price                        # "o"."price" AS "o__price"
+
+# No AS clause
+om = Order.Meta('o', as_prefix=None)
+om.fs.price                        # "o"."price"
+
+# Query handle with alias
+qh = db(Order, 'o')
+qh.f.price                         # "o"."price"
+qh.fs.price                        # "o"."price" AS "price"
+
+qh = db(Order, 'o', as_prefix='o__')
+qh.fs.price                        # "o"."price" AS "o__price"
+```
+
+The `as_prefix` parameter controls the AS label:
+- `''` (default): field name only (`AS "price"`)
+- A string like `'o__'`: prefixed name (`AS "o__price"`)
+- `None`: no AS clause at all
+
+`qfilter()` automatically adds the alias to the FROM clause when set.
+
 # CRUD
 
 All available database operations are exposed through `DB` object.

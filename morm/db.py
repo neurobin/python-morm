@@ -446,7 +446,7 @@ class DB(object):
         await mob._post_save_(self)
         return res
 
-    def q(self, model: ModelType|None = None) -> 'ModelQuery':
+    def q(self, model: ModelType|None = None, alias: str|None = None, *, as_prefix: str|None = '') -> 'ModelQuery':
         """Return a ModelQuery for model
 
         If `None` is passed, it will give a `ModelQuery` without setting
@@ -454,6 +454,8 @@ class DB(object):
 
         Args:
             model (ModelType, optional): model class. Defaults to None.
+            alias (str, optional): table alias for qualified column refs.
+            as_prefix (str|None): prefix for AS labels in fs.
 
         Raises:
             TypeError: If invalid model type is passed
@@ -461,10 +463,10 @@ class DB(object):
         Returns:
             ModelQuery: ModelQuery object
         """
-        return self(model)
+        return self(model, alias, as_prefix=as_prefix)
 
 
-    def __call__(self, model: ModelType|None = None) -> 'ModelQuery':
+    def __call__(self, model: ModelType|None = None, alias: str|None = None, *, as_prefix: str|None = '') -> 'ModelQuery':
         """Return a ModelQuery for model
 
         If `None` is passed, it will give a `ModelQuery` without setting
@@ -472,6 +474,9 @@ class DB(object):
 
         Args:
             model (ModelType, optional): model class. Defaults to None.
+            alias (str, optional): table alias for qualified column refs.
+            as_prefix (str|None): prefix for AS labels in fs. '' = field name,
+                string = prefixed name, None = no AS clause.
 
         Raises:
             TypeError: If invalid model type is passed
@@ -480,7 +485,7 @@ class DB(object):
             ModelQuery: ModelQuery object
         """
         if isinstance(model, ModelType) or model is None:
-            return ModelQuery(self, model)
+            return ModelQuery(self, model, alias=alias, as_prefix=as_prefix)
         raise TypeError(f"Invalid model: {model}. model must be of type {ModelType.__name__}. Make sure you did not pass a model object by mistake.")
 
 
@@ -541,14 +546,29 @@ class ModelQuery():
         db (DB): DB object
         model_class (ModelType): model
     """
-    def __init__(self, db: DB, model_class: ModelType|None = None):
+    def __init__(self, db: DB, model_class: ModelType|None = None, alias: str|None = None, *, as_prefix: str|None = ''):
         self.reset()
         self.db = db
         self.model = model_class # can be None
-        def func_f(k):
-            return model_class._get_field_sql_ref_(k) #type: ignore
-        def func_fs(k):
-            return model_class._get_select_column_sql(k) #type: ignore
+        self._alias = alias
+        self._as_prefix = as_prefix
+        if alias:
+            from morm.q import Q
+            _alias = alias
+            _as_prefix = as_prefix
+            def func_f(k):
+                field = model_class._get_field_def_(k) #type: ignore
+                if not field.persisted:
+                    return f'({field.expression})'
+                return f'{Q(_alias)}.{Q(k)}'
+            def func_fs(k):
+                field = model_class._get_field_def_(k) #type: ignore
+                return field.select_sql(k, alias=_alias, as_prefix=_as_prefix)
+        else:
+            def func_f(k):
+                return model_class._get_field_sql_ref_(k) #type: ignore
+            def func_fs(k):
+                return model_class._get_select_column_sql(k) #type: ignore
         self._f = _FieldNames(func_f) # no reset
         self._fs = _FieldNames(func_fs) # no reset
 
@@ -899,7 +919,10 @@ class ModelQuery():
                 select_set = set(select_cols)
                 valid_cols = [x for x in valid_cols if x in select_set]
             down_fields = ','.join(getattr(self.fs, x) for x in valid_cols)
-            self.reset().q(f'SELECT {down_fields} FROM "{self.model._get_db_table_()}" WHERE') #type: ignore
+            table_ref = f'"{self.model._get_db_table_()}"' #type: ignore
+            if self._alias:
+                table_ref = f'{table_ref} "{self._alias}"'
+            self.reset().q(f'SELECT {down_fields} FROM {table_ref} WHERE') #type: ignore
             self.__filter_initiated = True
             order_by = self.ordering
             if order_by and not no_ordering:

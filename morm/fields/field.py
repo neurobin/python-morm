@@ -691,11 +691,23 @@ class Field(object):
         except TypeError:
             return self.default
 
-    def select_sql(self, name: str) -> str:
-        """SQL fragment for SELECT list: quoted column AS alias."""
+    def select_sql(self, name: str, alias: str | None = None, as_prefix: str | None = '') -> str:
+        """SQL fragment for SELECT list: quoted column AS alias.
+
+        Args:
+            name: field/column name
+            alias: table alias (e.g. 'o' produces "o"."name")
+            as_prefix: prefix for AS label. '' means field name only,
+                       a string like 'o__' produces AS "o__name",
+                       None means no AS clause at all.
+        """
         from morm.q import Q
         qname = Q(name)
-        return f'{qname} AS {qname}'
+        col = f'{Q(alias)}.{qname}' if alias else qname
+        if as_prefix is None:
+            return col
+        as_label = Q(f'{as_prefix}{name}')
+        return f'{col} AS {as_label}'
 
 
 class ExprField(Field):
@@ -737,10 +749,20 @@ class ExprField(Field):
         self.expression = expression
         self.persisted = False
 
-    def select_sql(self, name: str) -> str:
-        """SQL fragment for SELECT list: (expression) AS alias."""
+    def select_sql(self, name: str, alias: str | None = None, as_prefix: str | None = '') -> str:
+        """SQL fragment for SELECT list: (expression) AS alias.
+
+        Args:
+            name: field name used as AS label
+            alias: table alias (unused for expressions but kept for API consistency)
+            as_prefix: prefix for AS label; None means no AS clause.
+        """
         from morm.q import Q
-        return f'({self.expression}) AS {Q(name)}'
+        expr = f'({self.expression})'
+        if as_prefix is None:
+            return expr
+        as_label = Q(f'{as_prefix}{name}')
+        return f'{expr} AS {as_label}'
 
 
 class FieldValue():
