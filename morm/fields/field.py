@@ -528,6 +528,7 @@ class Field(object):
             self.default = default
         self.choices = choices
         self.help_text = help_text
+        self.persisted = True
 
         # make a json
         self._json_ = {
@@ -689,6 +690,57 @@ class Field(object):
             return self.default()
         except TypeError:
             return self.default
+
+    def select_sql(self, name: str) -> str:
+        """SQL fragment for SELECT list: quoted column AS alias."""
+        from morm.q import Q
+        qname = Q(name)
+        return f'{qname} AS {qname}'
+
+
+class ExprField(Field):
+    """Calculated field: SQL expression in SELECT only, not persisted."""
+
+    def __init__(self, expression: str, sql_type: str,
+                max_length: Optional[int]=None,
+                max_digits: Optional[int]=None,
+                decimal_places: Optional[int]=None,
+                array_dimension: Tuple[int, ...] = (),
+                default: Any=Void,
+                choices: Tuple[Tuple[str, Any], ...] = (),
+                help_text: str = '',
+                validator: Callable=always_valid,
+                validator_text: str = '',
+                modifier: Callable=nomodify,
+                fallback=False,
+                sudo=None,
+                groups: Tuple[str, ...]=(),
+                allow_null=None,
+            ):
+        super().__init__(
+            sql_type,
+            max_length=max_length,
+            max_digits=max_digits,
+            decimal_places=decimal_places,
+            array_dimension=array_dimension,
+            default=default,
+            choices=choices,
+            help_text=help_text,
+            validator=validator,
+            validator_text=validator_text,
+            modifier=modifier,
+            fallback=fallback,
+            sudo=sudo,
+            groups=groups,
+            allow_null=allow_null,
+        )
+        self.expression = expression
+        self.persisted = False
+
+    def select_sql(self, name: str) -> str:
+        """SQL fragment for SELECT list: (expression) AS alias."""
+        from morm.q import Q
+        return f'({self.expression}) AS {Q(name)}'
 
 
 class FieldValue():

@@ -123,13 +123,37 @@ class ModelType(type):
             elif n in attrs:
                 new_attrs[n] = attrs[n]
 
+        for group_name, field_list in meta_attrs['unique_groups'].items():
+            for fn in field_list:
+                if fn in meta_attrs['_field_defs_'] and not meta_attrs['_field_defs_'][fn].persisted:
+                    raise ValueError(
+                        f"ExprField '{fn}' can not be in unique_groups '{group_name}' in model '{class_name}'"
+                    )
+
+        for index_name, spec in meta_attrs['indexes'].items():
+            for fn in spec.get('cols', []):
+                if fn in meta_attrs['_field_defs_'] and not meta_attrs['_field_defs_'][fn].persisted:
+                    raise ValueError(
+                        f"ExprField '{fn}' can not be in Meta.indexes '{index_name}' in model '{class_name}'"
+                    )
+
+        def _field_def(n: str) -> Field:
+            if n not in meta_attrs['_field_defs_']:
+                raise AttributeError(f"No such field '{n}' in model '{class_name}'")
+            return meta_attrs['_field_defs_'][n]
+
         # we do this after finalizing meta_attr
         def _get_field_name(n: str) -> str:
-            if n in meta_attrs['_field_defs_']:
-                return n
-            else:
-                raise AttributeError(f"No such field '{n}' in model '{class_name}'")
+            field = _field_def(n)
+            if not field.persisted:
+                return field.expression
+            return n
+
+        def _get_select_field(n: str) -> str:
+            return _field_def(n).select_sql(n)
+
         meta_attrs['f'] = _FieldNames(_get_field_name)
+        meta_attrs['fs'] = _FieldNames(_get_select_field)
 
         MetaClass = mt.MetaType('Meta', (mt.Meta,), meta_attrs)
         new_attrs['Meta'] = MetaClass
@@ -206,6 +230,30 @@ class ModelType(type):
             Dict[str, Field]: Dictionary of all fields
         """
         return self.Meta._field_defs_
+
+    def _get_persisted_fields_(self) -> Dict[str, Field]:
+        """Get physical (persisted) fields only."""
+        return {k: v for k, v in self._get_all_fields_().items() if v.persisted}
+
+    def _is_persisted_field_(self, n: str) -> bool:
+        """Return True if the field is stored in the database."""
+        return self._get_all_fields_()[self._check_field_name_(n)].persisted
+
+    def _get_field_def_(self, n: str) -> Field:
+        """Return field definition after name check."""
+        return self.Meta._field_defs_[self._check_field_name_(n)]
+
+    def _get_select_column_sql(self, n: str) -> str:
+        """SELECT list fragment for a field (persisted or ExprField)."""
+        return self._get_field_def_(n).select_sql(n)
+
+    def _get_field_sql_ref_(self, n: str) -> str:
+        """SQL reference for WHERE/ORDER BY (quoted column or parenthesized expression)."""
+        from morm.q import Q
+        field = self._get_field_def_(n)
+        if not field.persisted:
+            return f'({field.expression})'
+        return Q(n)
 
     def _get_all_fields_json_(self) -> Dict[str, Dict]:
         """Get all fields on model without applying any restriction in JSON like dict
@@ -314,6 +362,8 @@ class ModelType(type):
             exclude_keys = self.Meta.exclude_fields_down
         all_fields = self._get_all_fields_()
         for k in all_fields:
+            if up and not all_fields[k].persisted:
+                continue
             if not self._is_valid_key_(k, fields, exclude_keys):
                 continue
             yield k
@@ -395,6 +445,8 @@ class ModelType(type):
         # new_data = type(data)()
         for k,v in data.items():
             if validate_all: v = self._run_validations_(k, v, mob)
+            if up and not v._field.persisted:
+                continue
             if not self._is_valid_key_(k, fields, exclude_fields):
                 continue
             if not self._is_valid_value_(k, v.value, exclude_values):
@@ -573,6 +625,10 @@ class ModelBase(metaclass=ModelType):
         fields = self.Meta._fields_
         if k not in fields:
             raise AttributeError(f"No such field ('{k}') in model '{self.__class__.__name__}''")
+        if not fields[k]._field.persisted and k not in self.Meta._fromdb_:
+            raise AttributeError(
+                f'Can not set read-only ExprField `{k}` on model `{self.__class__.__name__}`.'
+            )
         # v = fields[k].clean(v)
         # super().__setattr__(k, v)
         if k in self.Meta._fromdb_:

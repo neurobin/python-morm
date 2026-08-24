@@ -304,7 +304,7 @@ class Migration():
         return self._pfields
 
     def _get_fields(self) -> Dict[str, ColumnConfig]:
-        fields = self.model._get_all_fields_()
+        fields = self.model._get_persisted_fields_()
         fieldscc: Dict[str, ColumnConfig] = {}
         for k, v in fields.items():
             fieldscc[k] = v.sql_conf

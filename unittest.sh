@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 
-set -euo pipefail
+# set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PREP_SCRIPT="$ROOT_DIR/prepenv.sh"
-VENV_DIR="$ROOT_DIR/.venv_test_temp"
+VENV_DIR="$ROOT_DIR/.venv"
 
 print(){
     echo

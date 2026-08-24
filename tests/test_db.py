@@ -184,8 +184,8 @@ class TestMethods(unittest.TestCase):
         mq = db(BigUser).qfilter().qc('', '$1', True) # this one has ordering
         mq2 = db(BigUser2).qfilter(no_ordering=True).qc('', '$1', True).qorder().qo('id')
         # print(mq.getq())
-        mqq = ' SELECT "id","name","profession","hobby","status","salary" FROM "BigUser" WHERE $1 ORDER BY "name" ASC,"profession" DESC,"age" DESC'
-        mqq2 = ' SELECT "id","name","profession" FROM "BigUser2" WHERE $1 ORDER BY "id" ASC '
+        mqq = ' SELECT "id" AS "id","name" AS "name","profession" AS "profession","hobby" AS "hobby","status" AS "status","salary" AS "salary" FROM "BigUser" WHERE $1 ORDER BY "name" ASC,"profession" DESC,"age" DESC'
+        mqq2 = ' SELECT "id" AS "id","name" AS "name","profession" AS "profession" FROM "BigUser2" WHERE $1 ORDER BY "id" ASC '
         res = await mq.fetch()
         res2 = await mq2.fetch()
         big_user1 = await db(BigUser2).get(2)
@@ -321,7 +321,7 @@ class TestMethods(unittest.TestCase):
         # print(q)
         self.assertEqual(
             q,
-            (' SELECT "id","name","profession","hobby","status","salary" FROM "BigUser" WHERE $1 ORDER BY "name" ASC,"profession" DESC,"age" DESC', [True])
+            (' SELECT "id" AS "id","name" AS "name","profession" AS "profession","hobby" AS "hobby","status" AS "status","salary" AS "salary" FROM "BigUser" WHERE $1 ORDER BY "name" ASC,"profession" DESC,"age" DESC', [True])
         )
         asyncio.get_event_loop().run_until_complete(self._test_db_filter_data())
 

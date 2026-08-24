@@ -519,8 +519,9 @@ class ModelQuery():
     1. `qh.db_table`: Quoted table name e.g `"my_user_table"`.
     2. `qh.pk`: Quoted primary key name e.g `"id"`.
     3. `qh.ordering`: ordering e.g `"price" ASC, "quantity" DESC`.
-    4. `qh.f.<field_name>`: quoted field names e.g`"profession"`.
-    5. `qh.c`: Current available position for positional argument (Instead of hardcoded `$1`, `$2`, use `f'${qh.c}'`, `f'${qh.c+1}'`).
+    4. `qh.f.<field_name>`: quoted field names e.g `"profession"`, or parenthesized expression for ExprField.
+    5. `qh.fs.<field_name>`: SELECT list fragment e.g `"profession" AS "profession"`.
+    6. `qh.c`: Current available position for positional argument (Instead of hardcoded `$1`, `$2`, use `f'${qh.c}'`, `f'${qh.c+1}'`).
 
     `qh.c` is a counter that gives an integer representing the
     last existing argument position plus 1.
@@ -544,9 +545,12 @@ class ModelQuery():
         self.reset()
         self.db = db
         self.model = model_class # can be None
-        def func(k):
-            return Q(model_class._check_field_name_(k))
-        self._f = _FieldNames(func) # no reset
+        def func_f(k):
+            return model_class._get_field_sql_ref_(k) #type: ignore
+        def func_fs(k):
+            return model_class._get_select_column_sql(k) #type: ignore
+        self._f = _FieldNames(func_f) # no reset
+        self._fs = _FieldNames(func_fs) # no reset
 
     def __repr__(self):
         return f'ModelQuery({self.db}, {self.model})'
@@ -626,6 +630,14 @@ class ModelQuery():
         `ModelQuery` instance
         """
         return self._f
+
+    @property
+    def fs(self) -> _FieldNames:
+        """Field SELECT fragment container (column AS alias, or expression AS alias).
+
+        Example: `f'SELECT {self.fs.name}, {self.fs.total} FROM {self.db_table}'`
+        """
+        return self._fs
 
     def _process_positional_args(self, *args):
         if args:
@@ -882,10 +894,11 @@ class ModelQuery():
             ModelQuery: returns self to enable method chaining
         """
         if not self.__filter_initiated:
-            valid_cols = self.model._get_fields_(up=False)
+            valid_cols = list(self.model._get_fields_(up=False)) #type: ignore
             if select_cols:
-                valid_cols = set(valid_cols) & set(select_cols)
-            down_fields = ','.join([Q(x) for x in valid_cols]) #type: ignore
+                select_set = set(select_cols)
+                valid_cols = [x for x in valid_cols if x in select_set]
+            down_fields = ','.join(getattr(self.fs, x) for x in valid_cols)
             self.reset().q(f'SELECT {down_fields} FROM "{self.model._get_db_table_()}" WHERE') #type: ignore
             self.__filter_initiated = True
             order_by = self.ordering
@@ -912,6 +925,10 @@ class ModelQuery():
             ModelQuery: returns `self` to enable method chaining
         """
         if not self.__update_initiated:
+            for k in data:
+                field_defs = self.model.Meta._field_defs_ #type: ignore
+                if k in field_defs and not field_defs[k].persisted:
+                    raise ValueError(f"Can not update ExprField '{k}'")
             self.reset().q(f'UPDATE {self.db_table} SET').qu(data).qwhere()
             self.__update_initiated = True
         else:

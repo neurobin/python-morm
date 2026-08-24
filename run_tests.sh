@@ -12,6 +12,7 @@ tests=(
     'tests.test_types'
     'tests.test_datetime'
     'tests.test_indexes'
+    'tests.test_exprfield'
 )
 
 print_chars(){
