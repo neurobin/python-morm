@@ -6,6 +6,7 @@ from uuid import uuid4
 import inspect
 import asyncpg # type: ignore
 import sys, shutil
+from unittest.mock import AsyncMock, Mock
 
 from morm.db import Pool, DB, Transaction, ModelQuery
 import morm.model as mdl
@@ -86,6 +87,21 @@ class BigUser2(Model):
             '': ('developer',),
             'profession': (None,),
             }
+
+
+class TestPoolClose(unittest.TestCase):
+    def test_pool_close_after_asyncio_run(self):
+        async def noop():
+            pass
+
+        asyncio.run(noop())
+        pool = Mock()
+        pool.close = AsyncMock()
+        p = Pool.__new__(Pool)
+        p._pool = pool
+        p._close()
+        pool.close.assert_called_once()
+        self.assertIsNone(p._pool)
 
 
 class TestMethods(unittest.TestCase):

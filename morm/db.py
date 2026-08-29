@@ -133,13 +133,26 @@ class Pool(object):
             log.debug("Pool opened")
 
     def _close(self):
-        """Attempt to close the pool gracefully. registered with atexit.
+        """Attempt to close the pool gracefully. Registered with atexit.
         You do not need to call this method explicitly.
         """
-        if self._pool:
-            asyncio.get_event_loop().run_until_complete(self._pool.close())
-            self._pool = None
-            log.debug("Pool closed")
+        pool = self._pool
+        if not pool:
+            return
+        self._pool = None
+        try:
+            loop = asyncio.new_event_loop()
+            try:
+                loop.run_until_complete(pool.close())
+                log.debug("Pool closed")
+            finally:
+                loop.close()
+        except Exception:
+            try:
+                pool.terminate()
+                log.debug("Pool terminated")
+            except Exception:
+                pass
 
 
 class DB(object):
