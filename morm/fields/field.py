@@ -505,8 +505,10 @@ class Field(object):
         elif allow_null is False:
             sql_alter = (*sql_alter, 'ALTER TABLE "{table}" ALTER COLUMN "{column}" SET NOT NULL;')
         # handle default
-        if isinstance(default, (int, float, str, bool)) or is_sql_array(default):
-            sql_alter = (*sql_alter, "ALTER TABLE \"{table}\" ALTER COLUMN \"{column}\" SET DEFAULT "+f"{sql_val(default, sql_type)}::{sql_type};")
+        if isinstance(default, (int, float, str, bool, Decimal)) or is_sql_array(default) \
+                or (isinstance(default, dict) and sql_type.lower() in ('json', 'jsonb')):
+            _sql_default = str(sql_val(default, sql_type)).replace('{', '{{').replace('}', '}}') # sql_alter is a format template
+            sql_alter = (*sql_alter, "ALTER TABLE \"{table}\" ALTER COLUMN \"{column}\" SET DEFAULT "+f"{_sql_default}::{sql_type};")
 
         for drc in drop_constraints:
             if drc == 'fk':

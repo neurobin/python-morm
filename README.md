@@ -408,14 +408,7 @@ class User(Base):
     perms = Field('integer[]', index='gin:gin__int_ops')
 ```
 
-If you want to remove the indexing, Add a `-` minus sign to the specific index and then run migration. After that you can safely remove the index keyword, e.g:
-
-```bash
---- parent_id = Field('integer', index='-hash')
-===$ ./mgr makemigrations
-===$ ./mgr migrate
->>> parent_id = Field('integer', index='') # now you can remove the hash
-```
+To remove an index, remove it from the field (or from `Meta.indexes`) and run `makemigrations`; the drop is shown as a decision (`idx:<table>.<index>`) that you confirm.
 
 # Composite indexes
 
@@ -448,7 +441,6 @@ class SiteUser(Base):
 - `cols` may be a list/tuple, a single field name, or a comma-separated string. Order is preserved.
 - `indexes` may be a comma-separated string or a list/tuple of PostgreSQL methods (`btree`, `hash`, `gin`, `gist`, `spgist`, `brin`). Operator classes work as `gin:gin__int_ops`.
 - To drop a composite index, remove its entry from `Meta.indexes` and run migrations.
-- Migrations store a normalized form (`cols` and `indexes` as lists), so `'id,userID'` and `['id', 'userID']` are the same change.
 
 **Index naming:** `__IDX_{table}_{name}_{method}__`
 
@@ -484,82 +476,90 @@ db = DB(DB_POOL, sudo=True)
 
 # Migration
 
-**Migration is a new feature and only forward migrations are supported as of now.**
+morm 4 diffs your models **directly against the Postgres catalog** of the database it is connected to. The models are created in a throwaway shadow schema inside a transaction that is always rolled back, and both sides are read with the same catalog queries, so Postgres itself normalizes types, defaults, constraints and indexes. Applied migrations are recorded in the database (`_morm_migrations`), not in files.
 
-You should have created the *_morm_config_.py* and *mgr.py* file with `morm_admin init`.
-
-List all the models that you want migration for in *mgr.py*. You will know how to edit it once you open it.
-
-Then, to make migration files, run:
+List the models in *mgr.py* (created by `morm_admin init`), then:
 
 ```bash
-python mgr.py makemigrations
+python mgr.py makemigrations          # diff, verify by trial run, write _migrations_/NNNN_<slug>/
+python mgr.py migrate --plan          # what would run
+python mgr.py migrate --yes           # apply (each migration in its own transaction)
+python mgr.py verify                  # non-zero exit if the database differs from the models
 ```
 
-This will ask you for confirmation on each changes, add `-y` flag to bypass this.
+| Command | What it does |
+|---|---|
+| `status [--json]` | `in_sync`, `behind` (pending files), `ahead` (applied migrations missing from this checkout) or `diverged` |
+| `makemigrations [--plan] [--json] [--decide ID=OPT]... [--decisions F] [--using ID=EXPR] [--accept-recommended] [--name N]` | diff and write a migration |
+| `migrate [--plan] [--json] [--yes] [--strict]` | apply pending migrations; `--strict` fails on edited applied files or out of order migrations |
+| `rollback [--last N \| --to ID \| --orphans] [--plan] [--yes]` | undo using the down SQL stored in the database |
+| `verify [--json]` | compare the database with the models and the files |
+| `check` | offline: linear chain, committed files, models (for CI and deploy scripts) |
+| `rebase-chain [--move ID] [--yes]` | after merging two branches that both added migrations |
+| `baseline [--yes]` | start using morm 4 on an existing database (see below) |
 
-run
+Exit codes: `0` ok, `1` error or drift, `2` refused by a guard, `3` open decisions.
+
+## Nothing destructive is guessed
+
+Columns and tables are matched **by name**. When a column is gone and another is new, morm compares them (type, NOT NULL, default, position, name similarity, whether the old one has data) and asks whether it is a rename. Every drop of a column, table, constraint or index, and every type change that can lose data, is a decision too:
+
+```text
+[OPEN] col:users.phone->mobile
+  column "users.phone" is gone and "users.mobile" is new
+    rename (recommended): RENAME "phone" TO "mobile" (keeps the data)
+    drop_add: DROP "phone" (data is lost) and ADD "mobile"
+  evidence: {"name_similarity": 0.36, "old_has_data": true, "same_type": true, "score": 0.873}
+```
+
+In a terminal you are prompted (a drop has to be typed out). Without a terminal, or with `--json`, nothing blocks: the command exits with code `3` and prints the open decisions, which can be answered on the next run:
 
 ```bash
-python mgr.py migrate
+python mgr.py makemigrations --plan --json        # read the decisions and the SQL
+python mgr.py makemigrations --decide 'col:users.phone->mobile=rename' --decide 'col:users.old=drop'
 ```
 
-to apply the migrations.
+This makes the flow usable by AI agents: they read the evidence, answer by id, and the answers and evidence are written as comments at the top of `up.sql` for review.
 
+Before anything is written, the generated up SQL is executed in a savepoint and the result is compared with the models, then the generated down SQL is executed and compared with the original schema. Both are rolled back.
 
-## Adding data into migration
+Tables in the database that have no model are never touched; answer `table:<name>=drop` to drop one.
 
-Go into migration directory after making the migration files and look for the `.py` files inside `queue` directory. Identify current migration files, open them for edit. You will find something similar to this:
+The trial run takes the same locks as the real migration, so run `makemigrations` against a development database or a schema copy (`pg_dump -s`), not production. It gives up after `MORM_TRIAL_LOCK_TIMEOUT` (default `3s`) instead of waiting; `migrate` uses `MORM_LOCK_TIMEOUT` (default `10s`). `status` and `verify` only read the real schema and are safe anywhere.
+
+## Files and the ledger
+
+```text
+_migrations_/0001_create_users/up.sql
+_migrations_/0001_create_users/down.sql
+_migrations_/0001_create_users/meta.json   # id, parent, decisions
+_migrations_/0001_create_users/hooks.py    # optional
+```
+
+Migrations form one chain across all tables (`parent` in *meta.json*). Two migrations with the same parent (two branches merged) make the chain `diverged`; `check` fails and `rebase-chain` puts one branch after the other.
+
+`makemigrations` refuses when the database is behind the files (run `migrate` first) or ahead of them (applied migrations from another branch: check that branch out, or `rollback --orphans`). A failed migration is rolled back and the files are left alone.
+
+## Data changes in a migration
+
+Add *hooks.py* next to *up.sql*:
 
 ```python
-import morm
-
-class MigrationRunner(morm.migration.MigrationRunner):
-    """Run migration with pre and after steps.
-    """
-    migration_query = """{migration_query}"""
-
-    # async def run_before(self):
-    #     """Run before migration
-
-    #     self.tdb is the db handle (transaction)
-    #     self.model is the model class
-    #     """
-    #     dbm = self.tdb(self.model)
-    #     # # Example
-    #     # dbm.q('SOME QUERY TO SET "column_1"=$1', 'some_value')
-    #     # await dbm.execute()
-    #     # # etc..
-
-    # async def run_after(self):
-    #     """Run after migration.
-
-    #     self.tdb is the db handle (transaction)
-    #     self.model is the model class
-    #     """
-    #     dbm = self.tdb(self.model)
-    #     # # Example
-    #     # dbm.q('SOME QUERY TO SET "column_1"=$1', 'some_value')
-    #     # await dbm.execute()
-    #     # # etc..
+async def before(db):          # db is morm.db.DB bound to the migration's transaction
+    ...
+async def after(db):
+    await db.execute("UPDATE users SET slug = lower(name)")
+async def before_down(db): ...
+async def after_down(db): ...
 ```
 
-As you can see, there are `run_before` and `run_after` hooks. You can use them to make custom queries before and after the migration query. You can even modify the migration query itself.
+You can also edit *up.sql* before applying it, e.g. to change a `USING` expression (or pass `--using 'type:users.age=nullif(age, \'\')::int'`).
 
-Example:
+## Moving from morm 3
 
-```python
-...
-    async def run_before(self):
-        """Run before migration
-
-        self.tdb is the db handle (transaction)
-        self.model is the model class
-        """
-        user0 = self.model(name='John Doe', profession='Software Engineer', age=45)
-        await self.tdb.save(user0)
-...
-```
+1. `python mgr.py verify` against the existing database. Fix the models (or the database) until there is no drift.
+2. `python mgr.py baseline --yes` writes `_migrations_/0000_baseline` and records it as applied without running it. On a fresh database `migrate` runs it and creates everything.
+3. Archive the old per-table folders and the cursor files; `legacy_migration_manager` is kept for projects that are not moved yet.
 
 # Do not do these
 

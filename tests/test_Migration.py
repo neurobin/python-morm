@@ -192,20 +192,20 @@ ALTER TABLE "User" DROP CONSTRAINT IF EXISTS "__UNQ_User_profession__";; ALTER T
             name = Field('varchar(25)')
             profession_name = Field('varchar(265)', sql_alter=("SET DEFAULT 'Teacher'",'SET NOT NULL'))
         sys.argv = [__file__, 'makemigrations', '-y']
-        mg.migration_manager(self.DB_POOL, self.mgpath, [User])
+        mg.legacy_migration_manager(self.DB_POOL, self.mgpath, [User])
         sys.argv = [__file__, 'migrate']
-        mg.migration_manager(self.DB_POOL, self.mgpath, [User])
+        mg.legacy_migration_manager(self.DB_POOL, self.mgpath, [User])
         sys.argv = [__file__, 'delete_migration_files', '1', '1']
-        mg.migration_manager(self.DB_POOL, self.mgpath, [User])
+        mg.legacy_migration_manager(self.DB_POOL, self.mgpath, [User])
         sys.argv = [__file__, 'delete_migration_file', '1', '1']
         with self.assertRaises(ValueError):
-            mg.migration_manager(self.DB_POOL, self.mgpath, [User])
+            mg.legacy_migration_manager(self.DB_POOL, self.mgpath, [User])
         sys.argv = [__file__, 'delete_migration_files']
         with self.assertRaises(ValueError):
-            mg.migration_manager(self.DB_POOL, self.mgpath, [User])
+            mg.legacy_migration_manager(self.DB_POOL, self.mgpath, [User])
         sys.argv = [__file__, 'delete_migration_files', '2', '1']
         with self.assertRaises(ValueError):
-            mg.migration_manager(self.DB_POOL, self.mgpath, [User])
+            mg.legacy_migration_manager(self.DB_POOL, self.mgpath, [User])
 
 
     def _migrate(self, mgo: mg.Migration):

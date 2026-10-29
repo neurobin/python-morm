@@ -4,7 +4,7 @@
 __author__ = 'Md Jahidul Hamid <jahidulhamid@yahoo.com>'
 __copyright__ = 'Copyright © Md Jahidul Hamid <https://github.com/neurobin/>'
 __license__ = '[BSD](http://www.opensource.org/licenses/bsd-license.php)'
-__version__ = '0.0.2'
+__version__ = '0.0.3'
 
 
 import asyncio
@@ -665,8 +665,18 @@ def run_with_transaction(pool: Pool, func: Callable, *args: Any, **kwargs: Any):
     asyncio.get_event_loop().run_until_complete(_run_with_transaction(pool, func, *args, **kwargs))
 
 
-def migration_manager(pool: Pool, base_path: str, models: List[ModelType]):
-    """Migration manager.
+def migration_manager(pool: Pool, base_path: str, models: List[ModelType], schema: str = 'public'):
+    """Migration manager (morm 4, catalog based).
+
+    The models are diffed against the database catalog; see `morm.schema.cli`
+    for the commands.  The morm 3 manager is `legacy_migration_manager`.
+    """
+    from morm.schema.cli import migration_manager as _mm
+    _mm(pool, base_path, models, schema=schema)
+
+
+def legacy_migration_manager(pool: Pool, base_path: str, models: List[ModelType]):
+    """Migration manager (morm 3, JSON snapshot based; deprecated).
 
     Parses arguments to run migration commands.
 
